@@ -6381,28 +6381,49 @@ function triggerPhotoUpload() {
   document.getElementById('photo-input').click();
 }
 
-function handlePhotoUpload(event) {
-  const files = Array.from(event.target.files);
-  const remaining = 10 - uploadedPhotos.length;
-  files.slice(0, remaining).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      uploadedPhotos.push(e.target.result);
-      renderPhotoGrid();
+function compressImage(file, maxWidth, maxHeight, quality) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var w = img.width, h = img.height;
+        if (w > maxWidth) { h = h * maxWidth / w; w = maxWidth; }
+        if (h > maxHeight) { w = w * maxHeight / h; h = maxHeight; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  });
+}
+
+function handlePhotoUpload(event) {
+  var files = Array.from(event.target.files);
+  var remaining = 10 - uploadedPhotos.length;
+  files.slice(0, remaining).forEach(function(file) {
+    compressImage(file, 1200, 1200, 0.82).then(function(blob) {
+      var url = URL.createObjectURL(blob);
+      uploadedPhotos.push({ blob: blob, preview: url, uploaded: false, storageUrl: null });
+      renderPhotoGrid();
+    });
   });
   event.target.value = '';
 }
 
 function renderPhotoGrid() {
   const grid = document.getElementById('photo-grid');
-  grid.innerHTML = uploadedPhotos.map((src, i) => `
-    <div class="photo-thumb-wrap">
-      <img src="${src}" alt="Фото ${i+1}" loading="lazy" decoding="async">
-      ${i===0 ? '<div class="photo-main-badge">Головне</div>' : ''}
-      <button class="remove-photo" onclick="removePhoto(${i})">×</button>
-    </div>`).join('');
+  grid.innerHTML = uploadedPhotos.map(function(item, i) {
+    var src = typeof item === 'string' ? item : item.preview;
+    return '<div class="photo-thumb-wrap">' +
+      '<img src="' + src + '" alt="Фото ' + (i+1) + '" loading="lazy" decoding="async">' +
+      (i===0 ? '<div class="photo-main-badge">Головне</div>' : '') +
+      '<button class="remove-photo" onclick="removePhoto(' + i + ')">×</button>' +
+      '</div>';
+  }).join('');
   document.getElementById('upload-trigger').style.display = uploadedPhotos.length >= 10 ? 'none' : '';
 }
 
@@ -7556,6 +7577,38 @@ function submitListing() {
         showToast('✅ Оголошення опубліковано!');
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
+        // Завантажити фото в Cloudinary
+        var photos = uploadedPhotos.filter(function(p){ return p && p.blob; });
+        if (photos.length > 0) {
+          var urls = new Array(photos.length).fill(null);
+          var uploaded = 0;
+          photos.forEach(function(p, idx) {
+            var fd = new FormData();
+            fd.append('file', p.blob, 'photo.jpg');
+            fd.append('upload_preset', 'ridego_unsigned');
+            fd.append('folder', 'listings/' + docRef.id);
+            fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
+              method: 'POST', body: fd
+            }).then(function(r){ return r.json(); })
+            .then(function(data) {
+              urls[idx] = data.secure_url;
+              uploaded++;
+              if (uploaded === photos.length) {
+                var finalUrls = urls.filter(Boolean);
+                window._db.collection('listings').doc(docRef.id).update({
+                  img: finalUrls[0] || '',
+                  imgs: finalUrls
+                }).then(function() {
+                  newL.img = finalUrls[0] || '';
+                  newL.imgs = finalUrls;
+                  if (typeof renderMyListings === 'function') renderMyListings();
+                  renderHomeListings();
+                  showToast('🖼 Фото завантажено!');
+                });
+              }
+            }).catch(function(e){ console.error('Cloudinary upload error:', e); });
+          });
+        }
       })
       .catch(function(e) {
         console.error('Firestore save error:', e);
