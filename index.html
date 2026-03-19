@@ -5271,6 +5271,8 @@ function buildSpecTable(l) {
   if (!l.specs) { document.getElementById('detail-specs-full').innerHTML = '<p style="color:var(--text-muted);padding:20px">Детальні характеристики відсутні</p>'; return; }
   var specs = _convertSpecs(l.specs);
   const order = ['general','motor','battery','performance','physical','extras'];
+  // Додати будь-які інші секції що є в specs але не в order
+  Object.keys(specs).forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
   let html = '<div class="spec-section">';
   order.forEach(key => {
     if (!specs[key] || !specs[key].length) return;
@@ -7591,18 +7593,60 @@ function submitListing() {
   const spWeight= document.getElementById('sp-weight')?.value || '';
 
   const rawSpecs = collectSpecs();
+
+  // Маппінг назв секцій → ключів в specsForCard
+  const SECTION_KEY_MAP = {
+    // Мотор / електросистема
+    'Електросистема':    'motor',
+    'Двигун':            'motor',
+    // Батарея
+    'Акумулятор':        'battery',
+    // Динаміка / їзда / характеристики
+    'Їзда':              'performance',
+    'Динаміка':          'performance',
+    'Характеристики руху':'performance',
+    'Характеристики':    'performance',
+    // Фізичні / конструкція
+    'Розміри та вага':   'physical',
+    'Розміри':           'physical',
+    'Габарити':          'physical',
+    'Конструкція':       'physical',
+    'Рама і колеса':     'physical',
+    'Рама':              'physical',
+    'Колеса і ходова':   'physical',
+    'Колеса':            'physical',
+    'Шасі':              'physical',
+    'Трансмісія':        'physical',
+    'Гальма і підвіска': 'physical',
+    'Гальма':            'physical',
+    'Підвіска':          'physical',
+    'Посадка і кузов':   'physical',
+    // Оснащення / електроніка / додатково
+    'Оснащення':         'extras',
+    'Електроніка':       'extras',
+    'Додатково':         'extras',
+    'Стан і кількість':  'extras',
+    'Сертифікати':       'extras',
+    'Безпека':           'extras',
+    'Документи':         'extras',
+    // Загальне
+    'Деталь':            'general',
+    'Аксесуар':          'general',
+    'Загальне':          'general',
+  };
+
   const specsForCard = {};
-  if (rawSpecs['⚡ Двигун']) specsForCard.motor = rawSpecs['⚡ Двигун'];
-  if (rawSpecs['🔋 Акумулятор']) specsForCard.battery = rawSpecs['🔋 Акумулятор'];
-  if (rawSpecs['🏎 Характеристики']) specsForCard.performance = rawSpecs['🏎 Характеристики'];
-  if (rawSpecs['📐 Розміри та вага'] || rawSpecs['📐 Розміри']) specsForCard.physical = rawSpecs['📐 Розміри та вага'] || rawSpecs['📐 Розміри'];
-  if (rawSpecs['⭐ Додатково']) specsForCard.extras = rawSpecs['⭐ Додатково'];
-  if (rawSpecs['🔧 Деталь']) specsForCard.general = rawSpecs['🔧 Деталь'];
-  if (rawSpecs['🪖 Аксесуар']) specsForCard.general = rawSpecs['🪖 Аксесуар'];
-  if (rawSpecs['🚲 Рама і колеса']) specsForCard.physical = rawSpecs['🚲 Рама і колеса'];
-  if (rawSpecs['🔩 Шасі']) specsForCard.physical = [...(specsForCard.physical||[]), ...(rawSpecs['🔩 Шасі']||[])];
-  if (rawSpecs['📦 Стан і кількість']) specsForCard.extras = rawSpecs['📦 Стан і кількість'];
-  if (rawSpecs['📐 Сертифікати'] || rawSpecs['⭐ Сертифікати']) specsForCard.extras = rawSpecs['📐 Сертифікати']||rawSpecs['⭐ Сертифікати'];
+  Object.keys(rawSpecs).forEach(function(sectionName) {
+    // Знайти ключ по частині назви (без емодзі)
+    var clean = sectionName.replace(/^[^\s]+\s/, '').trim();
+    var key = null;
+    Object.keys(SECTION_KEY_MAP).forEach(function(k) {
+      if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
+    });
+    if (!key) key = 'extras'; // всі невідомі секції → extras
+    if (!specsForCard[key]) specsForCard[key] = [];
+    specsForCard[key] = specsForCard[key].concat(rawSpecs[sectionName]);
+  });
 
   const generalRows = [
     ['Бренд', brand], ['Рік випуску', year], ['Стан', condition],
