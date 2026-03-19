@@ -10,5 +10,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://ridego-6f981.firebaseapp.com/__/auth/:path*"
+    }
   ]
 }
