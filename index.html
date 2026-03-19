@@ -7203,14 +7203,26 @@ function doLogin() {
   var pass  = document.getElementById('login-pass').value;
   if (!email) { showToast('⚠️ Введіть email'); return; }
   if (!pass)  { showToast('⚠️ Введіть пароль'); return; }
-  doFirebaseLogin(email, pass);
+  window._auth.signInWithEmailAndPassword(email, pass)
+    .then(function() {
+      showToast('✅ Вхід успішний!');
+      showPage('profile');
+    })
+    .catch(function(e) {
+      showToast('⚠️ Невірний email або пароль');
+    });
 }
 function doSocialLogin(provider) {
   if (provider === 'Google') doFirebaseGoogleLogin();
   else showToast('⚠️ Підтримується тільки Google');
 }
 function doLogout() {
-  doFirebaseLogout();
+  window._auth.signOut().then(function() {
+    isLoggedIn = false;
+    myListings = [];
+    showToast('До побачення!');
+    showPage('home');
+  });
 }
 function showRegister() {
   document.getElementById('auth-form-title').textContent = 'Реєстрація';
