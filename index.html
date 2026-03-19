@@ -2436,6 +2436,27 @@
     });
 
     console.log('✅ RideGO Firebase підключено!');
+
+    // Обробка результату після Google redirect
+    window._auth.getRedirectResult().then(function(result) {
+      if (result && result.user) {
+        var user = result.user;
+        return window._db.collection('users').doc(user.uid).get().then(function(snap) {
+          if (!snap.exists) {
+            return window._db.collection('users').doc(user.uid).set({
+              name: user.displayName, email: user.email, uid: user.uid,
+              type: 'personal', listings: 0, status: 'active',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        }).then(function() {
+          showToast('✅ Вхід через Google!');
+          showPage('profile');
+        });
+      }
+    }).catch(function(e) {
+      console.error('Redirect auth error:', e);
+    });
   })();
   </script>
 </head>
@@ -7198,21 +7219,8 @@ function doLogin() {
 function doSocialLogin(provider) {
   if (provider === 'Google' && window._auth) {
     var gProvider = new firebase.auth.GoogleAuthProvider();
-    window._auth.signInWithPopup(gProvider)
-      .then(function(result) {
-        var user = result.user;
-        return window._db.collection('users').doc(user.uid).get().then(function(snap) {
-          if (!snap.exists) {
-            return window._db.collection('users').doc(user.uid).set({
-              name: user.displayName, email: user.email, uid: user.uid,
-              type: 'personal', listings: 0, status: 'active',
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          }
-        });
-      })
-      .then(function() { showToast('✅ Вхід через Google!'); showPage('profile'); })
-      .catch(function(e) { if (e.code !== 'auth/popup-closed-by-user') showToast('⚠️ ' + e.message); });
+    window._auth.signInWithRedirect(gProvider)
+      .catch(function(e) { showToast('⚠️ ' + e.message); });
   } else {
     showToast('⚠️ Поки підтримується тільки Google');
   }
