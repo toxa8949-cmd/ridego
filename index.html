@@ -2422,6 +2422,11 @@
           }
           if (typeof renderProfile === 'function') renderProfile();
           if (typeof _updateChatBadge === 'function') _updateChatBadge();
+          // Якщо прийшли після Google redirect — перейти на профіль
+          if (window._pendingGoogleRedirect) {
+            window._pendingGoogleRedirect = false;
+            setTimeout(function(){ if(typeof showPage==='function') showPage('profile'); showToast('✅ Вхід через Google!'); }, 100);
+          }
           // Завантажуємо оголошення
           return window._db.collection('listings').where('uid','==',user.uid).get();
         }).then(function(snap) {
@@ -2441,7 +2446,8 @@
     window._auth.getRedirectResult().then(function(result) {
       if (result && result.user) {
         var user = result.user;
-        return window._db.collection('users').doc(user.uid).get().then(function(snap) {
+        window._pendingGoogleRedirect = true;
+        window._db.collection('users').doc(user.uid).get().then(function(snap) {
           if (!snap.exists) {
             return window._db.collection('users').doc(user.uid).set({
               name: user.displayName, email: user.email, uid: user.uid,
@@ -2449,10 +2455,7 @@
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           }
-        }).then(function() {
-          showToast('✅ Вхід через Google!');
-          showPage('profile');
-        });
+        }).catch(function(e){ console.error('Firestore error:', e); });
       }
     }).catch(function(e) {
       console.error('Redirect auth error:', e);
