@@ -7592,7 +7592,10 @@ function submitListing() {
   const spWheel = document.getElementById('sp-wheel')?.value || '';
   const spWeight= document.getElementById('sp-weight')?.value || '';
 
+  // Зберегти категорію і зібрати specs ДО будь-яких скидань
+  const _savedCat = addSelectedCat;
   const rawSpecs = collectSpecs();
+  console.log('DEBUG specs cat:', _savedCat, 'rawSpecs keys:', Object.keys(rawSpecs));
 
   // Маппінг назв секцій → ключів в specsForCard
   const SECTION_KEY_MAP = {
