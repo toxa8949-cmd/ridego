@@ -4163,7 +4163,12 @@ function _loadUserServices(uid) {
       // Прибрати старі локальні сервіси цього юзера і замінити на Firebase
       myServices = myServices.filter(function(s){ return !s._isOwn; });
       myServices = loaded.concat(myServices);
+      // Прибрати з _fbServices сервіси що тепер є в myServices (уникнути дублів)
+      var myIds = loaded.map(function(s){ return s.id; });
+      _fbServices = _fbServices.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderMyServiceTab();
+      renderHomeServices();
+      if (typeof renderServices === 'function') renderServices();
     }).catch(function(e){ console.log('services load:', e.message); });
 }
 
@@ -4179,7 +4184,10 @@ function loadFirebaseData() {
   // Сервіси
   window._db.collection('services').orderBy('rating','desc').limit(30).get()
     .then(function(snap) {
-      _fbServices = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      // Прибрати дублікати — якщо сервіс вже є в myServices, не додавати в _fbServices
+      var myIds = myServices.map(function(s){ return s.id; });
+      _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
     }).catch(function(e){ console.log('services:', e.message); });
