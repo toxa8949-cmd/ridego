@@ -2412,18 +2412,22 @@
         window._authWasLoggedIn = true;
         // isLoggedIn — глобальна змінна оголошена в body
         if (typeof isLoggedIn !== 'undefined') isLoggedIn = true;
-        window.currentUser = window.currentUser || {};
-        window.currentUser.uid     = user.uid;
-        window.currentUser.email   = user.email;
-        window.currentUser.name    = user.displayName || user.email.split('@')[0];
-        window.currentUser.initial = window.currentUser.name[0].toUpperCase();
+        // Оновити ОБИДВІ змінні — window.currentUser і локальну currentUser
+        if (typeof currentUser === 'undefined') window.currentUser = {};
+        var _cu = (typeof currentUser !== 'undefined') ? currentUser : window.currentUser;
+        _cu.uid     = user.uid;
+        _cu.email   = user.email;
+        _cu.name    = user.displayName || user.email.split('@')[0];
+        _cu.initial = (_cu.name||'U')[0].toUpperCase();
+        window.currentUser = _cu;
         // Завантажуємо профіль з Firestore
         window._db.collection('users').doc(user.uid).get().then(function(snap) {
           if (snap.exists) {
             var d = snap.data();
-            window.currentUser.name    = d.name || window.currentUser.name;
-            window.currentUser.initial = window.currentUser.name[0].toUpperCase();
-            window.currentUser.type    = d.type || 'personal';
+            _cu.name    = d.name || _cu.name;
+            _cu.initial = (_cu.name||'U')[0].toUpperCase();
+            _cu.type    = d.type || 'personal';
+            window.currentUser = _cu;
           } else {
             // Новий юзер через Google — зберегти в Firestore
             window._db.collection('users').doc(user.uid).set({
