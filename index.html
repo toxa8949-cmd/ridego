@@ -7598,55 +7598,63 @@ function submitListing() {
   console.log('DEBUG specs cat:', _savedCat, 'rawSpecs keys:', Object.keys(rawSpecs));
 
   // Маппінг назв секцій → ключів в specsForCard
+  // Маппінг: частина назви секції (без емодзі) → ключ specsForCard
   const SECTION_KEY_MAP = {
-    // Мотор / електросистема
-    'Електросистема':    'motor',
-    'Двигун':            'motor',
+    // Мотор
+    'Електросистема':     'motor',
+    'Двигун':             'motor',
     // Батарея
-    'Акумулятор':        'battery',
-    // Динаміка / їзда / характеристики
-    'Їзда':              'performance',
-    'Динаміка':          'performance',
+    'Акумулятор':         'battery',
+    // Динаміка
+    'Їзда':               'performance',
+    'Динаміка':           'performance',
     'Характеристики руху':'performance',
-    'Характеристики':    'performance',
-    // Фізичні / конструкція
-    'Розміри та вага':   'physical',
-    'Розміри':           'physical',
-    'Габарити':          'physical',
-    'Конструкція':       'physical',
-    'Рама і колеса':     'physical',
-    'Рама':              'physical',
-    'Колеса і ходова':   'physical',
-    'Колеса':            'physical',
-    'Шасі':              'physical',
-    'Трансмісія':        'physical',
-    'Гальма і підвіска': 'physical',
-    'Гальма':            'physical',
-    'Підвіска':          'physical',
-    'Посадка і кузов':   'physical',
-    // Оснащення / електроніка / додатково
-    'Оснащення':         'extras',
-    'Електроніка':       'extras',
-    'Додатково':         'extras',
-    'Стан і кількість':  'extras',
-    'Сертифікати':       'extras',
-    'Безпека':           'extras',
-    'Документи':         'extras',
+    'Характеристики':     'performance',
+    'Ходові':             'performance',
+    // Фізичні — рама, колеса, трансмісія, гальма, підвіска, розміри
+    'Рама і колеса':      'physical',
+    'Рама':               'physical',
+    'Трансмісія':         'physical',
+    'Колеса і ходова':    'physical',
+    'Колеса':             'physical',
+    'Шасі':               'physical',
+    'Гальма і підвіска':  'physical',
+    'Гальма':             'physical',
+    'Підвіска':           'physical',
+    'Конструкція':        'physical',
+    'Посадка і кузов':    'physical',
+    'Розміри та вага':    'physical',
+    'Розміри':            'physical',
+    'Габарити':           'physical',
+    // Оснащення / додатково
+    'Оснащення':          'extras',
+    'Електроніка':        'extras',
+    'Додатково':          'extras',
+    'Стан і кількість':   'extras',
+    'Сертифікати':        'extras',
+    'Безпека':            'extras',
+    'Документи':          'extras',
     // Загальне
-    'Деталь':            'general',
-    'Аксесуар':          'general',
-    'Загальне':          'general',
+    'Деталь':             'general',
+    'Аксесуар':           'general',
+    'Загальне':           'general',
   };
 
   const specsForCard = {};
   Object.keys(rawSpecs).forEach(function(sectionName) {
-    // Знайти ключ по частині назви (без емодзі)
-    var clean = sectionName.replace(/^[^\s]+\s/, '').trim();
+    // Прибрати емодзі з початку (все до першої літери)
+    var clean = sectionName.replace(/^[^\u0400-\u04FFa-zA-Z]+/, '').trim();
     var key = null;
-    Object.keys(SECTION_KEY_MAP).forEach(function(k) {
-      if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
-    });
-    if (!key) key = 'extras'; // всі невідомі секції → extras
+    // Спочатку точний збіг
+    if (SECTION_KEY_MAP[clean]) {
+      key = SECTION_KEY_MAP[clean];
+    } else {
+      // Потім пошук по частині
+      Object.keys(SECTION_KEY_MAP).forEach(function(k) {
+        if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
+      });
+    }
+    if (!key) key = 'extras';
     if (!specsForCard[key]) specsForCard[key] = [];
     specsForCard[key] = specsForCard[key].concat(rawSpecs[sectionName]);
   });
