@@ -2407,9 +2407,11 @@
     var _authInitialized = false;
     window._auth.onAuthStateChanged(function(user) {
       if (user) {
-        var isNewLogin = !_authInitialized && !window.isLoggedIn || window._justLoggedIn;
+        var isNewLogin = !_authInitialized && !window._authWasLoggedIn || window._justLoggedIn;
         window._justLoggedIn = false;
-        window.isLoggedIn = true;
+        window._authWasLoggedIn = true;
+        // isLoggedIn — глобальна змінна оголошена в body
+        if (typeof isLoggedIn !== 'undefined') isLoggedIn = true;
         window.currentUser = window.currentUser || {};
         window.currentUser.uid     = user.uid;
         window.currentUser.email   = user.email;
@@ -2443,8 +2445,9 @@
           if (typeof renderMyListings === 'function') renderMyListings();
         }).catch(function(e){ console.log('Firebase:', e.message); });
       } else {
-        window.isLoggedIn = false;
-        window.myListings = [];
+        window._authWasLoggedIn = false;
+        if (typeof isLoggedIn !== 'undefined') isLoggedIn = false;
+        if (typeof myListings !== 'undefined') myListings = [];
         if (typeof renderProfile === 'function') renderProfile();
       }
       _authInitialized = true;
