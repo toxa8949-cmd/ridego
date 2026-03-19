@@ -2456,8 +2456,7 @@
     });
 
     console.log('✅ RideGO Firebase підключено!');
-    // Завантажити дані з Firebase
-    setTimeout(loadFirebaseData, 100);
+
 
   })();
   </script>
@@ -8475,5 +8474,11 @@ function deleteMysvc(id) {
 
 
 
+<script>
+// Завантажити дані після повного завантаження DOM
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(loadFirebaseData, 300);
+});
+</script>
 </body>
 </html>
