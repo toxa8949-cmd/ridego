@@ -7500,14 +7500,48 @@ function submitListing() {
 
   // Зберегти в Firestore
   if (window._db && currentUser && currentUser.uid) {
-    var fbListing = Object.assign({}, newL, {
+    // Конвертувати specs — Firestore не підтримує вкладені масиви
+    var safeSpecs = {};
+    if (newL.specs) {
+      Object.keys(newL.specs).forEach(function(key) {
+        if (Array.isArray(newL.specs[key])) {
+          // Перетворити масив пар [['key','val'],...] в об'єкт
+          var obj = {};
+          newL.specs[key].forEach(function(row) {
+            if (Array.isArray(row) && row.length >= 2) {
+              obj[row[0]] = row[1];
+            }
+          });
+          safeSpecs[key] = obj;
+        } else {
+          safeSpecs[key] = newL.specs[key];
+        }
+      });
+    }
+    var fbListing = {
+      title: newL.title || '',
+      price: newL.price || 0,
+      cat: newL.cat || '',
+      city: newL.city || '',
+      fullLoc: newL.fullLoc || '',
+      condition: newL.condition || '',
+      badge: newL.badge || '',
+      icon: newL.icon || '',
+      battery: newL.battery || '',
+      speed: newL.speed || '',
+      range: newL.range || '',
+      weight: newL.weight || '',
+      desc: newL.desc || '',
+      seller: currentUser.name || '',
+      img: newL.img || '',
+      imgs: newL.imgs || [],
+      specs: safeSpecs,
       uid: currentUser.uid,
       sellerName: currentUser.name,
       sellerEmail: currentUser.email,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       status: 'active'
-    });
-    delete fbListing.id; // Firestore сам генерує id
+    };
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
         newL.id = docRef.id;
