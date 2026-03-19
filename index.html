@@ -7421,8 +7421,6 @@ function applyPromo() {
   }
 }
 
-// ── Перевизначити submitListing щоб показувати promo modal після публікації ──
-const _origSubmitListing = submitListing;
 function submitListing() {
   const title = document.getElementById('new-title')?.value.trim();
   const price = parseInt(document.getElementById('new-price')?.value);
