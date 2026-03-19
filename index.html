@@ -5250,17 +5250,35 @@ function setGalleryIdx(i) {
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,j) => t.classList.toggle('active', j===i));
 }
 
+function _convertSpecs(specs) {
+  // Конвертувати з Firestore об'єкту {k:v} назад в масив пар [[k,v]]
+  if (!specs) return specs;
+  var result = {};
+  Object.keys(specs).forEach(function(key) {
+    var val = specs[key];
+    if (Array.isArray(val)) {
+      result[key] = val; // вже масив
+    } else if (val && typeof val === 'object') {
+      result[key] = Object.entries(val);
+    } else {
+      result[key] = val;
+    }
+  });
+  return result;
+}
+
 function buildSpecTable(l) {
   if (!l.specs) { document.getElementById('detail-specs-full').innerHTML = '<p style="color:var(--text-muted);padding:20px">Детальні характеристики відсутні</p>'; return; }
+  var specs = _convertSpecs(l.specs);
   const order = ['general','motor','battery','performance','physical','extras'];
   let html = '<div class="spec-section">';
   order.forEach(key => {
-    if (!l.specs[key] || !l.specs[key].length) return;
+    if (!specs[key] || !specs[key].length) return;
     const meta = SPEC_SECTION_META[key] || { label: key, icon: 'fa-circle' };
     html += `
       <div class="spec-section-title"><i class="fa-solid ${meta.icon}"></i>${meta.label}</div>
       <table class="spec-table">
-        ${l.specs[key].map(([k,v]) => `
+        ${specs[key].map(([k,v]) => `
           <tr>
             <td>${k}</td>
             <td class="${isHighlight(k,v) ? 'spec-val-green' : ''}">${formatSpecVal(k,v)}</td>
