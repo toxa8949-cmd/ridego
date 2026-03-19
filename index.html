@@ -7575,10 +7575,11 @@ function submitListing() {
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
         showToast('✅ Оголошення опубліковано!');
+        // Зберегти копію фото ДО reset
+        var photos = uploadedPhotos.filter(function(p){ return p && p.blob; });
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
         // Завантажити фото в Cloudinary
-        var photos = uploadedPhotos.filter(function(p){ return p && p.blob; });
         if (photos.length > 0) {
           var urls = new Array(photos.length).fill(null);
           var uploaded = 0;
