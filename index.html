@@ -2438,6 +2438,8 @@
           if (isNewLogin && typeof showPage === 'function') {
             showPage('profile');
           }
+          // Завантажити чати юзера
+          loadUserChats();
           // Завантажуємо оголошення
           return window._db.collection('listings').where('uid','==',user.uid).get();
         }).then(function(snap) {
@@ -2454,6 +2456,8 @@
     });
 
     console.log('✅ RideGO Firebase підключено!');
+    // Завантажити дані з Firebase
+    setTimeout(loadFirebaseData, 100);
 
   })();
   </script>
@@ -3837,840 +3841,20 @@
 // ============================================================
 // DATA
 // ============================================================
-const LISTINGS = [
-  { id:1, title:'Ninebot Max G30P', price:18500, cat:'Електросамокати', city:'Київ', condition:'Хороший', badge:'ТОРГ', badgeClass:'tag-red', icon:'⚡',
-    battery:'15 Ah', speed:'30 км/год', range:'65 км', weight:'18.7 кг',
-    desc:'Чудовий стан. Придбано рік тому, пробіг близько 800 км. Заряд тримає відмінно. Є оригінальний чохол і сумка. Всі оригінальні комплектуючі. Продаю у зв\'язку з переїздом до іншого міста.\n\nЗроблено ТО: замінено камеру заднього колеса, переднє колесо нове. Гальма відрегульовані.',
-    seller:'Олег К.', time:'Сьогодні, 14:20',
-    img:'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-    imgs:[
-      'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-      'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-      'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    ],
-    specs: {
-      general: [['Бренд','Ninebot (Segway)'],['Модель','Max G30P'],['Рік випуску','2023'],['Стан','Хороший'],['Пробіг','~800 км']],
-      motor: [['Потужність двигуна','350 Вт (пікова 700 Вт)'],['Тип двигуна','Безколекторний DC, заднє колесо'],['Напруга','36 В']],
-      battery: [['Ємність','15 Ah / 551 Вт·год'],['Тип','Літій-іонний (Li-ion)'],['Зарядка','~6 год до 100%'],['Зарядний пристрій','У комплекті']],
-      performance: [['Макс. швидкість','30 км/год'],['Запас ходу','до 65 км'],['Набір швидкості','0–25 км/год за ~4 с'],['Режими їзди','Eco / D / Sport']],
-      physical: [['Розмір коліс','10" (надувні)'],['Розмір платформи','59 × 17 см'],['Вага','18.7 кг'],['Макс. навантаження','100 кг'],['Складений розмір','113 × 46 × 49 см'],['IP-рейтинг','IPX5']],
-      extras: [['Гальма','Дискове + електронне рекуперативне'],['Підсвітка','Передня + задня + бічна'],['Дисплей','LED'],['Застосунок','Так (Segway-Ninebot)'],['Блокування','Через застосунок'],['Комплект','Чохол, зарядний пристрій']],
-    }
-  },
-  { id:2, title:'Fiido D4s Електровелосипед', price:22000, cat:'Електровелосипеди', city:'Львів', condition:'Чудовий', badge:'', badgeClass:'', icon:'🚲',
-    battery:'10.4 Ah', speed:'25 км/год', range:'80 км', weight:'22 кг',
-    desc:'Практично новий велосипед. Куплено 6 місяців тому, пробіг близько 300 км. Заряду вистачає на 80 км у режимі педальної допомоги.\n\nСкладний — зручний для зберігання в квартирі або багажнику авто. Є додатковий акумулятор.',
-    seller:'Марія В.', time:'Вчора, 18:45',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:[
-      'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-      'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-      'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-      'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    ],
-    specs: {
-      general: [['Бренд','Fiido'],['Модель','D4s'],['Рік випуску','2023'],['Стан','Чудовий'],['Пробіг','~300 км']],
-      motor: [['Потужність двигуна','250 Вт'],['Тип двигуна','Задньоприводний хаб-мотор'],['Напруга','48 В']],
-      battery: [['Ємність','10.4 Ah / 499 Вт·год'],['Тип','Літій-іонний знімний'],['Зарядка','~4.5 год'],['Розташування','У рамі']],
-      performance: [['Макс. швидкість','25 км/год (EU)'],['Запас ходу','до 80 км (PAS)'],['Режими','Електро / PAS 1–3 / Велосипед']],
-      physical: [['Розмір коліс','20" × 1.95"'],['Тип рами','Складна алюмінієва'],['Вага','22 кг'],['Макс. навантаження','120 кг'],['Кількість передач','7 (Shimano)'],['Гальма','Механічні дискові 160 мм']],
-      extras: [['Підсвітка','LED передня + задня'],['Дисплей','LCD'],['Застосунок','Fiido App (Bluetooth)'],['Крила','Є'],['Задній багажник','Є'],['Комплект','Зарядка, інструмент, рефлектори']],
-    }
-  },
-  { id:3, title:'Електроскутер AIMA Mine Plus', price:45900, cat:'Електроскутери', city:'Одеса', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🛵',
-    battery:'60V 20Ah', speed:'50 км/год', range:'100 км', weight:'75 кг',
-    desc:'Абсолютно новий скутер в оригінальній упаковці. Гарантія 1 рік від виробника. Потужний двигун 1200W дозволяє впевнено рухатись у міському трафіку.\n\nЄ зарядний пристрій, документи, ключі (2 шт.). Можлива доставка по місту.',
-    seller:'Auto-Market', time:'Сьогодні, 09:15',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:[
-      'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-      'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-      'https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=800&q=80',
-      'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    ],
-    specs: {
-      general: [['Бренд','AIMA'],['Модель','Mine Plus'],['Рік випуску','2024'],['Стан','Новий'],['Документи','Є (розмитнений)']],
-      motor: [['Потужність двигуна','1200 Вт (пікова 2400 Вт)'],['Тип двигуна','Безколекторний AC'],['Напруга','60 В'],['Крутний момент','85 Н·м']],
-      battery: [['Ємність','20 Ah / 1200 Вт·год'],['Тип','LiFePO4'],['Кількість циклів','2000+'],['Зарядка','~8 год']],
-      performance: [['Макс. швидкість','50 км/год'],['Запас ходу','до 100 км'],['0–50 км/год','~6 с'],['Максимальний підйом','25°']],
-      physical: [['Розмір коліс','12" (литі диски)'],['Вага','75 кг'],['Макс. навантаження','150 кг'],['Довжина','1850 мм'],['Рама','Сталева посилена'],['Гальма','Гідравлічні дискові F+R'],['Підвіска','Телескопічна + задня пружинна']],
-      extras: [['Підсвітка','LED повний комплект'],['Сигналізація','Вбудована'],['Замок','Стрижневий + електронний'],['Сидіння','Двомісне, шкіряне'],['Корзина під сидінням','30 л']],
-    }
-  },
-  { id:4, title:'Xiaomi Mi Electric Scooter 3', price:12500, cat:'Електросамокати', city:'Дніпро', condition:'Хороший', badge:'', badgeClass:'', icon:'⚡',
-    battery:'7.6 Ah', speed:'25 км/год', range:'30 км', weight:'13.2 кг',
-    desc:'Самокат у хорошому стані. Пробіг 120 км. Є дрібні подряпини на корпусі, що не впливають на роботу.\n\nВідповідає стандартам дорожнього руху. Є підсвічування спереду і ззаду.',
-    seller:'Максим Р.', time:'Сьогодні, 11:30',
-    img:'https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80',
-    imgs:[
-      'https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80',
-      'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-      'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-    ],
-    specs: {
-      general: [['Бренд','Xiaomi'],['Модель','Mi Electric Scooter 3'],['Рік випуску','2022'],['Стан','Хороший'],['Пробіг','~120 км']],
-      motor: [['Потужність двигуна','300 Вт'],['Тип двигуна','Безколекторний, заднє колесо'],['Напруга','36 В']],
-      battery: [['Ємність','7.6 Ah / 275 Вт·год'],['Тип','Літій-іонний'],['Зарядка','~5.5 год']],
-      performance: [['Макс. швидкість','25 км/год'],['Запас ходу','до 30 км'],['Режими','Пішохідний / Стандарт / Спорт']],
-      physical: [['Розмір коліс','8.5" (самозаліковуючі пневматичні)'],['Вага','13.2 кг'],['Макс. навантаження','100 кг'],['IP-рейтинг','IPX4'],['Складений розмір','108 × 43 × 49 см']],
-      extras: [['Гальма','Механічне заднє + регенеративне переднє'],['Підсвітка','Передня 2W + задня'],['Застосунок','Mi Home / Xiaomi'],['Блокування','Через застосунок']],
-    }
-  },
-  { id:5, title:'Kugoo S3 Pro складний', price:9800, cat:'Електросамокати', city:'Харків', condition:'Задовільний', badge:'ТОРГ', badgeClass:'tag-red', icon:'⚡',
-    battery:'10 Ah', speed:'30 км/год', range:'40 км', weight:'16 кг',
-    desc:'Самокат у задовільному стані. Є знос гуми. Відмінний варіант для щоденних поїздок на роботу. Завжди зберігався в гаражі, не під відкритим небом.',
-    seller:'Сергій П.', time:'2 дні тому',
-    img:'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-    imgs:[
-      'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-      'https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80',
-      'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-    ],
-    specs: {
-      general: [['Бренд','Kugoo'],['Модель','S3 Pro'],['Рік випуску','2022'],['Стан','Задовільний'],['Пробіг','~600 км']],
-      motor: [['Потужність двигуна','350 Вт'],['Напруга','36 В']],
-      battery: [['Ємність','10 Ah'],['Тип','Літій-іонний'],['Зарядка','~4 год']],
-      performance: [['Макс. швидкість','30 км/год'],['Запас ходу','до 40 км']],
-      physical: [['Розмір коліс','8"'],['Вага','16 кг'],['Макс. навантаження','120 кг']],
-      extras: [['Гальма','Дискові'],['Підсвітка','LED']],
-    }
-  },
-  { id:6, title:'NCM Moscow+ 48V 16Ah', price:32000, cat:'Електровелосипеди', city:'Київ', condition:'Чудовий', badge:'ТОП', badgeClass:'tag-blue', icon:'🚲',
-    battery:'16 Ah', speed:'28 км/год', range:'100 км', weight:'27 кг',
-    desc:'Потужний міський е-байк із запасом ходу 100 км у режимі PAS. Гідравлічні гальма Tektro, трансмісія Shimano 8-швидкостей.\n\nМало їздили, стан ідеальний. Є чохол для зберігання. Магазин дав гарантію до кінця 2025 року.',
-    seller:'Велосипед Шоп', time:'Сьогодні, 08:00',
-    img:'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    imgs:[
-      'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-      'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-      'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-      'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    ],
-    specs: {
-      general: [['Бренд','NCM'],['Модель','Moscow+ 48V'],['Рік випуску','2024'],['Стан','Чудовий'],['Пробіг','~150 км'],['Гарантія','до 12.2025']],
-      motor: [['Потужність двигуна','250 Вт (Bafang)'],['Тип','Задньоприводний хаб'],['Напруга','48 В'],['Крутний момент','45 Н·м']],
-      battery: [['Ємність','16 Ah / 768 Вт·год'],['Тип','Samsung Li-ion'],['Зарядка','~5 год'],['Розташування','У рамі (знімний)']],
-      performance: [['Макс. швидкість','28 км/год (EU)'],['Запас ходу','до 100 км PAS / 50 км електро'],['Рівні PAS','1–5']],
-      physical: [['Розмір коліс','29"'],['Тип рами','Алюмінієва'],['Кількість передач','8 (Shimano Altus)'],['Гальма','Гідравлічні Tektro 160 мм'],['Вага','27 кг'],['Макс. навантаження','130 кг']],
-      extras: [['Підсвітка','LED (від акумулятора)'],['Дисплей','Кольоровий LCD'],['Крила','Є'],['Багажник','Є (40 кг)']],
-    }
-  },
-  // ── Електросамокати (10 оголошень) ──────────────────────────────
-  { id:101, title:'Dualtron Thunder 2', price:98000, cat:'Електросамокати', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'⚡',
-    battery:'35 Ah', speed:'95 км/год', range:'160 км', weight:'52 кг', seller:'ElectroMax', time:'Сьогодні, 09:00',
-    img:'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80','https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'],
-    desc:'Флагманський самокат Dualtron. Потужність 5400 Вт, двоколісний привід. Гідравлічні гальма EBS. Підходить для щоденних поїздок та активного відпочинку.',
-    specs:{ general:[['Бренд','Dualtron'],['Модель','Thunder 2'],['Стан','Новий'],['Рік','2024']], motor:[['Потужність','5400 Вт (2×2700)'],['Тип','Dual Hub Motor'],['Напруга','60 В']], battery:[['Ємність','35 Ah'],['Тип','LG Li-ion']], performance:[['Швидкість','до 95 км/год'],['Запас ходу','до 160 км']], physical:[['Колеса','11"'],['Вага','52 кг'],['Навантаження','150 кг']] }
-  },
-  { id:102, title:'Kaabo Mantis King GT', price:64000, cat:'Електросамокати', city:'Львів', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'⚡',
-    battery:'24 Ah', speed:'80 км/год', range:'120 км', weight:'38 кг', seller:'ElectroMax', time:'Сьогодні, 09:05',
-    img:'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80','https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80'],
-    desc:'Kaabo Mantis King GT — потужний позашляховик серед самокатів. Підвіска на гідравлічних амортизаторах, широкі шини 10×3". Ідеальний для міста та бездоріжжя.',
-    specs:{ general:[['Бренд','Kaabo'],['Модель','Mantis King GT'],['Стан','Новий']], motor:[['Потужність','3200 Вт (2×1600)'],['Напруга','60 В']], battery:[['Ємність','24 Ah']], performance:[['Швидкість','до 80 км/год'],['Запас ходу','до 120 км']], physical:[['Колеса','10×3"'],['Вага','38 кг']] }
-  },
-  { id:103, title:'Ninebot Max G2', price:21500, cat:'Електросамокати', city:'Одеса', condition:'Новий', badge:'', badgeClass:'', icon:'⚡',
-    battery:'17.6 Ah', speed:'25 км/год', range:'70 км', weight:'21 кг', seller:'ElectroMax', time:'Сьогодні, 09:10',
-    img:'https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80'],
-    desc:'Оновлений Ninebot Max G2 із збільшеним запасом ходу 70 км. Самозаліковуючі шини 10", IP55, NFC-розблокування.',
-    specs:{ general:[['Бренд','Ninebot'],['Модель','Max G2'],['Стан','Новий']], battery:[['Ємність','17.6 Ah']], performance:[['Швидкість','25 км/год'],['Запас ходу','70 км']], physical:[['Колеса','10"'],['IP','IPX5'],['Вага','21 кг']] }
-  },
-  { id:104, title:'Vsett 10+ Pro', price:42000, cat:'Електросамокати', city:'Дніпро', condition:'Хороший', badge:'ТОРГ', badgeClass:'tag-red', icon:'⚡',
-    battery:'21.6 Ah', speed:'55 км/год', range:'100 км', weight:'28 кг', seller:'Ігор С.', time:'Вчора, 16:20',
-    img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'],
-    desc:'Vsett 10+ Pro з двома моторами по 1000 Вт. Пробіг 1200 км, стан відмінний. Є оригінальна сумка та запасна камера.',
-    specs:{ general:[['Бренд','Vsett'],['Модель','10+ Pro'],['Стан','Хороший'],['Пробіг','~1200 км']], motor:[['Потужність','2000 Вт (2×1000)']], battery:[['Ємність','21.6 Ah']], performance:[['Швидкість','55 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:105, title:'Xiaomi Electric Scooter 4 Pro', price:15800, cat:'Електросамокати', city:'Харків', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'⚡',
-    battery:'12.4 Ah', speed:'25 км/год', range:'55 км', weight:'17.5 кг', seller:'ElectroMax', time:'Сьогодні, 09:15',
-    img:'https://images.unsplash.com/photo-1629853924376-7bc2e2a04ec6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1629853924376-7bc2e2a04ec6?w=800&q=80'],
-    desc:'Xiaomi Electric Scooter 4 Pro — преміальна версія з кольоровим TFT дисплеєм, гідравлічними гальмами та запасом ходу 55 км.',
-    specs:{ general:[['Бренд','Xiaomi'],['Модель','Scooter 4 Pro'],['Стан','Новий']], battery:[['Ємність','12.4 Ah']], performance:[['Швидкість','25 км/год'],['Запас ходу','55 км']], physical:[['Вага','17.5 кг'],['IP','IP54']] }
-  },
-  { id:106, title:'Inokim OX Super', price:78000, cat:'Електросамокати', city:'Запоріжжя', condition:'Чудовий', badge:'', badgeClass:'', icon:'⚡',
-    battery:'38 Ah', speed:'65 км/год', range:'130 км', weight:'36 кг', seller:'Денис К.', time:'2 дні тому',
-    img:'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80'],
-    desc:'Inokim OX Super — один з найкращих преміальних самокатів. Куплено 8 місяців тому, пробіг 500 км. Є чохол та зарядний пристрій.',
-    specs:{ general:[['Бренд','Inokim'],['Модель','OX Super'],['Стан','Чудовий'],['Пробіг','~500 км']], battery:[['Ємність','38 Ah']], performance:[['Швидкість','65 км/год'],['Запас ходу','130 км']] }
-  },
-  { id:107, title:'KingSong N12 Lite', price:9500, cat:'Електросамокати', city:'Вінниця', condition:'Задовільний', badge:'ТОРГ', badgeClass:'tag-red', icon:'⚡',
-    battery:'7.5 Ah', speed:'25 км/год', range:'28 км', weight:'12 кг', seller:'Катя Л.', time:'3 дні тому',
-    img:'https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80'],
-    desc:'Компактний і легкий самокат для міста. Є невеликі подряпини на корпусі, гальма трохи підспрацювалися. Підходить для коротких поїздок.',
-    specs:{ general:[['Бренд','KingSong'],['Стан','Задовільний'],['Пробіг','~800 км']], performance:[['Швидкість','25 км/год'],['Запас ходу','28 км']] }
-  },
-  { id:108, title:'Joyor X5S Plus', price:13200, cat:'Електросамокати', city:'Черкаси', condition:'Хороший', badge:'', badgeClass:'', icon:'⚡',
-    battery:'10 Ah', speed:'30 км/год', range:'40 км', weight:'15 кг', seller:'Роман П.', time:'5 днів тому',
-    img:'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80'],
-    desc:'Joyor X5S Plus — збалансований міський самокат. Пробіг 300 км. Є підсвітка, сигнал, складний руль.',
-    specs:{ general:[['Бренд','Joyor'],['Стан','Хороший'],['Пробіг','~300 км']], performance:[['Швидкість','30 км/год'],['Запас ходу','40 км']] }
-  },
-  { id:109, title:'Hoverbot Titan Light', price:17500, cat:'Електросамокати', city:'Полтава', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'⚡',
-    battery:'13 Ah', speed:'35 км/год', range:'60 км', weight:'18 кг', seller:'ElectroMax', time:'Сьогодні, 09:20',
-    img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'],
-    desc:'Hoverbot Titan Light — новинка сезону. Широка платформа, LED підсвітка 360°, bluetooth-колонка. Ідеальний подарунок.',
-    specs:{ general:[['Бренд','Hoverbot'],['Стан','Новий']], battery:[['Ємність','13 Ah']], performance:[['Швидкість','35 км/год'],['Запас ходу','60 км']] }
-  },
-  { id:110, title:'Kugoo M4 Pro', price:8900, cat:'Електросамокати', city:'Суми', condition:'Хороший', badge:'', badgeClass:'', icon:'⚡',
-    battery:'10 Ah', speed:'30 км/год', range:'45 км', weight:'16 кг', seller:'Артем В.', time:'Тиждень тому',
-    img:'https://images.unsplash.com/photo-1629853924376-7bc2e2a04ec6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1629853924376-7bc2e2a04ec6?w=800&q=80'],
-    desc:'Kugoo M4 Pro — складний самокат з сидінням. Зручний для тривалих поїздок. Стан хороший, є невеликий знос покришок.',
-    specs:{ general:[['Бренд','Kugoo'],['Стан','Хороший'],['Пробіг','~600 км']], performance:[['Швидкість','30 км/год'],['Запас ходу','45 км']] }
-  },
-
-  // ── Велосипеди (10 оголошень) ──────────────────────────────────
-  { id:201, title:'Trek Marlin 7 Gen 3', price:32000, cat:'Велосипеди', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'14.3 кг', seller:'ElectroMax', time:'Сьогодні, 10:00',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80','https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80'],
-    desc:'Trek Marlin 7 — гірський велосипед для початківців і досвідчених райдерів. Рама Alpha Aluminum, вилка RockShox Judy Silver, трансмісія Shimano 1×8.',
-    specs:{ general:[['Бренд','Trek'],['Модель','Marlin 7'],['Стан','Новий'],['Рік','2024']], physical:[['Колеса','29"'],['Рама','Alpha Aluminum'],['Передачі','8 (Shimano)'],['Гальма','Гідравлічний диск 160мм'],['Вага','14.3 кг']] }
-  },
-  { id:202, title:'Giant Escape 3 Disc', price:18500, cat:'Велосипеди', city:'Харків', condition:'Хороший', badge:'', badgeClass:'', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'11.8 кг', seller:'Сергій М.', time:'Вчора, 12:30',
-    img:'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80'],
-    desc:'Giant Escape 3 Disc — міський велосипед для щоденних поїздок. Пробіг 1500 км, стан відмінний. Є крила та багажник.',
-    specs:{ general:[['Бренд','Giant'],['Модель','Escape 3 Disc'],['Стан','Хороший'],['Пробіг','~1500 км']], physical:[['Колеса','700c'],['Рама','ALUXX Aluminum'],['Передачі','21 (Shimano)'],['Вага','11.8 кг']] }
-  },
-  { id:203, title:'Specialized Rockhopper Sport', price:38000, cat:'Велосипеди', city:'Львів', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'13.9 кг', seller:'ElectroMax', time:'Сьогодні, 10:05',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80'],
-    desc:'Specialized Rockhopper Sport — справжній MTB для трейлів. Рама Specialized A1 Alloy, вилка SR Suntour XCT, 29" колеса.',
-    specs:{ general:[['Бренд','Specialized'],['Модель','Rockhopper Sport'],['Стан','Новий']], physical:[['Колеса','29"'],['Рама','A1 Alloy'],['Передачі','16 (2×8)'],['Гальма','Tektro hydraulic disc'],['Вага','13.9 кг']] }
-  },
-  { id:204, title:'Cube Attention SL', price:29000, cat:'Велосипеди', city:'Дніпро', condition:'Чудовий', badge:'ТОП', badgeClass:'tag-blue', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'12.5 кг', seller:'Олексій Т.', time:'2 дні тому',
-    img:'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80'],
-    desc:'Cube Attention SL з карбоновою вилкою Rockshox Judy. Куплено в грудні, пробіг 200 км. Повна гарантія.',
-    specs:{ general:[['Бренд','Cube'],['Стан','Чудовий'],['Пробіг','~200 км']], physical:[['Колеса','29"'],['Вилка','RockShox Judy'],['Передачі','11 (1×11 Shimano)'],['Вага','12.5 кг']] }
-  },
-  { id:205, title:'Merida Big Nine XT', price:44000, cat:'Велосипеди', city:'Одеса', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'11.2 кг', seller:'ElectroMax', time:'Сьогодні, 10:10',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80'],
-    desc:'Merida Big Nine XT — легка карбонова рама, трансмісія Shimano XT 1×12. Для серйозних змагань та марафонів.',
-    specs:{ general:[['Бренд','Merida'],['Модель','Big Nine XT'],['Стан','Новий']], physical:[['Колеса','29"'],['Рама','Merida CF4 Carbon'],['Передачі','12 (Shimano XT)'],['Вага','11.2 кг']] }
-  },
-  { id:206, title:'Scott Scale 970', price:26000, cat:'Велосипеди', city:'Київ', condition:'Хороший', badge:'', badgeClass:'', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'13 кг', seller:'Богдан Р.', time:'4 дні тому',
-    img:'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80'],
-    desc:'Scott Scale 970, 2022 рік. Пробіг 900 км, все обслуговано. Встановлено нові гальмівні колодки та покришки.',
-    specs:{ general:[['Бренд','Scott'],['Стан','Хороший'],['Пробіг','~900 км']], physical:[['Колеса','29"'],['Передачі','9 (Shimano Alivio)'],['Вага','13 кг']] }
-  },
-  { id:207, title:'Author Traction 27', price:12500, cat:'Велосипеди', city:'Полтава', condition:'Задовільний', badge:'ТОРГ', badgeClass:'tag-red', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'14 кг', seller:'Ніна Г.', time:'5 днів тому',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80'],
-    desc:'Author Traction, 27.5". Стан задовільний — є подряпини на рамі, потрібна заміна тросів. Відмінний варіант для ремонту та навчання.',
-    specs:{ general:[['Бренд','Author'],['Стан','Задовільний'],['Пробіг','~2000 км']], physical:[['Колеса','27.5"'],['Передачі','21'],['Вага','14 кг']] }
-  },
-  { id:208, title:'Kellys Gibon 70', price:9800, cat:'Велосипеди', city:'Суми', condition:'Хороший', badge:'', badgeClass:'', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'15 кг', seller:'Андрій Ч.', time:'Тиждень тому',
-    img:'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80'],
-    desc:'Kellys Gibon — надійний міський велосипед для щоденних поїздок. Все справне, регулярно обслуговувався.',
-    specs:{ general:[['Бренд','Kellys'],['Стан','Хороший']], physical:[['Колеса','26"'],['Передачі','18'],['Вага','15 кг']] }
-  },
-  { id:209, title:'Orbea MX 50', price:21000, cat:'Велосипеди', city:'Вінниця', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'13.5 кг', seller:'ElectroMax', time:'Сьогодні, 10:15',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80'],
-    desc:'Orbea MX 50 — іспанський бренд, доступна ціна. Алюмінієва рама, Shimano Acera, дискові гальма. Ідеально для початківців.',
-    specs:{ general:[['Бренд','Orbea'],['Модель','MX 50'],['Стан','Новий']], physical:[['Колеса','29"'],['Передачі','9 (Shimano Acera)'],['Вага','13.5 кг']] }
-  },
-  { id:210, title:'Fuji Nevada 26 1.9', price:7500, cat:'Велосипеди', city:'Миколаїв', condition:'Задовільний', badge:'', badgeClass:'', icon:'🚲',
-    battery:'—', speed:'—', range:'—', weight:'15.5 кг', seller:'Максим О.', time:'2 тижні тому',
-    img:'https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1502743780242-f10d2ce370f3?w=800&q=80'],
-    desc:'Fuji Nevada 1.9, 26". Пробіг 3000 км. Є знос резини та гальм. Добре підходить для відновлення або запчастин.',
-    specs:{ general:[['Бренд','Fuji'],['Стан','Задовільний'],['Пробіг','~3000 км']], physical:[['Колеса','26"'],['Вага','15.5 кг']] }
-  },
-
-  // ── Електровелосипеди (10 оголошень) ───────────────────────────
-  { id:301, title:'Tenways CGO600 Pro', price:58000, cat:'Електровелосипеди', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🔋',
-    battery:'15 Ah', speed:'25 км/год', range:'100 км', weight:'14.9 кг', seller:'ElectroMax', time:'Сьогодні, 11:00',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80','https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80'],
-    desc:'Tenways CGO600 Pro — карбоновий шосейний е-байк лише 14.9 кг. Мотор TERIS на задній втулці, 5 рівнів PAS, запас 100 км. Преміум без компромісів.',
-    specs:{ general:[['Бренд','Tenways'],['Модель','CGO600 Pro'],['Стан','Новий'],['Рік','2024']], motor:[['Потужність','250 Вт'],['Тип','Задній хаб'],['Момент','40 Нм']], battery:[['Ємність','15 Ah / 540 Вт·год'],['Тип','LG Li-ion знімний']], performance:[['Швидкість','25 км/год'],['Запас ходу','100 км'],['Рівні PAS','5']], physical:[['Колеса','700c'],['Рама','Carbon'],['Вага','14.9 кг'],['Гальма','Гідравлічні Tektro']] }
-  },
-  { id:302, title:'Engwe Engine Pro 2.0', price:34000, cat:'Електровелосипеди', city:'Одеса', condition:'Новий', badge:'', badgeClass:'', icon:'🔋',
-    battery:'19.2 Ah', speed:'45 км/год', range:'130 км', weight:'37 кг', seller:'ElectroMax', time:'Сьогодні, 11:05',
-    img:'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80'],
-    desc:'Engwe Engine Pro 2.0 — фет-байк з двома батареями. Потужний 750W мотор, підходить для снігу, піску та бездоріжжя.',
-    specs:{ general:[['Бренд','Engwe'],['Стан','Новий']], motor:[['Потужність','750 Вт']], battery:[['Ємність','19.2 Ah (2×9.6)']], performance:[['Швидкість','45 км/год'],['Запас ходу','130 км']], physical:[['Колеса','20×4" Fat'],['Вага','37 кг']] }
-  },
-  { id:303, title:'Eleglide M2', price:24500, cat:'Електровелосипеди', city:'Харків', condition:'Чудовий', badge:'', badgeClass:'', icon:'🔋',
-    battery:'12.5 Ah', speed:'25 км/год', range:'80 км', weight:'22 кг', seller:'Марина В.', time:'Вчора, 14:00',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80'],
-    desc:'Eleglide M2 — гірський е-байк з вилкою з гідравлічним замком. Куплено 4 місяці тому, пробіг 400 км.',
-    specs:{ general:[['Бренд','Eleglide'],['Стан','Чудовий'],['Пробіг','~400 км']], motor:[['Потужність','250 Вт']], battery:[['Ємність','12.5 Ah']], performance:[['Швидкість','25 км/год'],['Запас ходу','80 км']], physical:[['Колеса','27.5"'],['Вага','22 кг']] }
-  },
-  { id:304, title:'Lankeleisi RX80', price:49000, cat:'Електровелосипеди', city:'Дніпро', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🔋',
-    battery:'25 Ah', speed:'45 км/год', range:'120 км', weight:'35 кг', seller:'ElectroMax', time:'Сьогодні, 11:10',
-    img:'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80'],
-    desc:'Lankeleisi RX80 — потужний фет-байк 2×1000W. Повний привід, гідравлічні гальма, RGB підсвітка.',
-    specs:{ general:[['Бренд','Lankeleisi'],['Стан','Новий']], motor:[['Потужність','2000 Вт (2×1000)']], battery:[['Ємність','25 Ah']], performance:[['Швидкість','45 км/год'],['Запас ходу','120 км']] }
-  },
-  { id:305, title:'Samebike RS-A08', price:19800, cat:'Електровелосипеди', city:'Запоріжжя', condition:'Хороший', badge:'ТОРГ', badgeClass:'tag-red', icon:'🔋',
-    battery:'10 Ah', speed:'25 км/год', range:'60 км', weight:'25 кг', seller:'Олена Д.', time:'3 дні тому',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80'],
-    desc:'Samebike RS-A08, складний. Пробіг 700 км. Зручний для зберігання у квартирі або багажнику автомобіля.',
-    specs:{ general:[['Бренд','Samebike'],['Стан','Хороший'],['Пробіг','~700 км']], performance:[['Швидкість','25 км/год'],['Запас ходу','60 км']], physical:[['Тип рами','Складний'],['Колеса','20"']] }
-  },
-  { id:306, title:'NCM Prague Plus', price:36500, cat:'Електровелосипеди', city:'Львів', condition:'Новий', badge:'', badgeClass:'', icon:'🔋',
-    battery:'16 Ah', speed:'25 км/год', range:'120 км', weight:'26 кг', seller:'ElectroMax', time:'Сьогодні, 11:15',
-    img:'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80'],
-    desc:'NCM Prague Plus — міський е-байк для комфортних поїздок. Великий акумулятор 16Ah, передній мотор Bafang.',
-    specs:{ general:[['Бренд','NCM'],['Модель','Prague Plus'],['Стан','Новий']], motor:[['Потужність','250 Вт (Bafang)'],['Тип','Передній хаб']], battery:[['Ємність','16 Ah']], performance:[['Швидкість','25 км/год'],['Запас ходу','120 км']] }
-  },
-  { id:307, title:'Fiido D11', price:28000, cat:'Електровелосипеди', city:'Черкаси', condition:'Чудовий', badge:'', badgeClass:'', icon:'🔋',
-    battery:'12.8 Ah', speed:'25 км/год', range:'100 км', weight:'17.5 кг', seller:'Павло К.', time:'4 дні тому',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80'],
-    desc:'Fiido D11 — складний шосейний е-байк лише 17.5 кг. Пробіг 600 км, стан відмінний. Є рідний чохол.',
-    specs:{ general:[['Бренд','Fiido'],['Модель','D11'],['Стан','Чудовий'],['Пробіг','~600 км']], physical:[['Тип рами','Складний шосейний'],['Вага','17.5 кг']], performance:[['Швидкість','25 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:308, title:'Bafang BBS02 Conversion', price:16000, cat:'Електровелосипеди', city:'Рівне', condition:'Хороший', badge:'', badgeClass:'', icon:'🔋',
-    battery:'13 Ah', speed:'35 км/год', range:'70 км', weight:'23 кг', seller:'Тарас М.', time:'Тиждень тому',
-    img:'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80'],
-    desc:'Горний велосипед Scott Scale з установленим середнім мотором Bafang BBS02 750W. Кастомна збірка, все перевірено.',
-    specs:{ general:[['Мотор','Bafang BBS02'],['Потужність','750 Вт'],['Стан','Хороший']], battery:[['Ємність','13 Ah']], performance:[['Швидкість','35 км/год'],['Запас ходу','70 км']] }
-  },
-  { id:309, title:'Eleglide Coozy', price:22000, cat:'Електровелосипеди', city:'Херсон', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🔋',
-    battery:'12.5 Ah', speed:'25 км/год', range:'80 км', weight:'24 кг', seller:'ElectroMax', time:'Сьогодні, 11:20',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80'],
-    desc:'Eleglide Coozy — комфортний степ-тру е-байк для міста. Низька рама, зручна посадка, крила та багажник у комплекті.',
-    specs:{ general:[['Бренд','Eleglide'],['Модель','Coozy'],['Стан','Новий']], physical:[['Тип рами','Step-through'],['Колеса','700c'],['Крила','Є'],['Багажник','Є']], performance:[['Швидкість','25 км/год'],['Запас ходу','80 км']] }
-  },
-  { id:310, title:'Engwe X26', price:41000, cat:'Електровелосипеди', city:'Хмельницький', condition:'Новий', badge:'ТОП', badgeClass:'tag-blue', icon:'🔋',
-    battery:'21.8 Ah', speed:'48 км/год', range:'160 км', weight:'36.5 кг', seller:'ElectroMax', time:'Сьогодні, 11:25',
-    img:'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80'],
-    desc:'Engwe X26 — рекордні 160 км запасу ходу завдяки подвійному акумулятору. Три колеса для стабільності або двоколісний режим.',
-    specs:{ general:[['Бренд','Engwe'],['Модель','X26'],['Стан','Новий']], battery:[['Ємність','21.8 Ah (2 батареї)']], performance:[['Швидкість','48 км/год'],['Запас ходу','160 км']], physical:[['Колеса','26"'],['Вага','36.5 кг']] }
-  },
-
-  // ── Електроскутери (10 оголошень) ──────────────────────────────
-  { id:401, title:'NIU NQi Sport', price:52000, cat:'Електроскутери', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🛵',
-    battery:'31.2 Ah', speed:'70 км/год', range:'120 км', weight:'118 кг', seller:'ElectroMax', time:'Сьогодні, 12:00',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80','https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'NIU NQi Sport — флагман від NIU. GPS-трекер, сигналізація, застосунок, рекуперативне гальмування. Стильний дизайн для міста.',
-    specs:{ general:[['Бренд','NIU'],['Модель','NQi Sport'],['Стан','Новий'],['Рік','2024']], motor:[['Потужність','3000 Вт'],['Тип','Синхронний PMSM']], battery:[['Ємність','31.2 Ah'],['Тип','LG NMC']], performance:[['Швидкість','70 км/год'],['Запас ходу','120 км']], physical:[['Вага','118 кг'],['Колеса','12"'],['Гальма','Гідравлічні CBS']] }
-  },
-  { id:402, title:'Yadea G5S', price:38000, cat:'Електроскутери', city:'Харків', condition:'Новий', badge:'', badgeClass:'', icon:'🛵',
-    battery:'26 Ah', speed:'60 км/год', range:'100 км', weight:'98 кг', seller:'ElectroMax', time:'Сьогодні, 12:05',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Yadea G5S — преміальний скутер від лідера ринку. LiFePO4 акумулятор на 2000+ циклів, потужний мотор 3000 Вт.',
-    specs:{ general:[['Бренд','Yadea'],['Модель','G5S'],['Стан','Новий']], motor:[['Потужність','3000 Вт']], battery:[['Ємність','26 Ah'],['Тип','LiFePO4']], performance:[['Швидкість','60 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:403, title:'Super Soco TC Max', price:68000, cat:'Електроскутери', city:'Одеса', condition:'Чудовий', badge:'ТОП', badgeClass:'tag-blue', icon:'🛵',
-    battery:'40 Ah', speed:'90 км/год', range:'100 км', weight:'120 кг', seller:'Олег Д.', time:'Вчора, 11:00',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'Super Soco TC Max — кафе-рейсер серед електроскутерів. Ретро-дизайн, потужність 4000 Вт, 90 км/год. Пробіг 800 км.',
-    specs:{ general:[['Бренд','Super Soco'],['Модель','TC Max'],['Стан','Чудовий'],['Пробіг','~800 км']], motor:[['Потужність','4000 Вт']], battery:[['Ємність','40 Ah']], performance:[['Швидкість','90 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:404, title:'Vmoto Soco CPX', price:79000, cat:'Електроскутери', city:'Дніпро', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🛵',
-    battery:'46 Ah', speed:'100 км/год', range:'120 км', weight:'125 кг', seller:'ElectroMax', time:'Сьогодні, 12:10',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Vmoto Soco CPX — найпотужніший скутер у лінійці. 100 км/год, два знімних акумулятори по 23 Ah, ABS гальма.',
-    specs:{ general:[['Бренд','Vmoto'],['Модель','CPX'],['Стан','Новий']], motor:[['Потужність','5000 Вт']], battery:[['Ємність','46 Ah (2×23 знімних)']], performance:[['Швидкість','100 км/год'],['Запас ходу','120 км']], physical:[['Гальма','ABS'],['Вага','125 кг']] }
-  },
-  { id:405, title:'Citycoco Electrowin 3000W', price:21000, cat:'Електроскутери', city:'Запоріжжя', condition:'Хороший', badge:'ТОРГ', badgeClass:'tag-red', icon:'🛵',
-    battery:'20 Ah', speed:'50 км/год', range:'60 км', weight:'80 кг', seller:'Ігор В.', time:'3 дні тому',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'Широкий Citycoco 3000W з 20" колесами. Зручне двомісне сидіння, LED фара, USB зарядка. Пробіг 1500 км.',
-    specs:{ general:[['Бренд','Citycoco'],['Стан','Хороший'],['Пробіг','~1500 км']], motor:[['Потужність','3000 Вт']], performance:[['Швидкість','50 км/год'],['Запас ходу','60 км']], physical:[['Колеса','20"'],['Місця','2']] }
-  },
-  { id:406, title:'AIMA T4', price:29000, cat:'Електроскутери', city:'Львів', condition:'Новий', badge:'', badgeClass:'', icon:'🛵',
-    battery:'24 Ah', speed:'55 км/год', range:'80 км', weight:'88 кг', seller:'ElectroMax', time:'Сьогодні, 12:15',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'AIMA T4 — бюджетний варіант від перевіреного виробника. Відмінний вибір для щоденних міських поїздок.',
-    specs:{ general:[['Бренд','AIMA'],['Модель','T4'],['Стан','Новий']], motor:[['Потужність','1500 Вт']], battery:[['Ємність','24 Ah']], performance:[['Швидкість','55 км/год'],['Запас ходу','80 км']] }
-  },
-  { id:407, title:'NIU MQi+ Sport', price:44000, cat:'Електроскутери', city:'Вінниця', condition:'Чудовий', badge:'', badgeClass:'', icon:'🛵',
-    battery:'26 Ah', speed:'55 км/год', range:'90 км', weight:'104 кг', seller:'Дарина С.', time:'5 днів тому',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'NIU MQi+ Sport. Пробіг 1200 км, обслугований. GPS, TFT дисплей, застосунок. Документи є.',
-    specs:{ general:[['Бренд','NIU'],['Стан','Чудовий'],['Пробіг','~1200 км'],['Документи','Є']], performance:[['Швидкість','55 км/год'],['Запас ходу','90 км']] }
-  },
-  { id:408, title:'Govecs GO! S3.4', price:82000, cat:'Електроскутери', city:'Черкаси', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🛵',
-    battery:'50 Ah', speed:'95 км/год', range:'140 км', weight:'130 кг', seller:'ElectroMax', time:'Сьогодні, 12:20',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Govecs GO! S3.4 — преміальний скутер Made in Germany. 10 kW мотор, 95 км/год, EU L3e сертифікат, ABS+CBS.',
-    specs:{ general:[['Бренд','Govecs'],['Модель','GO! S3.4'],['Стан','Новий'],['Омологація','EU L3e']], motor:[['Потужність','10 кВт']], battery:[['Ємність','50 Ah']], performance:[['Швидкість','95 км/год'],['Запас ходу','140 км']] }
-  },
-  { id:409, title:'Zero SR/S', price:340000, cat:'Електроскутери', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🛵',
-    battery:'82 Ah', speed:'200 км/год', range:'320 км', weight:'220 кг', seller:'ElectroMax', time:'Сьогодні, 12:25',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'Zero SR/S — американський преміум. 110 л.с., 200+ км/год, розгін 0-100 за 3.5 с. Bosch ABS, Showa підвіска. Для тих хто звик до найкращого.',
-    specs:{ general:[['Бренд','Zero Motorcycles'],['Модель','SR/S'],['Стан','Новий']], motor:[['Потужність','82 кВт (110 л.с.)'],['Момент','190 Нм']], battery:[['Ємність','14.4 кВт·год']], performance:[['Швидкість','200 км/год'],['Запас ходу','320 км'],['Розгін 0-100','3.5 с']], physical:[['Вага','220 кг'],['Гальма','Bosch ABS']] }
-  },
-  { id:410, title:'Segway E110SE', price:31000, cat:'Електроскутери', city:'Тернопіль', condition:'Хороший', badge:'', badgeClass:'', icon:'🛵',
-    battery:'28 Ah', speed:'60 км/год', range:'90 км', weight:'105 кг', seller:'Юрій Н.', time:'Тиждень тому',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Segway E110SE, пробіг 900 км. Є зарядний пристрій та документи. Технічно справний.',
-    specs:{ general:[['Бренд','Segway'],['Стан','Хороший'],['Пробіг','~900 км']], performance:[['Швидкість','60 км/год'],['Запас ходу','90 км']] }
-  },
-
-  // ── Електромотоцикли (10 оголошень) ────────────────────────────
-  { id:501, title:'Zero DSR/X', price:420000, cat:'Електромотоцикли', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🏍',
-    battery:'85 Ah', speed:'210 км/год', range:'330 км', weight:'228 кг', seller:'ElectroMax', time:'Сьогодні, 13:00',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80','https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Zero DSR/X — найпотужніший позашляховий електромотоцикл у лінійці Zero. 110 к.с., 14.4 кВт·год, бортова мережа 12V, CCS DC зарядка.',
-    specs:{ general:[['Бренд','Zero Motorcycles'],['Модель','DSR/X'],['Стан','Новий'],['Омологація','EU L3e']], motor:[['Потужність','82 кВт / 110 к.с.'],['Момент','190 Нм'],['Тип','PMSM синхронний']], battery:[['Ємність','14.4 кВт·год'],['Хімія','NMC'],['Зарядка','AC + DC CCS']], performance:[['Швидкість','210 км/год'],['Запас ходу','330 км (WMTC)'],['0-100','3.5 с']], physical:[['Вага','228 кг'],['Підвіска F','Showa 43мм'],['Підвіска R','Showa моноамортизатор'],['Гальма','Bosch ABS 9.3']] }
-  },
-  { id:502, title:'Energica Ego+', price:980000, cat:'Електромотоцикли', city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🏍',
-    battery:'102 Ah', speed:'240 км/год', range:'420 км', weight:'260 кг', seller:'ElectroMax', time:'Сьогодні, 13:05',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Energica Ego+ — суперспортивний електромотоцикл з Італії. 240 км/год, 420 км запасу ходу, CCS Fast Charge до 80% за 40 хв.',
-    specs:{ general:[['Бренд','Energica'],['Модель','Ego+'],['Стан','Новий']], motor:[['Потужність','171 к.с.'],['Момент','215 Нм']], battery:[['Ємність','21.5 кВт·год'],['Зарядка','DC CCS (60А)']], performance:[['Швидкість','240 км/год'],['Запас ходу','420 км'],['0-100','2.6 с']] }
-  },
-  { id:503, title:'Cake Kalk OR', price:380000, cat:'Електромотоцикли', city:'Одеса', condition:'Чудовий', badge:'ТОП', badgeClass:'tag-blue', icon:'🏍',
-    battery:'50 Ah', speed:'135 км/год', range:'100 км', weight:'111 кг', seller:'Дмитро Р.', time:'Вчора, 15:00',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'Cake Kalk OR — шведський ендуро-електромотоцикл. Вага лише 111 кг! Пробіг 2000 км, обслугований.',
-    specs:{ general:[['Бренд','Cake'],['Модель','Kalk OR'],['Стан','Чудовий'],['Пробіг','~2000 км']], motor:[['Потужність','50 кВт'],['Момент','42 Нм на колесі']], battery:[['Ємність','9 кВт·год']], performance:[['Швидкість','135 км/год'],['Запас ходу','100 км']], physical:[['Вага','111 кг'],['Тип','Ендуро']] }
-  },
-  { id:504, title:'KTM Freeride E-XC', price:290000, cat:'Електромотоцикли', city:'Харків', condition:'Хороший', badge:'', badgeClass:'', icon:'🏍',
-    battery:'36 Ah', speed:'80 км/год', range:'50 км', weight:'111 кг', seller:'Антон Ф.', time:'4 дні тому',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'KTM Freeride E-XC — перший електро-ендуро від KTM. Пробіг 3000 км, обслугований. Є запасний акумулятор.',
-    specs:{ general:[['Бренд','KTM'],['Модель','Freeride E-XC'],['Стан','Хороший'],['Пробіг','~3000 км']], motor:[['Потужність','18 кВт (пікова)']], battery:[['Ємність','3.9 кВт·год + 3.9 кВт·год запасний']], performance:[['Швидкість','80 км/год'],['Запас ходу','50 км (off-road)']] }
-  },
-  { id:505, title:'Stark VARG MX', price:360000, cat:'Електромотоцикли', city:'Львів', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🏍',
-    battery:'56 Ah', speed:'120 км/год', range:'70 км', weight:'110 кг', seller:'ElectroMax', time:'Сьогодні, 13:10',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'Stark VARG MX — шведський мотокрос-байк. 80 к.с., 110 кг, конкурує з кращими 450 бензиновими. Є застосунок налаштувань.',
-    specs:{ general:[['Бренд','Stark'],['Модель','VARG MX'],['Стан','Новий']], motor:[['Потужність','60 кВт / 80 к.с.'],['Момент','938 Нм на колесі']], battery:[['Ємність','6.5 кВт·год']], performance:[['Швидкість','120 км/год'],['Запас ходу','70 км (MX)']], physical:[['Вага','110 кг']] }
-  },
-  { id:506, title:'Harley-Davidson LiveWire ONE', price:720000, cat:'Електромотоцикли', city:'Дніпро', condition:'Чудовий', badge:'', badgeClass:'', icon:'🏍',
-    battery:'82 Ah', speed:'180 км/год', range:'235 км', weight:'224 кг', seller:'Валентин К.', time:'Вчора, 10:00',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'Harley-Davidson LiveWire ONE, 2022 рік. Пробіг 4000 км. Повний комплект документів, є CEVO Drive System. Унікальна можливість.',
-    specs:{ general:[['Бренд','Harley-Davidson'],['Модель','LiveWire ONE'],['Стан','Чудовий'],['Рік','2022'],['Пробіг','~4000 км']], motor:[['Потужність','78 кВт / 105 к.с.']], battery:[['Ємність','15.5 кВт·год']], performance:[['Швидкість','180 км/год'],['Запас ходу','235 км'],['0-100','3 с']] }
-  },
-  { id:507, title:'KOVE 450 Rally E', price:195000, cat:'Електромотоцикли', city:'Запоріжжя', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🏍',
-    battery:'55 Ah', speed:'150 км/год', range:'160 км', weight:'158 кг', seller:'ElectroMax', time:'Сьогодні, 13:15',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'KOVE 450 Rally E — адвентюр-клас з Китаю. WP підвіска, Bosch ABS, кольоровий TFT, Garmin кріплення. Конкурент R1300GS.',
-    specs:{ general:[['Бренд','KOVE'],['Модель','450 Rally E'],['Стан','Новий']], motor:[['Потужність','55 кВт']], battery:[['Ємність','10 кВт·год']], performance:[['Швидкість','150 км/год'],['Запас ходу','160 км']], physical:[['Підвіска','WP XPLOR'],['Гальма','Bosch ABS']] }
-  },
-  { id:508, title:'CSC City Slicker 2.0', price:89000, cat:'Електромотоцикли', city:'Черкаси', condition:'Хороший', badge:'ТОРГ', badgeClass:'tag-red', icon:'🏍',
-    battery:'32 Ah', speed:'120 км/год', range:'100 км', weight:'140 кг', seller:'Оксана М.', time:'Тиждень тому',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'CSC City Slicker 2.0 — доступний електромотоцикл для міста. Пробіг 5000 км, обслугований. Документи оформлені.',
-    specs:{ general:[['Бренд','CSC'],['Стан','Хороший'],['Пробіг','~5000 км'],['Документи','Є']], battery:[['Ємність','7.8 кВт·год']], performance:[['Швидкість','120 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:509, title:'Kawasaki Ninja e-1', price:320000, cat:'Електромотоцикли', city:'Полтава', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🏍',
-    battery:'60 Ah', speed:'130 км/год', range:'100 км', weight:'183 кг', seller:'ElectroMax', time:'Сьогодні, 13:20',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    desc:'Kawasaki Ninja e-1 — перший електро-Ninja. Знімна батарея, A2 ліцензія, класичний дизайн Ninja з нульовими викидами.',
-    specs:{ general:[['Бренд','Kawasaki'],['Модель','Ninja e-1'],['Стан','Новий'],['Ліцензія','A2']], motor:[['Потужність','9 кВт (номінальна)']], battery:[['Ємність','3 кВт·год (знімна)'],['Зарядка','AC домашня']], performance:[['Швидкість','130 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:510, title:'LiveWire Del Mar S', price:490000, cat:'Електромотоцикли', city:'Рівне', condition:'Новий', badge:'ТОП', badgeClass:'tag-blue', icon:'🏍',
-    battery:'80 Ah', speed:'180 км/год', range:'200 км', weight:'186 кг', seller:'ElectroMax', time:'Сьогодні, 13:25',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    desc:'LiveWire Del Mar S — легкий стріт-файтер від бренду LiveWire. Алюмінієва рама, 80 кг·с, 0-100 за 3 секунди. Революція в міській їзді.',
-    specs:{ general:[['Бренд','LiveWire'],['Модель','Del Mar S'],['Стан','Новий']], motor:[['Потужність','59 кВт / 80 к.с.'],['Момент','111 Нм']], battery:[['Ємність','10.7 кВт·год']], performance:[['Швидкість','180 км/год'],['Запас ходу','200 км'],['0-100','3 с']], physical:[['Вага','186 кг'],['Рама','Алюмінієва Delta']] }
-  },
-
-  // ── TOP оголошення ─────────────────────────────────────────
-  { id:1001, promo:'top', title:'Kugoo Kirin G4 Max', price:24900, cat:'Електросамокати',
-    city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'⚡',
-    battery:'20 Ah', speed:'55 км/год', range:'80 км', weight:'22 кг', year:2025,
-    desc:'Офіційна гарантія 2 роки. Найпотужніша модель Kugoo 2025. Повний привід, гідравлічні гальма. В наявності 3 кольори.',
-    seller:'ElectroMax', time:'Сьогодні, 10:00',
-    img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'],
-    specs:{ general:[['Бренд','Kugoo'],['Модель','Kirin G4 Max'],['Стан','Новий'],['Рік','2025']], motor:[['Потужність','2×1200 Вт'],['Напруга','52 В']], battery:[['Ємність','20 Ah']], performance:[['Швидкість','55 км/год'],['Запас ходу','80 км']] }
-  },
-  { id:1002, promo:'top', title:'NIU KQi3 Max 2025', price:18500, cat:'Електросамокати',
-    city:'Львів', condition:'Новий', badge:'ХІТ', badgeClass:'tag-blue', icon:'⚡',
-    battery:'13 Ah', speed:'40 км/год', range:'65 км', weight:'16 кг', year:2025,
-    desc:'NIU KQi3 Max — найпопулярніший самокат 2025. Додаток, GPS трекінг, ABS гальма. Є у наявності.',
-    seller:'ElectroMax', time:'Сьогодні, 09:30',
-    img:'https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1601758174493-ee4b5e617de4?w=800&q=80'],
-    specs:{ general:[['Бренд','NIU'],['Модель','KQi3 Max'],['Стан','Новий']], battery:[['Ємність','13 Ah']], performance:[['Швидкість','40 км/год'],['Запас ходу','65 км']] }
-  },
-  { id:1003, promo:'top', title:'Trek Marlin 7 2025', price:32000, cat:'Велосипеди',
-    city:'Київ', condition:'Новий', badge:'НОВИЙ', badgeClass:'tag-green', icon:'🚲', year:2025,
-    desc:'Trek Marlin 7 — найпопулярніший гірський велосипед. Алюмінієва рама, Shimano Deore 12sp, гідравліка. Розміри S, M, L.',
-    seller:'ElectroMax', time:'Вчора, 18:00',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80'],
-    specs:{ general:[['Бренд','Trek'],['Модель','Marlin 7'],['Стан','Новий']], physical:[['Колеса','29\"'],['Вага','14.3 кг'],['Передачі','12 (Shimano Deore)']] }
-  },
-
-  // ── ПІДСВІЧЕНІ оголошення ───────────────────────────────────
-  { id:1004, promo:'highlight', title:'Xiaomi Electric Scooter 5 Pro', price:16800, cat:'Електросамокати',
-    city:'Одеса', condition:'Новий', badge:'', badgeClass:'', icon:'⚡',
-    battery:'13 Ah', speed:'35 км/год', range:'55 км', weight:'16.5 кг', year:2025,
-    desc:'Офіційний Xiaomi 5 Pro. Кероване через додаток, круїз-контроль, IPX7.',
-    seller:'Максим Л.', time:'Вчора, 14:20',
-    img:'https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1574671855000-87b48f247bee?w=800&q=80'],
-    specs:{ general:[['Бренд','Xiaomi'],['Стан','Новий']], performance:[['Швидкість','35 км/год'],['Запас ходу','55 км']] }
-  },
-  { id:1005, promo:'highlight', title:'Engwe Engine Pro 2.0', price:28500, cat:'Електровелосипеди',
-    city:'Харків', condition:'Новий', badge:'', badgeClass:'', icon:'🔋',
-    battery:'19.2 Ah', speed:'45 км/год', range:'100 км', weight:'35 кг', year:2025,
-    desc:'Engwe Engine Pro — складаний фетбайк. Подвійна батарея, підвіска, 8-швидкісна Shimano. Ідеально для міста та бездоріжжя.',
-    seller:'VeloShop Харків', time:'2 дні тому',
-    img:'https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1623136809485-f78b21a5f0f6?w=800&q=80'],
-    specs:{ general:[['Бренд','Engwe'],['Стан','Новий']], motor:[['Потужність','750 Вт']], performance:[['Швидкість','45 км/год'],['Запас ходу','100 км']] }
-  },
-  { id:1006, promo:'highlight', title:'Yadea KS5 Pro 2025', price:22000, cat:'Електроскутери',
-    city:'Дніпро', condition:'Новий', badge:'', badgeClass:'', icon:'🛵',
-    battery:'32 Ah', speed:'65 км/год', range:'80 км', weight:'98 кг', year:2025,
-    desc:'Yadea KS5 Pro — преміум електроскутер. Графеновий АКБ, ABS, 3 режими їзди.',
-    seller:'ElectroMax', time:'3 дні тому',
-    img:'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'],
-    specs:{ general:[['Бренд','Yadea'],['Стан','Новий']], motor:[['Потужність','1200 Вт']], performance:[['Швидкість','65 км/год'],['Запас ходу','80 км']] }
-  },
-
-  // ── ТЕРМІНОВІ оголошення ────────────────────────────────────
-  { id:1007, promo:'urgent', title:'Dualtron Thunder 2 Ultra', price:89000, cat:'Електросамокати',
-    city:'Київ', condition:'Хороший', badge:'ТОРГ', badgeClass:'tag-red', icon:'⚡',
-    battery:'35 Ah', speed:'100 км/год', range:'120 км', weight:'45 кг', year:2023,
-    desc:'Терміново продаю! Ціна знижена з 105 000 грн. Пробіг 1200 км. Повне ТО зроблено місяць тому. Причина продажу — переїзд за кордон.',
-    seller:'Андрій В.', time:'Сьогодні, 08:15',
-    img:'https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1591105575639-a334d4f53eda?w=800&q=80'],
-    specs:{ general:[['Бренд','Dualtron'],['Стан','Хороший'],['Пробіг','~1200 км']], motor:[['Потужність','2×1200 Вт']], performance:[['Швидкість','100 км/год'],['Запас ходу','120 км']] }
-  },
-  { id:1008, promo:'urgent', title:'Zero SR/F 2022', price:185000, cat:'Електромотоцикли',
-    city:'Київ', condition:'Хороший', badge:'ЗНИЖКА', badgeClass:'tag-red', icon:'🏍',
-    year:2022,
-    desc:'Терміново! Знижена ціна з 220 000 грн. Пробіг 8 500 км, один власник. Всі ТО у офіційного дилера. Документи в порядку.',
-    seller:'Дмитро С.', time:'Сьогодні, 07:00',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    specs:{ general:[['Бренд','Zero Motorcycles'],['Стан','Хороший'],['Пробіг','~8500 км']], motor:[['Потужність','110 к.с.']], performance:[['Швидкість','200 км/год'],['Запас ходу','235 км']] }
-  }
-];
+const LISTINGS = [];
 
 let favorites = [];
 let myListings = [];
 let activeChat = null;
 let isLoggedIn = false;
-let currentUser = { name:'Антон М.', email:'', initial:'А' };
+let currentUser = { name:'', email:'', initial:'' };
 
-const chats = [
-  { id:1, name:'Олег К.', initial:'О', sub:'Ninebot Max G30P', messages:[
-    {mine:false,text:'Привіт! Самокат ще доступний?',time:'10:15'},
-    {mine:true,text:'Так, є! Де вам зручно подивитись?',time:'10:18'},
-    {mine:false,text:'Можна сьогодні ввечері в Борщагівці?',time:'10:20'},
-    {mine:true,text:'Добре, о 19:00 вас влаштує?',time:'10:22'},
-    {mine:false,text:'Так, все ок, дякую!',time:'10:23'},
-  ]},
-  { id:2, name:'Марія В.', initial:'М', sub:'Fiido D4s', unread:2, messages:[
-    {mine:false,text:'Доброго дня! Чи є знижка?',time:'вчора'},
-    {mine:true,text:'Привіт! Можемо поговорити 🙂',time:'вчора'},
-    {mine:false,text:'Чудово, напишу завтра',time:'вчора'},
-    {mine:false,text:'Добрий ранок! Підтверджуєте продаж?',time:'09:41'},
-    {mine:false,text:'Я готова зустрітись сьогодні',time:'09:42'},
-  ]},
-  { id:3, name:'Auto-Market', initial:'A', sub:'AIMA Mine Plus', messages:[
-    {mine:true,text:'Є в наявності AIMA Mine Plus?',time:'2 дні тому'},
-    {mine:false,text:'Так! Приїжджайте на тест-драйв',time:'2 дні тому'},
-  ]},
-
-  // ── TOP оголошення ──────────────────────────────────────────────────
-  { id:101, promo:'top', title:'Kugoo Kirin G4 Max', price:24900, cat:'Електросамокати',
-    city:'Київ', oblast:'Київська', condition:'Новий',
-    badge:'НОВИЙ', badgeClass:'tag-green', icon:'⚡',
-    battery:'20 Ah', speed:'55 км/год', range:'80 км', weight:'22 кг', year:2025,
-    desc:'Офіційна гарантія 2 роки. Найпотужніша модель Kugoo 2025. Повний привід, гідравлічні гальма. В наявності 3 кольори.',
-    seller:'ElectroMax', sellerId:'electromax', time:'Сьогодні, 10:00',
-    img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'],
-    power:'2×1200 Вт', voltage:'52 В',
-  },
-  { id:102, promo:'top', title:'NIU KQi3 Max 2025', price:18500, cat:'Електросамокати',
-    city:'Львів', oblast:'Львівська', condition:'Новий',
-    badge:'ХІТ', badgeClass:'tag-blue', icon:'⚡',
-    battery:'13 Ah', speed:'40 км/год', range:'65 км', weight:'16 кг', year:2025,
-    desc:'NIU KQi3 Max — найпопулярніший самокат 2025. Додаток, GPS трекінг, ABS гальма. Є у наявності.',
-    seller:'ElectroMax', sellerId:'electromax', time:'Сьогодні, 09:30',
-    img:'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&q=80'],
-    power:'450 Вт', voltage:'48 В',
-  },
-  { id:103, promo:'top', title:'Trek Marlin 7 2025', price:32000, cat:'Велосипеди',
-    city:'Київ', oblast:'Київська', condition:'Новий',
-    badge:'НОВИЙ', badgeClass:'tag-green', icon:'🚲',
-    year:2025,
-    desc:'Trek Marlin 7 — найпопулярніший гірський велосипед. Алюмінієва рама, Shimano Deore 12sp, гідравліка Tektro. В наявності розміри S, M, L.',
-    seller:'ElectroMax', sellerId:'electromax', time:'Вчора, 18:00',
-    img:'https://images.unsplash.com/photo-1571188654248-7a89213915f7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1571188654248-7a89213915f7?w=800&q=80'],
-  },
-
-  // ── ПІДСВІЧЕНІ оголошення ────────────────────────────────────────────
-  { id:104, promo:'highlight', title:'Xiaomi Electric Scooter 5 Pro', price:16800, cat:'Електросамокати',
-    city:'Одеса', oblast:'Одеська', condition:'Новий',
-    badge:'', badgeClass:'', icon:'⚡',
-    battery:'13 Ah', speed:'35 км/год', range:'55 км', weight:'16.5 кг', year:2025,
-    desc:'Офіційний Xiaomi 5 Pro. Кероване через додаток, Swiss Roll шина, круїз-контроль.',
-    seller:'Максим Л.', time:'Вчора, 14:20',
-    img:'https://images.unsplash.com/photo-1580169980114-ccd0babfa840?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1580169980114-ccd0babfa840?w=800&q=80'],
-    power:'700 Вт', voltage:'36 В',
-  },
-  { id:105, promo:'highlight', title:'Engwe Engine Pro 2.0', price:28500, cat:'Електровелосипеди',
-    city:'Харків', oblast:'Харківська', condition:'Новий',
-    badge:'', badgeClass:'', icon:'🔋',
-    battery:'19.2 Ah', speed:'45 км/год', range:'100 км', weight:'35 кг', year:2025,
-    desc:'Engwe Engine Pro — складаний фетбайк. Подвійна батарея, підвіска, 8-швидкісна Shimano.',
-    seller:'VeloShop Харків', time:'2 дні тому',
-    img:'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=800&q=80'],
-    power:'750 Вт', voltage:'48 В',
-  },
-  { id:106, promo:'highlight', title:'Yadea KS5 Pro 2025', price:22000, cat:'Електроскутери',
-    city:'Дніпро', oblast:'Дніпропетровська', condition:'Новий',
-    badge:'', badgeClass:'', icon:'🛵',
-    battery:'32 Ah', speed:'65 км/год', range:'80 км', year:2025,
-    desc:'Yadea KS5 Pro — преміум електроскутер. Графеновий АКБ, ABS, 3 режими їзди.',
-    seller:'ElectroMax', sellerId:'electromax', time:'3 дні тому',
-    img:'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?w=800&q=80'],
-    power:'1200 Вт', voltage:'60 В',
-  },
-
-  // ── ТЕРМІНОВІ оголошення ─────────────────────────────────────────────
-  { id:107, promo:'urgent', title:'Dualtron Thunder 2 Ultra', price:89000, cat:'Електросамокати',
-    city:'Київ', oblast:'Київська', condition:'Хороший',
-    badge:'ТОРГ', badgeClass:'tag-red', icon:'⚡',
-    battery:'35 Ah', speed:'100 км/год', range:'120 км', weight:'45 кг', year:2023,
-    desc:'Терміново продаю! Ціна знижена з 105 000 грн. Пробіг 1200 км. Повне ТО зроблено місяць тому. Причина продажу — переїзд за кордон.',
-    seller:'Андрій В.', time:'Сьогодні, 08:15',
-    img:'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=800&q=80'],
-    power:'2×1200 Вт', voltage:'72 В',
-  },
-  { id:108, promo:'urgent', title:'Zero SR/F 2022', price:185000, cat:'Електромотоцикли',
-    city:'Київ', oblast:'Київська', condition:'Хороший',
-    badge:'ЗНИЖКА', badgeClass:'tag-red', icon:'🏍️',
-    year:2022,
-    desc:'Терміново! Знижена ціна з 220 000 грн. Пробіг 8 500 км, один власник. Всі ТО у офіційного дилера. Документи в порядку.',
-    seller:'Дмитро С.', time:'Сьогодні, 07:00',
-    img:'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&q=80',
-    imgs:['https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&q=80'],
-    power:'110 кВт', voltage:'—',
-  }
-];
+const chats = [];
 
 // ============================================================
 // SELLERS DATA
 // ============================================================
-const SELLERS = [
-  {
-    id: 'oleg-k',
-    name: 'Олег К.',
-    type: 'private',       // private | shop
-    initial: 'О',
-    city: 'Київ',
-    since: '2023',
-    rating: 4.8,
-    sold: 7,
-    response: '98%',
-    desc: 'Продаю особисту техніку. Слідкую за якістю, завжди чесно описую стан. Можлива зустріч у центрі Києва.',
-    about: 'Захоплююсь електро-мікромобільністю з 2021 року. Постійно оновлюю парк — купую, тестую, продаю. Все особисте, без посередників. Пишіть — завжди відповідаю.',
-    phone: '+380 67 111 22 33',
-    socials: [
-      { icon: 'fa-brands fa-telegram', label: 'Telegram', url: 'https://t.me/olegk_scooters', color: '#2ca5e0' },
-    ],
-    cats: ['Електросамокати'],
-    coverColor: '#0d2a1a',
-    reviews: [
-      { author: 'Іван П.', rating: 5, text: 'Самокат відповідав опису на 100%. Зустрілись швидко, без зайвих слів. Рекомендую!', date: '12 берез. 2025' },
-      { author: 'Катерина Л.', rating: 5, text: 'Продавець на звʼязку, чесний, допоміг з вибором. Брала Ninebot, все чудово.', date: '5 лют. 2025' },
-      { author: 'Денис Р.', rating: 4, text: 'Загалом добре. Самокат як описаний, але зустріч перенесли на день пізніше.', date: '20 січ. 2025' },
-    ],
-  },
-  {
-    id: 'maria-v',
-    name: 'Марія В.',
-    type: 'private',
-    initial: 'М',
-    city: 'Львів',
-    since: '2024',
-    rating: 4.9,
-    sold: 4,
-    response: '100%',
-    desc: 'Продаю велосипед та аксесуари. Товари в ідеальному стані.',
-    about: 'Захопилась е-байками після подорожі по Нідерландах. Зараз продаю свій Fiido — беру новішу модель. Всі питання — в особисті.',
-    phone: '+380 50 222 33 44',
-    socials: [
-      { icon: 'fa-brands fa-instagram', label: 'Instagram', url: '#', color: '#e1306c' },
-    ],
-    cats: ['Велосипеди', 'Аксесуари'],
-    coverColor: '#1a1a2a',
-    reviews: [
-      { author: 'Богдан С.', rating: 5, text: 'Марія — чудовий продавець! Велосипед як новий, швидка відповідь, чітка зустріч.', date: '2 берез. 2025' },
-    ],
-  },
-  {
-    id: 'auto-market',
-    name: 'Auto-Market',
-    type: 'shop',
-    initial: 'A',
-    city: 'Одеса',
-    since: '2022',
-    rating: 4.7,
-    sold: 134,
-    response: '99%',
-    desc: '🏪 Офіційний дилер AIMA, Yadea, NIU в Одесі. Гарантія, сервіс, тест-драйв.',
-    about: 'Магазин електротранспорту Auto-Market — один з найбільших у Південній Україні. Працюємо з 2022 року.\n\nМи офіційні дилери AIMA, Yadea та NIU. Пропонуємо повний сервіс: доставка по місту, безкоштовний тест-драйв, гарантійний ремонт.\n\nВ нашому шоурумі понад 30 моделей у наявності. Кредит та розстрочка від ПриватБанку та Monobank.',
-    phone: '+380 48 333 44 55',
-    workHours: 'Пн–Сб: 9:00–19:00 | Нд: 10:00–17:00',
-    address: 'Одеса, вул. Дерибасівська 12',
-    socials: [
-      { icon: 'fa-brands fa-telegram', label: 'Telegram канал', url: 'https://t.me/automarket_odesa', color: '#2ca5e0' },
-      { icon: 'fa-brands fa-instagram', label: 'Instagram', url: '#', color: '#e1306c' },
-      { icon: 'fa-brands fa-youtube', label: 'YouTube', url: '#', color: '#ff0000' },
-    ],
-    cats: ['Скутери', 'Мопеди', 'Самокати', 'Запчастини'],
-    coverColor: '#1a1000',
-    reviews: [
-      { author: 'Сашко Т.', rating: 5, text: 'Купив AIMA Mine Plus. Тест-драйв прямо в магазині, оформили кредит за 15 хв. Це не продавець — це сервіс вищого класу!', date: '10 берез. 2025' },
-      { author: 'Оксана Д.', rating: 5, text: 'Дуже задоволена покупкою. Менеджер Олексій все пояснив, допоміг обрати між двома моделями. Зарядний пристрій в подарунок 🎁', date: '1 берез. 2025' },
-      { author: '微信 Роман К.', rating: 4, text: 'Гарний магазин, великий вибір. Трохи довго чекав на оформлення документів.', date: '18 лют. 2025' },
-      { author: 'Тетяна М.', rating: 5, text: 'Замовляла доставку — привезли точно в час. Самокат запакований ідеально.', date: '5 лют. 2025' },
-    ],
-  },
-  {
-    id: 'veloshop',
-    name: 'Велосипед Шоп',
-    type: 'shop',
-    initial: 'В',
-    city: 'Київ',
-    since: '2021',
-    rating: 4.9,
-    sold: 89,
-    response: '97%',
-    desc: '🚲 Спеціалізований магазин електровелосипедів у Києві. NCM, Fiido, Engwe — завжди в наявності.',
-    about: 'Велосипед Шоп — спеціалізований магазин е-байків у Києві з 2021 року.\n\nМи відбираємо лише перевірені бренди: NCM, Fiido, Engwe, Lankeleisi. Кожен велосипед проходить перевірку перед продажем.\n\nПропонуємо безкоштовне налаштування після покупки, сервіс та запчастини.',
-    phone: '+380 44 444 55 66',
-    workHours: 'Пн–Пт: 10:00–20:00 | Сб–Нд: 11:00–18:00',
-    address: 'Київ, вул. Велика Васильківська 55',
-    socials: [
-      { icon: 'fa-brands fa-telegram', label: 'Telegram', url: '#', color: '#2ca5e0' },
-      { icon: 'fa-brands fa-instagram', label: 'Instagram', url: '#', color: '#e1306c' },
-    ],
-    cats: ['Велосипеди','Електровелосипеди'],
-    coverColor: '#0a1a1a',
-    reviews: [
-      { author: 'Микола Г.', rating: 5, text: 'Найкращий магазин е-байків у Києві! Купив NCM Moscow+, все ідеально.', date: '8 берез. 2025' },
-      { author: 'Яна К.', rating: 5, text: 'Персонал дуже допомогли з вибором, не нав\'язували дорожче. Чесні і уважні.', date: '20 лют. 2025' },
-    ],
-  },
-  {
-    id: 'parts-store',
-    name: 'Parts Store',
-    type: 'shop',
-    initial: 'P',
-    city: 'Київ',
-    since: '2023',
-    rating: 4.6,
-    sold: 312,
-    response: '95%',
-    desc: '🔧 Запчастини для електросамокатів. Колеса, акумулятори, гальма — оригінал і аналоги.',
-    about: 'Parts Store — інтернет-магазин запчастин та аксесуарів для електросамокатів і велосипедів.\n\nМаємо понад 1 500 артикулів у наявності. Доставляємо Новою Поштою по всій Україні.',
-    phone: '+380 44 111 00 00',
-    workHours: 'Пн–Пт: 9:00–18:00',
-    socials: [
-      { icon: 'fa-brands fa-telegram', label: 'Telegram', url: '#', color: '#2ca5e0' },
-    ],
-    cats: ['Електросамокати','Електровелосипеди'],
-    coverColor: '#1a1a10',
-    reviews: [
-      { author: 'Артем Б.', rating: 5, text: 'Замовляв колодки для Ninebot — прийшли за 2 дні, оригінал, все ок.', date: '14 берез. 2025' },
-    ],
-  },
-  {
-    id: 'electromax',
-    name: 'ElectroMax',
-    type: 'shop',
-    initial: 'E',
-    city: 'Київ',
-    since: '2021',
-    rating: 4.9,
-    sold: 847,
-    response: '99%',
-    desc: '⚡ Офіційний дилер Zero, NIU, Tenways, Trek, Specialized, Energica. Найбільший вибір електротранспорту в Україні.',
-    banner: true,
-    listings: 27,
-    tags: ['Гарантія 2 роки', 'Офіційний дилер', 'Кредит 0%'],
-    about: 'ElectroMax — найбільший мультибрендовий магазин електротранспорту в Україні з 2021 року.\n\nМи офіційні дилери Zero Motorcycles, NIU, Tenways, Trek, Specialized, Energica та ще 20+ брендів. У нашому шоурумі на 2000 м² представлено понад 200 моделей: самокати, велосипеди, електровелосипеди, скутери та мотоцикли.\n\nКожен покупець отримує:\n• Безкоштовний тест-драйв будь-якої моделі\n• Кредит та розстрочка 0% від ПриватБанк, Monobank, OTP\n• Офіційна гарантія виробника\n• Безкоштовне ТО протягом 1 року\n• Доставка по всій Україні Новою Поштою або своєю службою у Київ',
-    phone: '+380 44 500 10 10',
-    workHours: 'Пн–Пт: 9:00–21:00 | Сб–Нд: 10:00–20:00',
-    address: 'Київ, пр. Перемоги 100, ТРЦ ElectroCity, 2-й поверх',
-    socials: [
-      { icon: 'fa-brands fa-telegram', label: 'Telegram канал', url: 'https://t.me/electromax_ua', color: '#2ca5e0' },
-      { icon: 'fa-brands fa-instagram', label: 'Instagram', url: '#', color: '#e1306c' },
-      { icon: 'fa-brands fa-youtube', label: 'YouTube — огляди та тести', url: '#', color: '#ff0000' },
-      { icon: 'fa-brands fa-tiktok', label: 'TikTok', url: '#', color: '#69c9d0' },
-    ],
-    cats: ['Електросамокати','Велосипеди','Електровелосипеди','Електроскутери','Електромотоцикли'],
-    coverColor: '#0a1f0a',
-    reviews: [
-      { author: 'Михайло Б.', rating: 5, text: 'Купив Zero DSR/X. Менеджер Олег — просто найкращий! Розповів про всі нюанси, організував тест-драйв. Сервіс на рівні European dealership.', date: '13 берез. 2026' },
-      { author: 'Аліна К.', rating: 5, text: 'Брала Tenways CGO600 Pro. Кредит оформили за 15 хвилин, велик привезли додому вже наступного дня. Рекомендую!', date: '10 берез. 2026' },
-      { author: 'Степан Г.', rating: 5, text: 'Купив Trek Marlin 7 для дружини. Персонал допоміг з підбором розміру рами, налаштували велик. Подарунок вдався 🎁', date: '7 берез. 2026' },
-      { author: 'Вероніка Д.', rating: 4, text: 'Відмінний магазин, великий вибір. Єдиний мінус — черга в суботу була довгою. Але якість обслуговування топ.', date: '1 берез. 2026' },
-      { author: 'Євген М.', rating: 5, text: 'NIU NQi Sport — мрія! Взяв у ElectroMax, всі документи, страховка, перший ТО у подарунок. Ціна нижча ніж у конкурентів.', date: '25 лют. 2026' },
-      { author: 'Оксана Ш.', rating: 5, text: 'Дуже задоволена покупкою Eleglide Coozy. Дівчата-консультанти дуже уважні, допомогли обрати правильний розмір і колір.', date: '18 лют. 2026' },
-    ],
-  },
-];
+const SELLERS = [];
 
 // map listings to sellers
 function getSellerById(name) {
@@ -4679,7 +3863,7 @@ function getSellerById(name) {
     'Велосипед Шоп': 'veloshop', 'Parts Store': 'parts-store', 'Moto Parts': 'parts-store',
     'ElectroMax': 'electromax',
   };
-  return SELLERS.find(s => s.id === (map[name] || ''));
+  return _fbSellers.find(s => s.id === (map[name] || ''));
 }
 
 // ============================================================
@@ -4752,7 +3936,7 @@ function _pageTitle(page, id) {
   if (page === 'messages') return base + ' — Повідомлення';
   if (page === 'profile')  return base + ' — Профіль';
   if (page === 'seller') {
-    const s = SELLERS.find(x => x.id === id);
+    const s = _fbSellers.find(x => x.id === id);
     return s ? base + ' — ' + s.name : base + ' — Продавець';
   }
   if (page === 'detail') {
@@ -4797,7 +3981,7 @@ function showSeller(sellerName) {
 
 // ── Copy seller link  (full URL with hash) ────────────────────────────
 function copySellerLink() {
-  const s = SELLERS.find(x => x.id === currentSellerId);
+  const s = _fbSellers.find(x => x.id === currentSellerId);
   const hash  = s ? `#seller/${s.id}` : '#';
   const base  = location.href.split('#')[0];
   const url   = base + hash;
@@ -4922,20 +4106,63 @@ function createCard(l, backPage) {
   </div>`;
 }
 
-const SERVICES = [{"id":"sf-kyiv","name":"ScooterFix Київ","icon":"⚡","coverColor":"#0a1f14","cats":["Електросамокати","Електровелосипеди"],"city":"Київ","oblast":"Місто Київ","address":"вул. Велика Васильківська 45","hours":"Пн–Сб 9:00–19:00","phone":"+380 67 111 22 33","telegram":"@scooterfix_kyiv","instagram":null,"rating":4.9,"reviews":87,"badge":"official","badgeLabel":"Офіційний партнер","sellerId":null,"desc":"Спеціалізований сервіс ремонту електросамокатів та е-байків. Офіційний партнер Xiaomi та Ninebot. Гарантія 3 місяці.","services":[{"name":"Діагностика","desc":"Повна перевірка","price":"Безкоштовно"},{"name":"Заміна камери","desc":"Переднє або заднє","price":"250–400 грн"},{"name":"Заміна покришки","desc":"З матеріалом","price":"350–600 грн"},{"name":"Ремонт плати","desc":"Будь-які моделі","price":"від 800 грн"},{"name":"Заміна акумулятора","desc":"Оригінал або аналог","price":"від 1500 грн"},{"name":"Регулювання гальм","desc":"Механічні та гідравлічні","price":"200 грн"}]},{"id":"velo-master","name":"VeloMaster Львів","icon":"🚲","coverColor":"#1a1000","cats":["Велосипеди","Електровелосипеди"],"city":"Львів","oblast":"Львівська область","address":"вул. Городоцька 20","hours":"Пн–Нд 10:00–20:00","phone":"+380 50 222 33 44","telegram":"@velomaster_lviv","instagram":"@velomaster_lviv","rating":4.8,"reviews":142,"badge":"verified","badgeLabel":"Перевірений","sellerId":"veloshop","desc":"10 років досвіду. Ремонт будь-якої складності. Магазин запчастин.","services":[{"name":"ТО велосипеда","desc":"Комплексне обслуговування","price":"600 грн"},{"name":"Налаштування перемикачів","desc":"Shimano, SRAM","price":"200 грн"},{"name":"Заміна тросів","desc":"Гальма або перемикачі","price":"150 грн"},{"name":"Ремонт прокола","desc":"Камера або безкамерна","price":"100–200 грн"},{"name":"Юстировка коліс","desc":"Вісімки, зорі","price":"250 грн"},{"name":"Діагностика е-байка","desc":"Мотор, АКБ, контролер","price":"300 грн"},{"name":"Заміна АКБ е-байка","desc":"З підбором","price":"від 2000 грн"}]},{"id":"emax-service","name":"ElectroMax Сервіс","icon":"🔧","coverColor":"#0a1f0a","cats":["Електросамокати","Електровелосипеди","Електроскутери","Електромотоцикли"],"city":"Київ","oblast":"Місто Київ","address":"пр. Перемоги 100","hours":"Пн–Нд 10:00–20:00","phone":"+380 44 500 10 11","telegram":"@electromax_service","instagram":"@electromax_ua","rating":4.9,"reviews":312,"badge":"official","badgeLabel":"Офіційний сервіс","sellerId":"electromax","desc":"Офіційний сервісний центр. Ремонт Zero, NIU, Tenways, Trek. Гарантія 6 місяців.","services":[{"name":"Діагностика","desc":"Всі системи","price":"Безкоштовно"},{"name":"Гарантійний ремонт","desc":"Для купленого у нас","price":"Безкоштовно"},{"name":"ТО електромотоцикла","desc":"Zero, Energica","price":"від 1200 грн"},{"name":"Прошивка контролера","desc":"Налаштування режимів","price":"500 грн"},{"name":"Ремонт мотор-колеса","desc":"Перемотка, підшипники","price":"від 800 грн"},{"name":"Балансування АКБ","desc":"BMS калібрування","price":"400 грн"}]},{"id":"scooter-doc","name":"ScooterDoc Одеса","icon":"🛵","coverColor":"#1a0a00","cats":["Електроскутери","Електросамокати"],"city":"Одеса","oblast":"Одеська область","address":"вул. Дерибасівська 5","hours":"Пн–Пт 9:00–18:00","phone":"+380 48 444 55 66","telegram":"@scooterdoc_odesa","instagram":null,"rating":4.7,"reviews":56,"badge":"verified","badgeLabel":"Перевірений","sellerId":"auto-market","desc":"Спеціалізований сервіс електроскутерів. NIU, AIMA, Yadea. Виїзд майстра по місту.","services":[{"name":"Виїзна діагностика","desc":"По місту Одеса","price":"200 грн"},{"name":"Заміна гальмівної рідини","desc":"DOT 4","price":"300 грн"},{"name":"Ремонт електрики","desc":"Проводка та розєми","price":"від 400 грн"},{"name":"Обслуговування підвіски","desc":"Мастило, регулювання","price":"350 грн"}]},{"id":"battery-lab","name":"Battery Lab Харків","icon":"🔋","coverColor":"#1a1a00","cats":["Акумулятори","Електросамокати","Електровелосипеди"],"city":"Харків","oblast":"Харківська область","address":"пр. Науки 10","hours":"Пн–Пт 10:00–19:00","phone":"+380 57 555 66 77","telegram":"@batterylab_kharkiv","instagram":null,"rating":4.8,"reviews":94,"badge":null,"badgeLabel":null,"sellerId":null,"desc":"єдина в Харкові лабораторія відновлення акумуляторів. Балансування, тестування, кастомні батареї.","services":[{"name":"Тестування ємності","desc":"Точний вимір деградації","price":"200 грн"},{"name":"Балансування комірок","desc":"BMS перепрошивка","price":"350 грн"},{"name":"Заміна комірок","desc":"Samsung, LG, Panasonic","price":"від 100 грн/шт"},{"name":"Збірка кастомного АКБ","desc":"За вашими параметрами","price":"від 1500 грн"},{"name":"Ремонт BMS плати","desc":"Відновлення або заміна","price":"400–800 грн"}]},{"id":"bike-hub","name":"BikeHub Дніпро","icon":"🚲","coverColor":"#0a0a1f","cats":["Велосипеди","Електровелосипеди"],"city":"Дніпро","oblast":"Дніпропетровська область","address":"вул. Короленка 15","hours":"Пн–Сб 9:00–20:00","phone":"+380 56 666 77 88","telegram":"@bikehub_dnipro","instagram":null,"rating":4.6,"reviews":71,"badge":null,"badgeLabel":null,"sellerId":null,"desc":"Велосипедна майстерня повного циклу. До карбонових шосейників. Запчастини в наявності.","services":[{"name":"Базовий ТО","desc":"Мастило, гальма, перемикачі","price":"400 грн"},{"name":"Повний ТО","desc":"Розбирання + базовий","price":"900 грн"},{"name":"Заміна каретки","desc":"BSA, BB86, BB30","price":"300–500 грн"},{"name":"Монтаж покришки","desc":"Одне колесо","price":"100 грн"}]}];
+const SERVICES = [];
 let myServices=[],currentServiceFilter="",currentServiceId=null,_svcRowId=0;
+
+// ── Firebase кеші ──
+let _fbListings = [];   // всі оголошення з Firestore
+let _fbSellers  = [];   // всі продавці (users з type='shop')
+let _fbServices = [];   // всі сервіси з Firestore
+let _fbChats    = [];   // чати поточного юзера
+let _fbLoaded   = false;
+
+// Завантажити всі публічні дані з Firebase
+function loadFirebaseData() {
+  if (!window._db) return;
+  // Оголошення
+  window._db.collection('listings').orderBy('createdAt','desc').limit(50).get()
+    .then(function(snap) {
+      _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderHomeListings();
+      renderCatalog();
+    }).catch(function(e){ console.log('listings:', e.message); });
+  // Сервіси
+  window._db.collection('services').orderBy('rating','desc').limit(30).get()
+    .then(function(snap) {
+      _fbServices = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderHomeServices();
+      if (typeof renderServices === 'function') renderServices();
+    }).catch(function(e){ console.log('services:', e.message); });
+}
+
+// Завантажити чати для поточного юзера
+function loadUserChats() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  window._db.collection('chats')
+    .where('participants','array-contains', currentUser.uid)
+    .orderBy('lastMessageAt','desc').limit(20).get()
+    .then(function(snap) {
+      _fbChats = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      if (typeof renderChatList === 'function') renderChatList();
+    }).catch(function(e){ console.log('chats:', e.message); });
+}
 
 function renderHomeListings() {
   const el = document.getElementById('home-listings');
-  const top = LISTINGS.slice(0,4);
-  el.innerHTML = top.map(l => createCard(l,'home')).join('');
+  if (!el) return;
+  const top = _fbListings.slice(0,4);
+  if (top.length === 0) {
+    el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:32px">Оголошень поки немає</p>';
+  } else {
+    el.innerHTML = top.map(l => createCard(l,'home')).join('');
+  }
   renderHomeServices();
 }
 
 function renderHomeServices() {
   var grid = document.getElementById("home-services-grid");
   if (!grid) return;
-  var all = SERVICES.concat(myServices);
+  var all = _fbServices.concat(myServices);
   // Показати 3 топ сервіси (офіційні першими)
   var sorted = all.slice().sort(function(a,b) {
     var wa = a.badge==="official"?0:a.badge==="verified"?1:2;
@@ -5496,7 +4723,7 @@ function runSearch() {
   } else {
     // Банер магазину після кожних 6 карток
     const BANNER_INTERVAL = 6;
-    const shopBanners = SELLERS.filter(s => s.type === 'shop' && s.banner);
+    const shopBanners = _fbSellers.filter(s => s.type === 'shop' && s.banner);
     let html = ''; let bannerIdx = 0;
     data.forEach((l, i) => {
       html += createCard(l, 'catalog');
@@ -5532,7 +4759,16 @@ function filterCatalog(cat) {
 }
 
 function setCatFilter() {}
-function renderCatalog() {}
+function renderCatalog() {
+  var el = document.getElementById('catalog-list') || document.getElementById('listings-grid');
+  if (!el) return;
+  var all = _fbListings.concat(myListings);
+  if (all.length === 0) {
+    el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:48px 24px">Оголошень поки немає.<br>Будьте першим!</p>';
+    return;
+  }
+  el.innerHTML = all.map(l => createCard(l,'catalog')).join('');
+}
 
 function createShopBanner(s) {
   return `
@@ -5583,7 +4819,7 @@ function showSeller(sellerName) {
 
 function renderSellerPage(id) {
   currentSellerId = id;
-  const s = SELLERS.find(x => x.id === id);
+  const s = _fbSellers.find(x => x.id === id);
   if (!s) { showToast('⚠️ Продавця не знайдено: ' + id); return; }
 
   try {
@@ -5731,7 +4967,7 @@ function renderSellerListings(listings, s) {
 function filterSellerCat(cat, el, sellerId) {
   document.querySelectorAll('#seller-cat-filters .filter-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  const s = SELLERS.find(x => x.id === sellerId);
+  const s = _fbSellers.find(x => x.id === sellerId);
   if (!s) return;
   let listings = [...LISTINGS, ...myListings].filter(l => l.seller === s.name);
   if (cat !== 'all') listings = listings.filter(l => l.cat === cat);
@@ -5793,7 +5029,7 @@ function switchSellerTab(tab, el) {
 }
 
 function copySellerLink() {
-  const s = SELLERS.find(x => x.id === currentSellerId);
+  const s = _fbSellers.find(x => x.id === currentSellerId);
   const url = s ? `https://ridego.ua/seller/${s.id}` : 'https://ridego.ua';
   navigator.clipboard?.writeText(url).catch(()=>{});
   showToast('🔗 Посилання скопійовано! ' + url.split('/').pop());
@@ -7329,9 +6565,11 @@ function renderProfile() {
   profileWall.style.display = '';
 
   // name + photo
-  document.getElementById('profile-name-text').textContent = currentUser.name;
+  const displayName = currentUser.name || currentUser.email || 'Користувач';
+  const displayInitial = displayName[0].toUpperCase();
+  document.getElementById('profile-name-text').textContent = displayName;
   const letterEl = document.getElementById('profile-pic-letter');
-  if (letterEl) letterEl.textContent = currentUser.initial;
+  if (letterEl) letterEl.textContent = displayInitial;
   const settingsLetterEl = document.getElementById('settings-avatar-letter');
   if (settingsLetterEl) settingsLetterEl.textContent = currentUser.initial;
 
@@ -7499,7 +6737,7 @@ function renderFavs() {
 // ============================================================
 function renderChats() {
   const list = document.getElementById('chat-list');
-  list.innerHTML = chats.map(c=>`
+  list.innerHTML = _fbChats.map(c=>`
     <div class="chat-item ${activeChat===c.id?'active':''}" onclick="openChatById(${c.id})">
       <div class="chat-avatar">${c.initial}</div>
       <div style="flex:1;min-width:0">
@@ -7517,7 +6755,7 @@ function renderChats() {
 }
 function openChatById(id) {
   activeChat = id;
-  const c = chats.find(x=>x.id===id);
+  const c = _fbChats.find(x=>x.id===id);
   c.unread = 0;
   document.getElementById('chat-header-name').textContent = c.name;
   document.getElementById('chat-header-sub').textContent = c.sub;
@@ -7540,7 +6778,7 @@ function sendMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if(!text) return;
-  const c = chats.find(x=>x.id===activeChat);
+  const c = _fbChats.find(x=>x.id===activeChat);
   c.messages.push({mine:true,text,time:'Щойно'});
   input.value='';
   openChatById(activeChat);
@@ -8153,7 +7391,7 @@ function applyPromo() {
 
   if (!listing) {
     // Для демонстрації — додати до myListings якщо є в LISTINGS
-    const base = LISTINGS.find(x => x.id === _promoListingId);
+    const base = _fbListings.concat(myListings).find(x => x.id === _promoListingId);
     if (base) {
       // Не модифікуємо глобальний LISTINGS — просто показуємо toast
       showToast('✅ Просування активовано! (' + PROMO_NAMES[_selectedPromoType] + ' · ' + _selectedPromoDays + ' дн.)');
@@ -8257,10 +7495,42 @@ function submitListing() {
     specs: specsForCard,
   };
 
-  myListings.unshift(newL);
-  if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
-
-  showToast('✅ Оголошення опубліковано!');
+  // Зберегти в Firestore
+  if (window._db && currentUser && currentUser.uid) {
+    var fbListing = Object.assign({}, newL, {
+      uid: currentUser.uid,
+      sellerName: currentUser.name,
+      sellerEmail: currentUser.email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'active'
+    });
+    delete fbListing.id; // Firestore сам генерує id
+    window._db.collection('listings').add(fbListing)
+      .then(function(docRef) {
+        newL.id = docRef.id;
+        myListings.unshift(newL);
+        _fbListings.unshift(newL);
+        if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
+        if (typeof renderMyListings === 'function') renderMyListings();
+        renderHomeListings();
+        showToast('✅ Оголошення опубліковано!');
+      })
+      .catch(function(e) {
+        // Якщо Firestore недоступний — зберегти локально
+        myListings.unshift(newL);
+        _fbListings.unshift(newL);
+        if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
+        if (typeof renderMyListings === 'function') renderMyListings();
+        showToast('✅ Оголошення збережено локально');
+        console.error('Firestore save error:', e);
+      });
+  } else {
+    myListings.unshift(newL);
+    _fbListings.unshift(newL);
+    if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
+    if (typeof renderMyListings === 'function') renderMyListings();
+    showToast('✅ Оголошення опубліковано!');
+  }
 
   // reset wizard
   uploadedPhotos = [];
@@ -8331,7 +7601,7 @@ function createMyCard(l) {
 
 function renderServices(){_initSvcCitySelect();filterServices();_initSvcOblastSelect();}
 
-function _initSvcCitySelect(){var sel=document.getElementById("svc-city-select");if(!sel)return;var all=SERVICES.concat(myServices);var cities=[];all.forEach(function(s){if(s.city&&cities.indexOf(s.city)<0)cities.push(s.city);});cities.sort(function(a,b){return a.localeCompare(b,"uk");});var cur=sel.value;sel.innerHTML="<option value=\"\">📍 Всі міста</option>";cities.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent="📍 "+c;sel.appendChild(o);});if(cur)sel.value=cur;}
+function _initSvcCitySelect(){var sel=document.getElementById("svc-city-select");if(!sel)return;var all=_fbServices.concat(myServices);var cities=[];all.forEach(function(s){if(s.city&&cities.indexOf(s.city)<0)cities.push(s.city);});cities.sort(function(a,b){return a.localeCompare(b,"uk");});var cur=sel.value;sel.innerHTML="<option value=\"\">📍 Всі міста</option>";cities.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent="📍 "+c;sel.appendChild(o);});if(cur)sel.value=cur;}
 function _initSvcOblastSelect(){
   var sel=document.getElementById("svc-add-oblast");
   if(!sel||sel.options.length>1)return;
@@ -8350,7 +7620,7 @@ function setSvcCat(cat,el){
 function filterServices(){
   var q=(document.getElementById("svc-search-input")?document.getElementById("svc-search-input").value:"").toLowerCase().trim();
   var cityF=document.getElementById("svc-city-select")?document.getElementById("svc-city-select").value:"";
-  var all=SERVICES.concat(myServices);
+  var all=_fbServices.concat(myServices);
   var filtered=all.filter(function(s){
     var mc=!currentServiceFilter||s.cats.indexOf(currentServiceFilter)>=0;
     var mq=!q||s.name.toLowerCase().indexOf(q)>=0||(s.city||"").toLowerCase().indexOf(q)>=0||(s.desc||"").toLowerCase().indexOf(q)>=0||s.services.some(function(sv){return sv.name.toLowerCase().indexOf(q)>=0;});
@@ -8440,7 +7710,7 @@ function _buildSvcDetailBody(s){
 }
 
 function showServiceDetail(id){
-  var s=SERVICES.concat(myServices).filter(function(x){return x.id===id;})[0];
+  var s=_fbServices.concat(myServices).filter(function(x){return x.id===id;})[0];
   if(!s)return;
   currentServiceId=id;
   document.getElementById("svc-detail-header").innerHTML=_buildSvcDetailHeader(s);
@@ -8522,7 +7792,7 @@ function submitService(){
 }
 
 function getSellerService(sellerId){
-  return SERVICES.concat(myServices).filter(function(s){return s.sellerId===sellerId;})[0]||null;
+  return _fbServices.concat(myServices).filter(function(s){return s.sellerId===sellerId;})[0]||null;
 }
 
 // ============================================================
@@ -8598,7 +7868,7 @@ function _mysvcCard(s) {
 }
 
 function openMysvcEditor(id) {
-  var s = id ? SERVICES.concat(myServices).filter(function(x){return x.id===id;})[0] : null;
+  var s = id ? _fbServices.concat(myServices).filter(function(x){return x.id===id;})[0] : null;
   _editingSvc = s;
 
   var el = document.getElementById("ptab-myservice-inner");
@@ -9047,10 +8317,30 @@ function saveMysvc() {
       services:   svcRows,
       _isOwn:     true,
     };
-    myServices.unshift(newSvc);
-    // Оновити city select у каталозі
-    _initSvcCitySelect();
-    showToast("\u2705 \u0421\u0435\u0440\u0432\u0456\u0441 \u043e\u043f\u0443\u0431\u043b\u0456\u043a\u043e\u0432\u0430\u043d\u043e!");
+    if (window._db && currentUser && currentUser.uid) {
+      var fbSvc = Object.assign({}, newSvc, {
+        uid: currentUser.uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      delete fbSvc.id;
+      window._db.collection('services').add(fbSvc)
+        .then(function(ref) {
+          newSvc.id = ref.id;
+          myServices.unshift(newSvc);
+          _fbServices.unshift(newSvc);
+          _initSvcCitySelect();
+          showToast('✅ Сервіс опубліковано!');
+          renderMyServiceTab();
+        }).catch(function(e) {
+          myServices.unshift(newSvc);
+          _initSvcCitySelect();
+          showToast('✅ Сервіс збережено локально');
+        });
+    } else {
+      myServices.unshift(newSvc);
+      _initSvcCitySelect();
+      showToast('✅ Сервіс опубліковано!');
+    }
   }
   _editingSvc = null;
   renderMyServiceTab();
