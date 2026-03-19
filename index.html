@@ -7218,8 +7218,20 @@ function doSocialLogin(provider) {
   if (provider === 'Google' && window._auth) {
     var gProvider = new firebase.auth.GoogleAuthProvider();
     gProvider.setCustomParameters({ prompt: 'select_account' });
-    window._auth.signInWithRedirect(gProvider)
-      .catch(function(e) { showToast('⚠️ ' + e.message); });
+    window._auth.signInWithPopup(gProvider)
+      .then(function(result) {
+        // Popup спрацював — встановити isLoggedIn і перейти на профіль
+        isLoggedIn = true;
+        showToast('✅ Вхід через Google!');
+        showPage('profile');
+      })
+      .catch(function(e) {
+        if (e.code === 'auth/popup-blocked') {
+          showToast('⚠️ Дозвольте popup для цього сайту і спробуйте знову');
+        } else if (e.code !== 'auth/popup-closed-by-user') {
+          showToast('⚠️ ' + e.message);
+        }
+      });
   } else {
     showToast('⚠️ Поки підтримується тільки Google');
   }
@@ -9149,29 +9161,5 @@ function deleteMysvc(id) {
 
 
 
-<script>
-// Google redirect result — виконується після завантаження DOM
-document.addEventListener('DOMContentLoaded', function() {
-  if (!window._auth) return;
-  window._auth.getRedirectResult().then(function(result) {
-    if (!result || !result.user) return;
-    var user = result.user;
-    window._db.collection('users').doc(user.uid).get().then(function(snap) {
-      if (!snap.exists) {
-        return window._db.collection('users').doc(user.uid).set({
-          name: user.displayName, email: user.email, uid: user.uid,
-          type: 'personal', listings: 0, status: 'active',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-    }).then(function() {
-      showToast('✅ Вхід через Google!');
-      showPage('profile');
-    }).catch(function(e) { console.error('Firestore:', e); });
-  }).catch(function(e) {
-    console.error('getRedirectResult error:', e);
-  });
-});
-</script>
 </body>
 </html>
