@@ -2391,7 +2391,7 @@
   (function() {
     var cfg = {
       apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
-      authDomain: "ridego-sigma.vercel.app",
+      authDomain: "ridego-6f981.firebaseapp.com",
       databaseURL: "https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "ridego-6f981",
       storageBucket: "ridego-6f981.firebasestorage.app",
@@ -2422,11 +2422,7 @@
           }
           if (typeof renderProfile === 'function') renderProfile();
           if (typeof _updateChatBadge === 'function') _updateChatBadge();
-          // Якщо прийшли після Google redirect — перейти на профіль
-          if (window._pendingGoogleRedirect) {
-            window._pendingGoogleRedirect = false;
-            setTimeout(function(){ if(typeof showPage==='function') showPage('profile'); showToast('✅ Вхід через Google!'); }, 100);
-          }
+
           // Завантажуємо оголошення
           return window._db.collection('listings').where('uid','==',user.uid).get();
         }).then(function(snap) {
@@ -2442,24 +2438,6 @@
 
     console.log('✅ RideGO Firebase підключено!');
 
-    // Обробка результату після Google redirect
-    window._auth.getRedirectResult().then(function(result) {
-      if (result && result.user) {
-        var user = result.user;
-        window._pendingGoogleRedirect = true;
-        window._db.collection('users').doc(user.uid).get().then(function(snap) {
-          if (!snap.exists) {
-            return window._db.collection('users').doc(user.uid).set({
-              name: user.displayName, email: user.email, uid: user.uid,
-              type: 'personal', listings: 0, status: 'active',
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          }
-        }).catch(function(e){ console.error('Firestore error:', e); });
-      }
-    }).catch(function(e) {
-      console.error('Redirect auth error:', e);
-    });
   })();
   </script>
 </head>
@@ -7222,8 +7200,31 @@ function doLogin() {
 function doSocialLogin(provider) {
   if (provider === 'Google' && window._auth) {
     var gProvider = new firebase.auth.GoogleAuthProvider();
-    window._auth.signInWithRedirect(gProvider)
-      .catch(function(e) { showToast('⚠️ ' + e.message); });
+    gProvider.setCustomParameters({ prompt: 'select_account' });
+    window._auth.signInWithPopup(gProvider)
+      .then(function(result) {
+        var user = result.user;
+        return window._db.collection('users').doc(user.uid).get().then(function(snap) {
+          if (!snap.exists) {
+            return window._db.collection('users').doc(user.uid).set({
+              name: user.displayName, email: user.email, uid: user.uid,
+              type: 'personal', listings: 0, status: 'active',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        });
+      })
+      .then(function() {
+        showToast('✅ Вхід через Google!');
+        showPage('profile');
+      })
+      .catch(function(e) {
+        if (e.code === 'auth/popup-blocked') {
+          showToast('⚠️ Браузер заблокував popup. Дозвольте popup для цього сайту.');
+        } else if (e.code !== 'auth/popup-closed-by-user') {
+          showToast('⚠️ ' + e.message);
+        }
+      });
   } else {
     showToast('⚠️ Поки підтримується тільки Google');
   }
