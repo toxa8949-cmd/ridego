@@ -7541,8 +7541,10 @@ function submitListing() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       status: 'active'
     };
+    console.log('Saving to Firestore...', fbListing.title, fbListing.uid);
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
+        console.log('Saved OK:', docRef.id);
         newL.id = docRef.id;
         myListings.unshift(newL);
         _fbListings.unshift(newL);
@@ -7550,46 +7552,45 @@ function submitListing() {
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
         showToast('✅ Оголошення опубліковано!');
+        _resetAddWizard();
+        setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
       })
       .catch(function(e) {
-        // Якщо Firestore недоступний — зберегти локально
-        myListings.unshift(newL);
-        _fbListings.unshift(newL);
-        if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
-        if (typeof renderMyListings === 'function') renderMyListings();
-        showToast('✅ Оголошення збережено локально');
         console.error('Firestore save error:', e);
+        showToast('⚠️ Помилка збереження: ' + e.message);
       });
   } else {
+    console.warn('No db or uid, saving locally');
     myListings.unshift(newL);
     _fbListings.unshift(newL);
     if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
     if (typeof renderMyListings === 'function') renderMyListings();
     showToast('✅ Оголошення опубліковано!');
+    _resetAddWizard();
   }
 
-  // reset wizard
+  // reset тепер всередині .then()
+}
+
+function _resetAddWizard() {
   uploadedPhotos = [];
   addSelectedCat = null;
   addSelectedIcon = '📦';
-  if (addMapInstance) { addMapInstance.remove(); addMapInstance = null; addMapMarker = null; }
-  selectedCoords = null;
-  const mw = document.getElementById('add-map-wrap');
+  if (typeof addMapInstance !== 'undefined' && addMapInstance) { addMapInstance.remove(); addMapInstance = null; addMapMarker = null; }
+  if (typeof selectedCoords !== 'undefined') selectedCoords = null;
+  var mw = document.getElementById('add-map-wrap');
   if (mw) mw.style.display = 'none';
-  const lh = document.getElementById('add-location-hint');
+  var lh = document.getElementById('add-location-hint');
   if (lh) lh.style.display = 'none';
-  document.querySelectorAll('#add-step-1 .transport-btn').forEach(b => b.classList.remove('selected'));
-  ['new-title','new-price','new-desc','new-phone','new-mileage','new-district','new-model'].forEach(id => {
-    const el = document.getElementById(id); if(el) el.value = '';
+  document.querySelectorAll('#add-step-1 .transport-btn').forEach(function(b){ b.classList.remove('selected'); });
+  ['new-title','new-price','new-desc','new-phone','new-mileage','new-district','new-model'].forEach(function(id) {
+    var el = document.getElementById(id); if(el) el.value = '';
   });
-  const bc = document.getElementById('new-brand-custom');
+  var bc = document.getElementById('new-brand-custom');
   if (bc) { bc.value=''; bc.style.display='none'; }
-  const ms = document.getElementById('new-model-select');
+  var ms = document.getElementById('new-model-select');
   if (ms) { ms.innerHTML='<option value="">— спочатку оберіть бренд —</option>'; ms.disabled=true; }
-  addGoStep(1);
-
-  // ── Показати promo modal замість redirect ──
-  setTimeout(() => openPromoModal(newL.id, true), 600);
+  if (typeof addGoStep === 'function') addGoStep(1);
 }
 
 // ── renderMyListings — додати кнопку Просувати ────────────────
