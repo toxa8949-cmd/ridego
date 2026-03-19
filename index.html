@@ -2444,6 +2444,8 @@
           }
           // Завантажити чати юзера
           loadUserChats();
+          // Завантажити сервіси юзера
+          _loadUserServices(_cu.uid);
           // Завантажуємо оголошення юзера
           return window._db.collection('listings').where('uid','==',user.uid).get();
         }).then(function(snap) {
@@ -4151,6 +4153,20 @@ let _fbChats    = [];   // чати поточного юзера
 let _fbLoaded   = false;
 
 // Завантажити всі публічні дані з Firebase
+function _loadUserServices(uid) {
+  if (!window._db || !uid) return;
+  window._db.collection('services').where('uid','==',uid).get()
+    .then(function(snap) {
+      var loaded = snap.docs.map(function(d){
+        return Object.assign({id:d.id, _isOwn:true}, d.data());
+      });
+      // Прибрати старі локальні сервіси цього юзера і замінити на Firebase
+      myServices = myServices.filter(function(s){ return !s._isOwn; });
+      myServices = loaded.concat(myServices);
+      renderMyServiceTab();
+    }).catch(function(e){ console.log('services load:', e.message); });
+}
+
 function loadFirebaseData() {
   if (!window._db) return;
   // Оголошення
@@ -7835,12 +7851,24 @@ function _buildSvcDetailHeader(s){
   var phoneLine=s.phone?"<span><i class=\"fa-solid fa-phone\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.phone+"</span>":"";
   var btnPhone=s.phone?"<button class=\"btn-primary\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\u260e\ufe0f '+s.phone)\"><i class=\"fa-solid fa-phone\" style=\"margin-right:6px\"></i>\u0417\u0430\u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443\u0432\u0430\u0442\u0438</button>":"";
   var btnTg=s.telegram?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\ud83d\udcf1 '+s.telegram)\"><i class=\"fa-brands fa-telegram\" style=\"margin-right:6px;color:#2ca5e0\"></i>Telegram</button>":"";
-  var btnShop=s.sellerId?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showSeller('"+s.sellerId+"')\"><i class=\"fa-solid fa-store\" style=\"margin-right:6px\"></i>\u041c\u0430\u0433\u0430\u0437\u0438\u043d</button>":"";
+  var btnShop=s.sellerId?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showSeller('"+s.sellerId+"')\"><i class=\"fa-solid fa-store\" style=\"margin-right:6px\"></i>Магазин</button>":"";
+  // Кнопка написати — відкриває чат або показує контакти
+  var btnMsg = s.uid
+    ? "<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"_openSvcChat('"+s.uid+"','"+s.name+"')\"><i class=\"fa-solid fa-comment\" style=\"margin-right:6px\"></i>Написати</button>"
+    : "";
   return "<div><div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><span>"+s.icon+"</span>"+badge+"</div></div>"+
     "<div><div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">"+cats+"</div>"+
     "<div class=\"service-detail-name\">"+s.name+"</div>"+
     "<div style=\"display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-muted);margin-bottom:16px\">"+cityLine+hoursLine+phoneLine+"</div>"+
-    "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">"+btnPhone+btnTg+btnShop+"</div></div>";
+    "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">"+btnPhone+btnMsg+btnTg+btnShop+"</div></div>";
+}
+
+function _openSvcChat(sellerUid, svcName) {
+  if (!isLoggedIn) { showToast('⚠️ Увійдіть щоб написати'); showPage('profile'); return; }
+  if (sellerUid === currentUser.uid) { showToast('ℹ️ Це ваш власний сервіс'); return; }
+  // Перейти на повідомлення
+  showPage('messages');
+  showToast('💬 Напишіть своє питання про ' + svcName);
 }
 
 function _buildSvcDetailBody(s){
@@ -7855,7 +7883,16 @@ function _buildSvcDetailBody(s){
     var igLine=s.instagram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf8 "+s.instagram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#e1306c20;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-instagram\" style=\"color:#e1306c\"></i></div>"+s.instagram+"</div>":"";
     socialBlock="<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px\"><div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px\">\u0421\u043e\u0446\u043c\u0435\u0440\u0435\u0436\u0456</div><div style=\"display:flex;flex-direction:column;gap:10px\">"+tgLine+igLine+"</div></div>";
   }
-  var shopBlock=s.sellerId?"<div style=\"background:var(--brand-dim);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:22px\"><div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--brand);margin-bottom:10px\"><i class=\"fa-solid fa-store\" style=\"margin-right:5px\"></i>\u041f\u043e\u0432\u2019\u044f\u0437\u0430\u043d\u0438\u0439 \u043c\u0430\u0433\u0430\u0437\u0438\u043d</div><p style=\"font-size:13px;color:var(--text-muted);margin-bottom:12px\">\u0426\u0435\u0439 \u0441\u0435\u0440\u0432\u0456\u0441 \u0454 \u0447\u0430\u0441\u0442\u0438\u043d\u043e\u044e \u043e\u0444\u0456\u0446\u0456\u0439\u043d\u043e\u0433\u043e \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0443</p><button class=\"btn-primary\" style=\"width:100%;padding:11px\" onclick=\"showSeller('"+s.sellerId+"')\">\u041f\u0435\u0440\u0435\u0439\u0442\u0438 \u0434\u043e \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0443 \u2192</button></div>":"";
+  // Показати блок магазину — по sellerId або uid
+  var _shopTarget = s.sellerId || (s.uid ? 'uid:'+s.uid : null);
+  var shopBlock = _shopTarget ? (
+    "<div style=\"background:var(--brand-dim);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:22px\">" +
+    "<div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--brand);margin-bottom:10px\">" +
+    "<i class=\"fa-solid fa-store\" style=\"margin-right:5px\"></i>Пов'язаний магазин</div>" +
+    "<p style=\"font-size:13px;color:var(--text-muted);margin-bottom:12px\">Перегляньте всі оголошення цього продавця</p>" +
+    "<button class=\"btn-primary\" style=\"width:100%;padding:11px\" onclick=\"showSellerByUid('" + (s.uid||'') + "')\">Перейти до оголошень →</button>" +
+    "</div>"
+  ) : "";
   return "<div style=\"display:flex;flex-direction:column;gap:20px\">"+
     "<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:24px\">"+
     "<div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-circle-info\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u0440\u043e \u0441\u0435\u0440\u0432\u0456\u0441</div>"+
@@ -8454,7 +8491,18 @@ function saveMysvc() {
     _editingSvc.badgeLabel= badge ? BADGE_LABELS[badge] : null;
     _editingSvc.icon      = icon;
     _editingSvc.services  = svcRows;
-    showToast("\u2705 \u0421\u0435\u0440\u0432\u0456\u0441 \u043e\u043d\u043e\u0432\u043b\u0435\u043d\u043e!");
+    // Зберегти оновлення в Firestore
+    if (window._db && _editingSvc.id && currentUser && currentUser.uid) {
+      var upd = {
+        name:_editingSvc.name, desc:_editingSvc.desc, cats:cats, city:city, oblast:oblast,
+        address:_editingSvc.address, hours:_editingSvc.hours, phone:phone.trim(),
+        telegram:_editingSvc.telegram, instagram:_editingSvc.instagram,
+        badge:badge||null, badgeLabel:badge?BADGE_LABELS[badge]:null, icon:icon, services:svcRows
+      };
+      window._db.collection('services').doc(_editingSvc.id).update(upd)
+        .catch(function(e){ console.error('service update error:', e); });
+    }
+    showToast("✅ Сервіс оновлено!");
   } else {
     // Новий сервіс
     var newSvc = {
@@ -8485,20 +8533,25 @@ function saveMysvc() {
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       delete fbSvc.id;
+      delete fbSvc._isOwn;
       window._db.collection('services').add(fbSvc)
         .then(function(ref) {
           newSvc.id = ref.id;
+          newSvc._isOwn = true;
           myServices.unshift(newSvc);
           _fbServices.unshift(newSvc);
           _initSvcCitySelect();
           showToast('✅ Сервіс опубліковано!');
           renderMyServiceTab();
         }).catch(function(e) {
+          newSvc._isOwn = true;
           myServices.unshift(newSvc);
           _initSvcCitySelect();
           showToast('✅ Сервіс збережено локально');
+          console.error('service save error:', e);
         });
     } else {
+      newSvc._isOwn = true;
       myServices.unshift(newSvc);
       _initSvcCitySelect();
       showToast('✅ Сервіс опубліковано!');
