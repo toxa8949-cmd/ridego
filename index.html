@@ -7220,10 +7220,34 @@ function doSocialLogin(provider) {
     gProvider.setCustomParameters({ prompt: 'select_account' });
     window._auth.signInWithPopup(gProvider)
       .then(function(result) {
-        // Popup спрацював — встановити isLoggedIn і перейти на профіль
+        var user = result.user;
         isLoggedIn = true;
-        showToast('✅ Вхід через Google!');
-        showPage('profile');
+        // Оновити currentUser з реальними даними Google
+        currentUser = currentUser || {};
+        currentUser.uid     = user.uid;
+        currentUser.email   = user.email;
+        currentUser.name    = user.displayName || user.email.split('@')[0];
+        currentUser.initial = currentUser.name[0].toUpperCase();
+        // Зберегти або отримати профіль з Firestore
+        window._db.collection('users').doc(user.uid).get().then(function(snap) {
+          if (snap.exists) {
+            var d = snap.data();
+            currentUser.name    = d.name || currentUser.name;
+            currentUser.initial = currentUser.name[0].toUpperCase();
+            currentUser.type    = d.type || 'personal';
+          } else {
+            window._db.collection('users').doc(user.uid).set({
+              name: user.displayName, email: user.email, uid: user.uid,
+              type: 'personal', listings: 0, status: 'active',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+          showToast('✅ Вхід через Google!');
+          showPage('profile');
+        }).catch(function() {
+          showToast('✅ Вхід через Google!');
+          showPage('profile');
+        });
       })
       .catch(function(e) {
         if (e.code === 'auth/popup-blocked') {
