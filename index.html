@@ -2444,12 +2444,16 @@
           }
           // Завантажити чати юзера
           loadUserChats();
-          // Завантажуємо оголошення
+          // Завантажуємо оголошення юзера
           return window._db.collection('listings').where('uid','==',user.uid).get();
         }).then(function(snap) {
-          window.myListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+          var loaded = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+          // Оновити ОБИДВІ змінні
+          if (typeof myListings !== 'undefined') myListings = loaded;
+          window.myListings = loaded;
           if (typeof renderMyListings === 'function') renderMyListings();
-        }).catch(function(e){ console.log('Firebase:', e.message); });
+          if (typeof renderProfile === 'function') renderProfile();
+        }).catch(function(e){ console.log('Firebase listings:', e.message); });
       } else {
         window._authWasLoggedIn = false;
         if (typeof isLoggedIn !== 'undefined') isLoggedIn = false;
