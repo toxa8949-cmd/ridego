@@ -842,67 +842,21 @@
   ::-webkit-scrollbar-thumb:hover { background:#30363d; }
 
   /* ===== MOBILE NAV ===== */
-  .mobile-nav {
-    display: none; position: fixed; bottom: 0; left: 0; right: 0;
-    background: var(--dark2); border-top: 1px solid var(--border);
-    z-index: 1000; padding-bottom: env(safe-area-inset-bottom);
-  }
-  .mobile-nav-inner { display: flex; align-items: center; height: 60px; }
-  .mnav-item {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 3px; cursor: pointer; color: var(--text-muted);
-    font-size: 10px; font-weight: 600; transition: color .2s;
-    border: none; background: none; font-family: 'Inter',sans-serif;
-    padding: 0; height: 100%;
-  }
-  .mnav-item:hover, .mnav-item.active { color: var(--brand); }
-  .mnav-item i { font-size: 20px; }
-  /* FAB кнопка Додати */
-  .mnav-fab {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    cursor: pointer; border: none; background: none;
-    padding: 0; gap: 2px; height: 100%;
-  }
-  .mnav-fab-circle {
-    width: 48px; height: 48px; border-radius: 50%;
-    background: var(--brand);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 16px rgba(0,200,83,.5);
-    transition: transform .15s; margin-top: -14px;
-  }
-  .mnav-fab-circle i { font-size: 22px; color: #000; }
-  .mnav-fab:active .mnav-fab-circle { transform: scale(0.92); }
-  .mnav-fab-label {
-    font-size: 10px; font-weight: 700;
-    color: var(--brand); font-family: 'Inter',sans-serif;
-  }
-  /* Кнопка Повідомлення в хедері */
-  .btn-messages {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--brand); color: #000; border: none;
-    border-radius: 50px; padding: 10px 20px;
-    font-size: 14px; font-weight: 700; cursor: pointer;
-    font-family: 'Inter',sans-serif; transition: all .2s;
-    white-space: nowrap; position: relative; flex-shrink: 0;
-  }
-  .btn-messages:hover { background: var(--brand-dark); transform: translateY(-1px); }
-  .btn-messages i { font-size: 15px; }
-  .header-msg-badge {
-    position: absolute; top: -4px; right: -4px;
-    background: #ff4757; color: #fff; font-size: 9px;
-    font-weight: 800; min-width: 16px; height: 16px;
-    border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; padding: 0 3px;
-    border: 2px solid var(--dark2); font-family: 'Inter',sans-serif;
-  }
-  @media(max-width: 768px) {
-    .mobile-nav { display: block; }
-    nav, .search-wrap { display: none !important; }
-    body { padding-bottom: 60px; }
-    .messages-layout { height: calc(100vh - 130px); }
-  }
+  .mobile-nav { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--dark2); border-top:1px solid var(--border); z-index:1000; padding-bottom:env(safe-area-inset-bottom); }
+  .mobile-nav-inner { display:flex; align-items:center; height:60px; }
+  .mnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; color:var(--text-muted); font-size:10px; font-weight:600; transition:color .2s; border:none; background:none; font-family:'Inter',sans-serif; padding:0; height:100%; }
+  .mnav-item:hover,.mnav-item.active { color:var(--brand); }
+  .mnav-item i { font-size:20px; }
+  .mnav-fab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:none; background:none; padding:0; gap:2px; height:100%; }
+  .mnav-fab-circle { width:48px; height:48px; border-radius:50%; background:var(--brand); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(0,200,83,.5); transition:transform .15s; margin-top:-14px; }
+  .mnav-fab-circle i { font-size:22px; color:#000; }
+  .mnav-fab:active .mnav-fab-circle { transform:scale(0.92); }
+  .mnav-fab-label { font-size:10px; font-weight:700; color:var(--brand); font-family:'Inter',sans-serif; }
+  .btn-messages { display:inline-flex; align-items:center; gap:8px; background:var(--brand); color:#000; border:none; border-radius:50px; padding:10px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; transition:all .2s; white-space:nowrap; position:relative; flex-shrink:0; }
+  .btn-messages:hover { background:var(--brand-dark); transform:translateY(-1px); }
+  .btn-messages i { font-size:15px; }
+  .header-msg-badge { position:absolute; top:-4px; right:-4px; background:#ff4757; color:#fff; font-size:9px; font-weight:800; min-width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0 3px; border:2px solid var(--dark2); font-family:'Inter',sans-serif; }
+  @media(max-width:768px) { .mobile-nav { display:block; } nav,.search-wrap { display:none !important; } body { padding-bottom:60px; } .messages-layout { height:calc(100vh - 130px); } }
 
   /* ===== DETAIL v2 ===== */
   .dtab {
@@ -2427,6 +2381,80 @@
     display: flex; align-items: center; gap: 4px;
   }
 </style>
+
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+  (function() {
+    var cfg = {
+      apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
+      authDomain: "ridego-6f981.firebaseapp.com",
+      databaseURL: "https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "ridego-6f981",
+      storageBucket: "ridego-6f981.firebasestorage.app",
+      messagingSenderId: "769845611953",
+      appId: "1:769845611953:web:d21b7cf32f5fae84888190"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    window._auth = firebase.auth();
+    window._db   = firebase.firestore();
+    window._rtdb = firebase.database();
+
+    window._auth.onAuthStateChanged(function(user) {
+      if (user) {
+        window.isLoggedIn = true;
+        window.currentUser = window.currentUser || {};
+        window.currentUser.uid     = user.uid;
+        window.currentUser.email   = user.email;
+        window.currentUser.name    = user.displayName || user.email.split('@')[0];
+        window.currentUser.initial = window.currentUser.name[0].toUpperCase();
+        if (typeof renderProfile==='function') renderProfile();
+        if (typeof _updateChatBadge==='function') _updateChatBadge();
+        window._db.collection('users').doc(user.uid).get()
+          .then(function(s){ if(s.exists){ var d=s.data(); window.currentUser.name=d.name||window.currentUser.name; window.currentUser.initial=window.currentUser.name[0].toUpperCase(); window.currentUser.type=d.type||'personal'; if(typeof renderProfile==='function') renderProfile(); } return window._db.collection('listings').where('uid','==',user.uid).get(); })
+          .then(function(s){ window.myListings=s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); }); if(typeof renderMyListings==='function') renderMyListings(); })
+          .catch(function(e){ console.log('Firebase load:',e.message); });
+      } else {
+        window.isLoggedIn = false; window.myListings = [];
+        if (typeof renderProfile==='function') renderProfile();
+      }
+    });
+
+    window.doFirebaseLogin = function(email, pass) {
+      window._auth.signInWithEmailAndPassword(email, pass)
+        .then(function(){ if(typeof showToast==='function') showToast('✅ Вхід успішний!'); if(typeof showPage==='function') showPage('profile'); })
+        .catch(function(e){ var m='⚠️ Невірний email або пароль'; if(e.code==='auth/too-many-requests') m='⚠️ Забагато спроб. Спробуйте пізніше'; if(typeof showToast==='function') showToast(m); });
+    };
+    window.doFirebaseRegister = function(name, email, pass) {
+      window._auth.createUserWithEmailAndPassword(email, pass)
+        .then(function(cr){ return cr.user.updateProfile({displayName:name}).then(function(){ return window._db.collection('users').doc(cr.user.uid).set({name:name,email:email,uid:cr.user.uid,type:'personal',listings:0,status:'active',createdAt:firebase.firestore.FieldValue.serverTimestamp()}); }); })
+        .then(function(){ if(typeof showToast==='function') showToast('✅ Акаунт створено!'); if(typeof showPage==='function') showPage('profile'); })
+        .catch(function(e){ var m='⚠️ '+e.message; if(e.code==='auth/email-already-in-use') m='⚠️ Цей email вже використовується'; if(e.code==='auth/weak-password') m='⚠️ Пароль мінімум 6 символів'; if(typeof showToast==='function') showToast(m); });
+    };
+    window.doFirebaseGoogleLogin = function() {
+      var p = new firebase.auth.GoogleAuthProvider();
+      window._auth.signInWithPopup(p)
+        .then(function(r){ var u=r.user; return window._db.collection('users').doc(u.uid).get().then(function(s){ if(!s.exists) return window._db.collection('users').doc(u.uid).set({name:u.displayName,email:u.email,uid:u.uid,type:'personal',listings:0,status:'active',createdAt:firebase.firestore.FieldValue.serverTimestamp()}); }); })
+        .then(function(){ if(typeof showToast==='function') showToast('✅ Вхід через Google!'); if(typeof showPage==='function') showPage('profile'); })
+        .catch(function(e){ if(e.code!=='auth/popup-closed-by-user'&&typeof showToast==='function') showToast('⚠️ '+e.message); });
+    };
+    window.doFirebaseLogout = function() {
+      window._auth.signOut().then(function(){ window.myListings=[]; if(typeof showToast==='function') showToast('До побаज़ення!'); if(typeof showPage==='function') showPage('home'); });
+    };
+    window.saveListingToFirebase = function(listing) {
+      if(!window.isLoggedIn||!window.currentUser.uid) return Promise.resolve(null);
+      return window._db.collection('listings').add(Object.assign({},listing,{uid:window.currentUser.uid,seller:window.currentUser.name,status:'active',views:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()})).then(function(r){return r.id;}).catch(function(){return null;});
+    };
+    window.sendFirebaseMessage = function(chatId, text) {
+      if(!text.trim()||!window.isLoggedIn) return;
+      window._rtdb.ref('chats/'+chatId+'/messages').push({text:text,uid:window.currentUser.uid,sender:window.currentUser.name,time:new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})});
+    };
+    console.log('✅ RideGO Firebase підключено!');
+  })();
+  </script>
 </head>
 <body>
 
@@ -7171,26 +7199,18 @@ function collectSpecs() {
 // AUTH
 // ============================================================
 function doLogin() {
-  const email = document.getElementById('login-email').value;
-  if(!email) { showToast('⚠️ Введіть email'); return; }
-  isLoggedIn = true;
-  currentUser.email = email;
-  currentUser.name = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
-  currentUser.initial = currentUser.name[0].toUpperCase();
-  renderProfile();
-  showToast('👋 Ласкаво просимо, '+currentUser.name+'!');
+  var email = document.getElementById('login-email').value.trim();
+  var pass  = document.getElementById('login-pass').value;
+  if (!email) { showToast('⚠️ Введіть email'); return; }
+  if (!pass)  { showToast('⚠️ Введіть пароль'); return; }
+  doFirebaseLogin(email, pass);
 }
 function doSocialLogin(provider) {
-  isLoggedIn = true;
-  currentUser.name = 'Антон М.';
-  currentUser.initial = 'А';
-  renderProfile();
-  showToast('✅ Вхід через '+provider+' успішний!');
+  if (provider === 'Google') doFirebaseGoogleLogin();
+  else showToast('⚠️ Підтримується тільки Google');
 }
 function doLogout() {
-  isLoggedIn = false;
-  renderProfile();
-  showToast('👋 Ви вийшли з акаунту');
+  doFirebaseLogout();
 }
 function showRegister() {
   document.getElementById('auth-form-title').textContent = 'Реєстрація';
@@ -7205,12 +7225,14 @@ function showRegister() {
 }
 function resetAuthForm() { showPage('profile'); }
 function doRegister() {
-  const name = document.getElementById('reg-name')?.value || 'Новий користувач';
-  isLoggedIn = true;
-  currentUser.name = name;
-  currentUser.initial = name[0].toUpperCase();
-  renderProfile();
-  showToast('🎉 Реєстрація успішна! Ласкаво просимо!');
+  var name  = (document.getElementById('reg-name')||{}).value||'';
+  var email = (document.getElementById('reg-email')||{}).value||'';
+  var pass  = (document.getElementById('reg-pass')||{}).value||'';
+  name=name.trim(); email=email.trim();
+  if (!name)  { showToast('⚠️ Введіть ім’я'); return; }
+  if (!email) { showToast('⚠️ Введіть email'); return; }
+  if (pass.length < 6) { showToast('⚠️ Пароль мінімум 6 символів'); return; }
+  doFirebaseRegister(name, email, pass);
 }
 
 // ============================================================
