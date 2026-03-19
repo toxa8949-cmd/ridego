@@ -2867,18 +2867,15 @@
             <div class="seller-avatar" id="detail-avatar"></div>
             <div>
               <div class="seller-name" id="detail-seller"></div>
-              <div class="seller-rating" style="margin-top:3px">
-                <span style="color:#ffa726">★★★★</span><span style="color:var(--border)">★</span>
-                <span style="color:var(--text-muted);font-size:12px;margin-left:4px">4.8 · 23 відгуки</span>
-              </div>
-              <div class="seller-since">На сайті з 2023 · <span style="color:var(--brand)">Перевірений</span></div>
+              <div class="seller-rating" style="margin-top:3px" id="detail-seller-rating"></div>
+              <div class="seller-since" id="detail-seller-since"></div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px">
-            <div><div style="font-family:'Inter',sans-serif;font-weight:800;font-size:18px;color:var(--brand)" id="seller-ads-count">12</div><div style="font-size:11px;color:var(--text-muted)">оголошень</div></div>
-            <div><div style="font-family:'Inter',sans-serif;font-weight:800;font-size:18px;color:var(--brand)">98%</div><div style="font-size:11px;color:var(--text-muted)">відповідей</div></div>
+            <div><div style="font-family:'Inter',sans-serif;font-weight:800;font-size:18px;color:var(--brand)" id="seller-ads-count">0</div><div style="font-size:11px;color:var(--text-muted)">оголошень</div></div>
+            <div><div style="font-family:'Inter',sans-serif;font-weight:800;font-size:18px;color:var(--brand)" id="seller-response-rate">—</div><div style="font-size:11px;color:var(--text-muted)">відповідей</div></div>
           </div>
-          <button class="btn-msg" style="width:100%;font-size:13px;padding:10px" onclick="showSeller(document.getElementById('detail-seller').textContent)">
+          <button class="btn-msg" style="width:100%;font-size:13px;padding:10px" onclick="showSellerByUid(_currentDetailUid)">
             <i class="fa-solid fa-store" style="margin-right:6px"></i>Всі оголошення продавця →</button>
         </div>
 
@@ -3056,6 +3053,31 @@
           <div id="rev-bars" style="display:flex;flex-direction:column;gap:10px;text-align:left"></div>
         </div>
         <div id="reviews-list" style="display:flex;flex-direction:column;gap:16px"></div>
+      </div>
+
+      <!-- Форма відгуку -->
+      <div id="review-form-wrap" style="margin-top:24px;background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:24px;display:none">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">Залишити відгук</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px" id="review-stars-input">
+          <span style="font-size:28px;cursor:pointer;transition:transform .15s" onclick="setReviewStar(1)" data-star="1">☆</span>
+          <span style="font-size:28px;cursor:pointer;transition:transform .15s" onclick="setReviewStar(2)" data-star="2">☆</span>
+          <span style="font-size:28px;cursor:pointer;transition:transform .15s" onclick="setReviewStar(3)" data-star="3">☆</span>
+          <span style="font-size:28px;cursor:pointer;transition:transform .15s" onclick="setReviewStar(4)" data-star="4">☆</span>
+          <span style="font-size:28px;cursor:pointer;transition:transform .15s" onclick="setReviewStar(5)" data-star="5">☆</span>
+        </div>
+        <textarea id="review-text-input" placeholder="Ваш досвід з цим продавцем..." rows="3"
+          style="width:100%;background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;resize:vertical;margin-bottom:12px"></textarea>
+        <button class="btn-primary" style="padding:12px 28px" onclick="submitReview()">
+          <i class="fa-solid fa-star" style="margin-right:8px"></i>Опублікувати відгук
+        </button>
+      </div>
+      <div id="review-already-done" style="display:none;margin-top:16px;text-align:center;color:var(--text-muted);font-size:13px">
+        ✅ Ви вже залишили відгук цьому продавцю
+      </div>
+      <div id="review-login-prompt" style="display:none;margin-top:16px;text-align:center">
+        <button class="btn-outline" style="padding:10px 24px" onclick="showPage('profile')">
+          <i class="fa-solid fa-user" style="margin-right:8px"></i>Увійдіть щоб залишити відгук
+        </button>
       </div>
     </div>
 
@@ -3986,6 +4008,11 @@ function showSeller(sellerName) {
   }
 }
 
+function showSellerByUid(uid) {
+  if (!uid) { showToast('ℹ️ Профіль продавця не знайдено'); return; }
+  showPage('seller', 'uid:' + uid);
+}
+
 // ── Copy seller link  (full URL with hash) ────────────────────────────
 function copySellerLink() {
   const s = _fbSellers.find(x => x.id === currentSellerId);
@@ -4047,7 +4074,7 @@ function createCard(l, backPage) {
   </button>`;
 
   return `
-  <div class="listing-card ${promoClass}" onclick="showDetail(${l.id})">
+  <div class="listing-card ${promoClass}" onclick="showDetail('${l.id}')">
 
     <!-- Photo -->
     <div style="position:relative;flex-shrink:0">${imgHtml}${badgeHtml}${promoBadge}</div>
@@ -4824,101 +4851,108 @@ function showSeller(sellerName) {
   else showToast('ℹ️ Сторінку продавця не знайдено');
 }
 
+function _renderSellerByUid(uid) {
+  if (!window._db) return;
+  var listings = _fbListings.filter(function(x){ return x && x.uid === uid; });
+  var sellerName = listings.length ? (listings[0].sellerName || listings[0].seller || 'Продавець') : 'Продавець';
+  var initial = sellerName[0] ? sellerName[0].toUpperCase() : '?';
+
+  var isDark = !document.body.classList.contains('light');
+  var endColor = isDark ? '#21262d' : '#e8f0e8';
+  document.getElementById('seller-cover-bg').style.background =
+    'linear-gradient(160deg, #0a1a0a 0%, ' + endColor + ' 100%)';
+  var av = document.getElementById('seller-page-avatar');
+  av.textContent = initial;
+  av.className = 'seller-avatar-big';
+  document.getElementById('seller-page-name').textContent = sellerName;
+  document.getElementById('seller-page-type-badge').innerHTML =
+    '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
+  document.getElementById('seller-page-desc').textContent = '';
+  document.getElementById('seller-page-city').innerHTML = '';
+
+  // Завантажити профіль
+  window._db.collection('users').doc(uid).get().then(function(snap) {
+    if (snap.exists) {
+      var d = snap.data();
+      var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
+      document.getElementById('seller-page-name').textContent = d.name || sellerName;
+      if (year) document.getElementById('seller-page-since').innerHTML =
+        '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
+    }
+  }).catch(function(){});
+
+  var adsEl = document.getElementById('sp-stat-ads');
+  if (adsEl) adsEl.textContent = listings.length;
+  ['sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid){
+    var el = document.getElementById(sid); if(el) el.textContent = '—';
+  });
+  renderSellerListings(listings, {name: sellerName, id: 'uid:' + uid});
+  var catsEl = document.getElementById('seller-cats-list');
+  if (catsEl) catsEl.innerHTML = '';
+  var aboutEl = document.getElementById('seller-about-text');
+  if (aboutEl) aboutEl.textContent = '';
+  var contactsEl = document.getElementById('seller-contacts');
+  if (contactsEl) contactsEl.innerHTML = '';
+  var socialsEl = document.getElementById('seller-socials');
+  if (socialsEl) socialsEl.innerHTML = '';
+  var svcTab = document.getElementById('seller-tab-service');
+  if (svcTab) svcTab.style.display = 'none';
+  var urlEl = document.getElementById('seller-page-url');
+  if (urlEl) urlEl.textContent = location.href.split('#')[0] + '#seller/uid:' + uid;
+  // Завантажити реальні відгуки з Firestore
+  _loadSellerReviews(uid);
+  _initReviewForm(uid);
+}
+
 function renderSellerPage(id) {
   currentSellerId = id;
+
+  // Підтримка uid: префікс
+  if (id && id.startsWith('uid:')) {
+    var uid = id.replace('uid:', '');
+    _renderSellerByUid(uid);
+    return;
+  }
+
   const s = _fbSellers.find(x => x.id === id);
-  if (!s) { showToast('⚠️ Продавця не знайдено: ' + id); return; }
+  if (!s) { showToast('⚠️ Продавця не знайдено'); return; }
 
   try {
-
-  // cover bg
   const isDark = !document.body.classList.contains('light');
   const endColor = isDark ? '#21262d' : '#e8f0e8';
   document.getElementById('seller-cover-bg').style.background =
-    `linear-gradient(160deg, ${s.coverColor} 0%, ${endColor} 100%)`;
-
-  // avatar
+    `linear-gradient(160deg, ${s.coverColor || '#0a1a0a'} 0%, ${endColor} 100%)`;
   const av = document.getElementById('seller-page-avatar');
-  av.textContent = s.initial;
+  av.textContent = s.initial || (s.name||'?')[0];
   av.className = 'seller-avatar-big' + (s.type === 'shop' ? ' shop' : '');
-
-  // name + badge
   document.getElementById('seller-page-name').textContent = s.name;
   document.getElementById('seller-page-type-badge').innerHTML = s.type === 'shop'
     ? '<span class="seller-shop-badge"><i class="fa-solid fa-store" style="margin-right:4px"></i>Офіційний магазин</span>'
     : '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Перевірений</span>';
-
-  // desc / meta
-  document.getElementById('seller-page-desc').textContent = s.desc;
+  document.getElementById('seller-page-desc').textContent = s.desc || '';
   document.getElementById('seller-page-city').innerHTML =
-    `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>${s.city}`;
+    `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>${s.city || ''}`;
   document.getElementById('seller-page-since').innerHTML =
-    `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since}`;
-  const starsFull = Math.round(s.rating);
-  document.getElementById('seller-page-rating').innerHTML =
-    `<span class="seller-rating-inline">` +
-    `<span style="color:#ffa726">${'★'.repeat(starsFull)}</span>` +
-    ` ${s.rating} · ${s.reviews.length} відгуків</span>`;
-
-  // get listings
-  const listings = [...LISTINGS, ...myListings].filter(l => l && l.seller === s.name);
-
-  // stats — animate numbers
-  const statMap = {
-    'sp-stat-ads': listings.length,
-    'sp-stat-sold': s.sold,
-    'sp-stat-rating': s.rating,
-    'sp-stat-response': s.response,
-  };
-  Object.entries(statMap).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = val;
+    `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since || ''}`;
+  const listings = [..._fbListings, ...myListings].filter(l => l && l.seller === s.name);
+  ['sp-stat-ads','sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid) {
+    var el = document.getElementById(sid);
+    if (el) el.textContent = sid==='sp-stat-ads' ? listings.length : (s[sid.replace('sp-stat-','')] || '—');
   });
-
-  // page url — real shareable link
-  const sBase = location.href.split('#')[0];
-  document.getElementById('seller-page-url').textContent = sBase + '#seller/' + s.id;
-
-  // render listings tab (default)
   renderSellerListings(listings, s);
-
-  // about tab
-  document.getElementById('seller-about-text').textContent = s.about || s.desc;
+  document.getElementById('seller-about-text').textContent = s.about || s.desc || '';
   const catsEl = document.getElementById('seller-cats-list');
-  catsEl.innerHTML = s.cats.map(c =>
+  if (catsEl) catsEl.innerHTML = (s.cats||[]).map(c =>
     `<span class="tag tag-blue" style="padding:6px 14px;font-size:13px">${c}</span>`).join('');
-
-  // contacts
   const contactsEl = document.getElementById('seller-contacts');
-  const rows = [
-    s.phone ? `<a href="tel:${s.phone}" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:500">
-      <i class="fa-solid fa-phone" style="color:var(--brand);width:16px"></i>${s.phone}</a>` : '',
-    s.workHours ? `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted)">
-      <i class="fa-solid fa-clock" style="color:var(--brand);width:16px"></i>${s.workHours}</div>` : '',
-    s.address ? `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted)">
-      <i class="fa-solid fa-map-pin" style="color:var(--brand);width:16px"></i>${s.address}</div>` : '',
-  ].filter(Boolean);
-  contactsEl.innerHTML = rows.join('');
-
-  // socials
+  if (contactsEl) contactsEl.innerHTML = [
+    s.phone ? `<a href="tel:${s.phone}" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:500"><i class="fa-solid fa-phone" style="color:var(--brand);width:16px"></i>${s.phone}</a>` : '',
+  ].filter(Boolean).join('');
   const socialsEl = document.getElementById('seller-socials');
-  socialsEl.innerHTML = (s.socials || []).map(soc =>
-    `<a href="${soc.url}" target="_blank" class="social-link">
-      <div class="social-link-icon" style="background:${soc.color}22">
-        <i class="${soc.icon}" style="color:${soc.color}"></i>
-      </div>
-      <span>${soc.label}</span>
-      <i class="fa-solid fa-arrow-up-right-from-square" style="margin-left:auto;font-size:11px;opacity:.4"></i>
-    </a>`).join('');
-
-  // reviews tab
+  if (socialsEl) socialsEl.innerHTML = '';
   renderSellerReviews(s);
-
-  // Перевірити чи є сервіс у цього продавця
-  const sellerSvc = getSellerService(s.id);
   const svcTab = document.getElementById('seller-tab-service');
-  if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
+  if (svcTab) svcTab.style.display = 'none';
   if (sellerSvc) {
     const svcContent = document.getElementById('seller-service-content');
     if (svcContent) {
@@ -4954,7 +4988,7 @@ function renderSellerListings(listings, s) {
   const cats = [...new Set(listings.map(l => l.cat))];
   const filterEl = document.getElementById('seller-cat-filters');
   filterEl.innerHTML = [
-    `<div class="filter-chip active" data-scat="all" onclick="filterSellerCat('all',this,'${s.id}')">Всі (${listings.length})</div>`,
+    `<div class="filter-chip active" data-scat="all" onclick="filterSellerCat('all',this,'${s.id||''}')">Всі (${listings.length})</div>`,
     ...cats.map(c => {
       const cnt = listings.filter(l => l.cat === c).length;
       return `<div class="filter-chip" data-scat="${c}" onclick="filterSellerCat('${c}',this,'${s.id}')">${c} (${cnt})</div>`;
@@ -4974,20 +5008,26 @@ function renderSellerListings(listings, s) {
 function filterSellerCat(cat, el, sellerId) {
   document.querySelectorAll('#seller-cat-filters .filter-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  const s = _fbSellers.find(x => x.id === sellerId);
-  if (!s) return;
-  let listings = [...LISTINGS, ...myListings].filter(l => l.seller === s.name);
-  if (cat !== 'all') listings = listings.filter(l => l.cat === cat);
-  const grid = document.getElementById('seller-listings-grid');
-  grid.innerHTML = listings.map(l => createCard(l, 'seller')).join('');
+  // Підтримка uid: префікс
+  var uid = sellerId && sellerId.startsWith('uid:') ? sellerId.replace('uid:', '') : null;
+  var listings;
+  if (uid) {
+    listings = _fbListings.filter(function(l){ return l && l.uid === uid; });
+  } else {
+    var s = _fbSellers.find(function(x){ return x.id === sellerId; });
+    listings = s ? _fbListings.filter(function(l){ return l && l.seller === s.name; }) : [];
+  }
+  if (cat !== 'all') listings = listings.filter(function(l){ return l.cat === cat; });
+  var grid = document.getElementById('seller-listings-grid');
+  grid.innerHTML = listings.map(function(l){ return createCard(l, 'seller'); }).join('');
 }
 
 function renderSellerReviews(s) {
-  const revs = s.reviews || [];
-  const avg = s.rating;
-  document.getElementById('rev-avg').textContent = avg.toFixed(1);
-  document.getElementById('rev-stars').textContent = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
-  document.getElementById('rev-count').textContent = `на основі ${revs.length} відгуків`;
+  const revs = (s && s.reviews && Array.isArray(s.reviews)) ? s.reviews : [];
+  const avg = (s && s.rating && !isNaN(s.rating)) ? s.rating : 0;
+  document.getElementById('rev-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
+  document.getElementById('rev-stars').textContent = avg > 0 ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg))) : '☆☆☆☆☆';
+  document.getElementById('rev-count').textContent = revs.length ? `на основі ${revs.length} відгуків` : 'Відгуків поки немає';
 
   // rating bars
   const bars = [5,4,3,2,1];
@@ -5059,7 +5099,7 @@ let galleryImgs = [];
 let galleryIdx = 0;
 
 function showDetail(id, _skipPush) {
-  const l = [...LISTINGS, ...myListings].find(x => x && x.id === id);
+  const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
   if (!l) return;
   currentDetailId = id;
 
@@ -5108,26 +5148,33 @@ function showDetail(id, _skipPush) {
         style="background-image:url(${src});background-size:cover;background-position:center"></div>`).join('');
   } else { thumbs.innerHTML = ''; }
 
-  // seller — enrich from SELLERS data
-  document.getElementById('detail-seller').textContent = l.seller;
-  const sellerData = getSellerById(l.seller);
-  document.getElementById('detail-avatar').textContent = sellerData ? sellerData.initial : l.seller[0];
-  if (sellerData) {
-    const ratingEl = document.querySelector('#detail-avatar').closest('.detail-card')?.querySelector('.seller-rating');
-    const sinceEl  = document.querySelector('#detail-avatar').closest('.detail-card')?.querySelector('.seller-since');
-    const adsEl    = document.getElementById('seller-ads-count');
-    if (ratingEl) {
-      const stars = '★'.repeat(Math.round(sellerData.rating)) + '☆'.repeat(5-Math.round(sellerData.rating));
-      ratingEl.innerHTML = `<span style="color:#ffa726">${stars}</span> <span style="color:var(--text-muted);font-size:12px;margin-left:4px">${sellerData.rating} · ${sellerData.reviews.length} відгуки</span>`;
-    }
-    if (sinceEl) {
-      const badge = sellerData.type === 'shop'
-        ? '<span style="color:#42a5f5"><i class="fa-solid fa-store" style="margin-right:3px"></i>Магазин</span>'
-        : '<span style="color:var(--brand)">Перевірений</span>';
-      sinceEl.innerHTML = `На сайті з ${sellerData.since} · ${badge}`;
-    }
-    const sellerListings = [...LISTINGS,...myListings].filter(x => x.seller === l.seller);
-    if (adsEl) adsEl.textContent = sellerListings.length;
+  // seller — з даних оголошення + Firestore
+  var sellerName = l.sellerName || l.seller || 'Продавець';
+  var sellerInitial = sellerName[0] ? sellerName[0].toUpperCase() : '?';
+  document.getElementById('detail-seller').textContent = sellerName;
+  document.getElementById('detail-avatar').textContent = sellerInitial;
+  // Скинути рейтинг/дату
+  var ratingEl = document.getElementById('detail-seller-rating');
+  var sinceEl  = document.getElementById('detail-seller-since');
+  var adsEl    = document.getElementById('seller-ads-count');
+  var rateEl   = document.getElementById('seller-response-rate');
+  if (ratingEl) ratingEl.innerHTML = '';
+  if (sinceEl)  sinceEl.innerHTML  = '';
+  if (rateEl)   rateEl.textContent = '—';
+  // Підрахувати оголошення продавця з _fbListings
+  var sellerUid = l.uid || null;
+  window._currentDetailUid = sellerUid;
+  var sellerListings = _fbListings.filter(function(x){ return x && (sellerUid ? x.uid === sellerUid : x.seller === sellerName); });
+  if (adsEl) adsEl.textContent = sellerListings.length || 1;
+  // Завантажити профіль продавця з Firestore
+  if (window._db && sellerUid) {
+    window._db.collection('users').doc(sellerUid).get().then(function(snap) {
+      if (!snap.exists) return;
+      var d = snap.data();
+      var createdYear = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : '';
+      if (ratingEl) ratingEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Новий продавець</span>';
+      if (sinceEl && createdYear) sinceEl.innerHTML = 'На сайті з ' + createdYear;
+    }).catch(function(){});
   }
 
   // description
@@ -5140,7 +5187,7 @@ function showDetail(id, _skipPush) {
   updateFavBtn();
 
   // similar
-  const similar = [...LISTINGS, ...myListings].filter(x => x.cat === l.cat && x.id !== id).slice(0, 4);
+  const similar = [..._fbListings, ...myListings].filter(x => x && x.cat === l.cat && x.id !== id).slice(0, 4);
   document.getElementById('similar-listings').innerHTML = similar.length
     ? similar.map(s => createCard(s, 'catalog')).join('')
     : '<p style="color:var(--text-muted);font-size:14px">Схожих оголошень не знайдено</p>';
@@ -8574,5 +8621,142 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(loadFirebaseData, 300);
 });
 </script>
+
+<script>
+// ── REVIEWS ──────────────────────────────────────────────────────
+var _reviewStar = 0;
+var _reviewSellerUid = null;
+
+function setReviewStar(n) {
+  _reviewStar = n;
+  document.querySelectorAll('#review-stars-input span').forEach(function(s, i) {
+    s.textContent = i < n ? '★' : '☆';
+    s.style.color = i < n ? '#ffa726' : '';
+  });
+}
+
+function _initReviewForm(sellerUid) {
+  _reviewSellerUid = sellerUid;
+  _reviewStar = 0;
+  setReviewStar(0);
+  var textEl = document.getElementById('review-text-input');
+  if (textEl) textEl.value = '';
+
+  var formWrap   = document.getElementById('review-form-wrap');
+  var alreadyEl  = document.getElementById('review-already-done');
+  var loginEl    = document.getElementById('review-login-prompt');
+  if (!formWrap) return;
+
+  // Якщо не залогінений
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    formWrap.style.display  = 'none';
+    alreadyEl.style.display = 'none';
+    loginEl.style.display   = '';
+    return;
+  }
+  // Якщо це свій профіль — не показувати форму
+  if (currentUser.uid === sellerUid) {
+    formWrap.style.display  = 'none';
+    alreadyEl.style.display = 'none';
+    loginEl.style.display   = 'none';
+    return;
+  }
+  // Перевірити чи вже залишив відгук
+  loginEl.style.display = 'none';
+  if (!window._db) { formWrap.style.display = ''; return; }
+  window._db.collection('reviews')
+    .where('reviewerUid', '==', currentUser.uid)
+    .where('sellerUid',   '==', sellerUid)
+    .get().then(function(snap) {
+      if (snap.empty) {
+        formWrap.style.display  = '';
+        alreadyEl.style.display = 'none';
+      } else {
+        formWrap.style.display  = 'none';
+        alreadyEl.style.display = '';
+      }
+    }).catch(function() { formWrap.style.display = ''; });
+}
+
+function submitReview() {
+  if (!_reviewSellerUid) return;
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Спочатку увійдіть в акаунт'); return;
+  }
+  if (currentUser.uid === _reviewSellerUid) {
+    showToast('⚠️ Не можна залишити відгук собі'); return;
+  }
+  if (!_reviewStar) { showToast('⚠️ Оберіть оцінку'); return; }
+  var text = (document.getElementById('review-text-input').value || '').trim();
+  if (!text) { showToast('⚠️ Напишіть текст відгуку'); return; }
+  if (text.length < 10) { showToast('⚠️ Відгук занадто короткий'); return; }
+
+  var review = {
+    sellerUid:   _reviewSellerUid,
+    reviewerUid: currentUser.uid,
+    reviewerName: currentUser.name || currentUser.email,
+    rating: _reviewStar,
+    text:   text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  window._db.collection('reviews').add(review).then(function() {
+    showToast('✅ Відгук опубліковано!');
+    document.getElementById('review-form-wrap').style.display  = 'none';
+    document.getElementById('review-already-done').style.display = '';
+    // Оновити список відгуків
+    _loadSellerReviews(_reviewSellerUid);
+  }).catch(function(e) {
+    showToast('⚠️ Помилка: ' + e.message);
+  });
+}
+
+function _loadSellerReviews(sellerUid) {
+  if (!window._db) return;
+  window._db.collection('reviews')
+    .where('sellerUid', '==', sellerUid)
+    .orderBy('createdAt', 'desc')
+    .limit(50)
+    .get().then(function(snap) {
+      var revs = snap.docs.map(function(d){ return d.data(); });
+      var avg = revs.length ? revs.reduce(function(s,r){ return s+r.rating; }, 0) / revs.length : 0;
+      document.getElementById('rev-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
+      document.getElementById('rev-stars').textContent = avg > 0
+        ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg))) : '☆☆☆☆☆';
+      document.getElementById('rev-count').textContent = revs.length
+        ? 'на основі ' + revs.length + ' відгуків' : 'Відгуків поки немає';
+
+      var bars = [5,4,3,2,1];
+      document.getElementById('rev-bars').innerHTML = bars.map(function(star) {
+        var cnt = revs.filter(function(r){ return r.rating === star; }).length;
+        var pct = revs.length ? Math.round(cnt / revs.length * 100) : 0;
+        return '<div style="display:flex;align-items:center;gap:10px;font-size:13px">' +
+          '<span style="width:14px;text-align:right;font-weight:600">' + star + '</span>' +
+          '<i class="fa-solid fa-star" style="color:#ffa726;font-size:11px"></i>' +
+          '<div style="flex:1;height:8px;background:var(--dark3);border-radius:4px;overflow:hidden">' +
+          '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#ffa726,#ff8f00);border-radius:4px"></div></div>' +
+          '<span style="width:24px;font-size:12px;color:var(--text-muted)">' + cnt + '</span></div>';
+      }).join('');
+
+      var colors = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#22c55e','#f97316'];
+      document.getElementById('reviews-list').innerHTML = revs.length ? revs.map(function(r, i) {
+        var initials = (r.reviewerName||'?').split(' ').map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+        var stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
+        var date = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '';
+        return '<div class="review-card">' +
+          '<div style="display:flex;align-items:flex-start;gap:14px">' +
+          '<div style="width:44px;height:44px;border-radius:50%;background:' + colors[i%colors.length] + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0">' + initials + '</div>' +
+          '<div style="flex:1"><div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+          '<span style="font-weight:700;font-size:14px">' + (r.reviewerName||'Анонім') + '</span>' +
+          '<span style="font-size:11px;color:var(--text-muted)">' + date + '</span></div>' +
+          '<div style="color:#ffa726;font-size:13px;margin-bottom:8px">' + stars + '</div>' +
+          '<p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">' + r.text + '</p>' +
+          '</div></div></div>';
+      }).join('') :
+        '<div class="empty-state"><i class="fa-regular fa-star"></i><h3>Поки немає відгуків</h3><p>Будьте першим хто залишить відгук</p></div>';
+    }).catch(function(e){ console.error('reviews load:', e); });
+}
+</script>
+
 </body>
 </html>
