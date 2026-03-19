@@ -457,7 +457,7 @@
   @media(max-width:900px){ .detail-grid { grid-template-columns:1fr; } }
   .detail-gallery { border-radius:var(--radius); overflow:hidden; }
   .detail-main-img {
-    width:100%; height:380px; object-fit:cover;
+    width:100%; height:380px; object-fit:contain;
     background: var(--dark3);
     border-radius:var(--radius);
     display:block;
@@ -5228,7 +5228,7 @@ function showDetail(id, _skipPush) {
 function renderGalleryImage(l) {
   const wrap = document.getElementById('detail-main-img-wrap');
   if (l && l.img) {
-    wrap.innerHTML = `<img src="${galleryImgs[galleryIdx]}" alt="${l.title}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;transition:opacity .3s">`;
+    wrap.innerHTML = `<img src="${galleryImgs[galleryIdx]}" alt="${l.title}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s">`;
   } else {
     const icon = l ? l.icon : '📦';
     wrap.innerHTML = `<div style="font-size:100px;color:var(--brand);opacity:.5">${icon}</div>`;
@@ -7648,7 +7648,9 @@ function submitListing() {
       range: (newL.range || '').substring(0, 50),
       weight: (newL.weight || '').substring(0, 50),
       desc: (newL.desc || '').substring(0, 2000),
+      time: new Date().toLocaleDateString('uk-UA'),
       seller: (currentUser.name || '').substring(0, 100),
+      specs: safeSpecs || {},
       img: '',
       imgs: [],
       uid: currentUser.uid,
