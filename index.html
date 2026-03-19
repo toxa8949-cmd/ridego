@@ -2404,8 +2404,11 @@
     window._rtdb = firebase.database();
 
     // Auth state — відновлення сесії
+    var _authInitialized = false;
     window._auth.onAuthStateChanged(function(user) {
       if (user) {
+        var isNewLogin = !_authInitialized && !window.isLoggedIn || window._justLoggedIn;
+        window._justLoggedIn = false;
         window.isLoggedIn = true;
         window.currentUser = window.currentUser || {};
         window.currentUser.uid     = user.uid;
@@ -2419,10 +2422,20 @@
             window.currentUser.name    = d.name || window.currentUser.name;
             window.currentUser.initial = window.currentUser.name[0].toUpperCase();
             window.currentUser.type    = d.type || 'personal';
+          } else {
+            // Новий юзер через Google — зберегти в Firestore
+            window._db.collection('users').doc(user.uid).set({
+              name: user.displayName, email: user.email, uid: user.uid,
+              type: 'personal', listings: 0, status: 'active',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(function(e){ console.log('Firestore set:', e.message); });
           }
           if (typeof renderProfile === 'function') renderProfile();
           if (typeof _updateChatBadge === 'function') _updateChatBadge();
-
+          // Якщо це свіжий логін — перейти на профіль
+          if (isNewLogin && typeof showPage === 'function') {
+            showPage('profile');
+          }
           // Завантажуємо оголошення
           return window._db.collection('listings').where('uid','==',user.uid).get();
         }).then(function(snap) {
@@ -2434,6 +2447,7 @@
         window.myListings = [];
         if (typeof renderProfile === 'function') renderProfile();
       }
+      _authInitialized = true;
     });
 
     console.log('✅ RideGO Firebase підключено!');
@@ -7201,24 +7215,10 @@ function doSocialLogin(provider) {
   if (provider === 'Google' && window._auth) {
     var gProvider = new firebase.auth.GoogleAuthProvider();
     gProvider.setCustomParameters({ prompt: 'select_account' });
+    window._justLoggedIn = true;
     window._auth.signInWithPopup(gProvider)
-      .then(function(result) {
-        var user = result.user;
-        return window._db.collection('users').doc(user.uid).get().then(function(snap) {
-          if (!snap.exists) {
-            return window._db.collection('users').doc(user.uid).set({
-              name: user.displayName, email: user.email, uid: user.uid,
-              type: 'personal', listings: 0, status: 'active',
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          }
-        });
-      })
-      .then(function() {
-        showToast('✅ Вхід через Google!');
-        showPage('profile');
-      })
       .catch(function(e) {
+        window._justLoggedIn = false;
         if (e.code === 'auth/popup-blocked') {
           showToast('⚠️ Браузер заблокував popup. Дозвольте popup для цього сайту.');
         } else if (e.code !== 'auth/popup-closed-by-user') {
