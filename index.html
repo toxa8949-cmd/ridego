@@ -7209,9 +7209,14 @@ function doLogin() {
       showPage('profile');
     })
     .catch(function(e) {
-      showToast('⚠️ Невірний email або пароль');
+      if (e.code === 'auth/too-many-requests') {
+        showToast('⚠️ Забагато спроб. Зачекайте');
+      } else {
+        showToast('⚠️ Невірний email або пароль');
+      }
     });
 }
+
 function doSocialLogin(provider) {
   if (provider === 'Google') doFirebaseGoogleLogin();
   else showToast('⚠️ Підтримується тільки Google');
