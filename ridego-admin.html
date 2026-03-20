@@ -75,7 +75,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .login-error { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
 
 /* ── LAYOUT ─────────────────────── */
-#app { display: none; height: 100vh; }
+#app { display: none; height: 100vh; overflow: hidden; }
 
 /* ── SIDEBAR ────────────────────── */
 .sidebar {
@@ -159,8 +159,9 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 /* ── MAIN AREA ───────────────────── */
 .main {
   margin-left: var(--sidebar-w);
-  min-height: 100vh;
+  height: 100vh;
   display: flex; flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── TOPBAR ──────────────────────── */
@@ -207,7 +208,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .topbar-icon-btn:hover { border-color: var(--brand); color: var(--brand); }
 
 /* ── CONTENT ─────────────────────── */
-.content { flex: 1; padding: 28px; }
+.content { flex: 1; padding: 28px; overflow-y: auto; height: 0; }
 
 /* ── STAT CARDS ──────────────────── */
 .stats-grid {
