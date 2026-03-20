@@ -2132,6 +2132,7 @@ document.head.appendChild(style);
   </div>
 </div>
 
+<script>
 // ═══ NEWS ════════════════════════════════════════
 function loadNews() {
   if (!_db) return;
@@ -2241,6 +2242,7 @@ function deleteNews(id) {
     .then(function(){ showToast('Новину видалено','success'); loadNews(); })
     .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
+</script>
 
 </body>
 </html>
