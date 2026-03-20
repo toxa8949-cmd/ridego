@@ -1091,8 +1091,20 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">URL фото (необов'язково)</label>
-          <input class="form-input" id="news-img" placeholder="https://...">
+          <label class="form-label">Фото</label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div id="news-img-preview" style="display:none;width:100%;height:140px;border-radius:8px;overflow:hidden;background:var(--dark4)">
+              <img id="news-img-preview-el" style="width:100%;height:100%;object-fit:cover">
+            </div>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="btn btn-outline" style="flex:1;padding:9px" onclick="document.getElementById('news-img-file').click()">
+                <i class="fa-solid fa-upload" style="margin-right:6px"></i><span id="news-img-btn-label">Завантажити фото</span>
+              </button>
+              <button type="button" class="action-btn danger" id="news-img-clear" style="display:none" onclick="clearNewsImg()" title="Видалити фото"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <input type="file" id="news-img-file" accept="image/*" style="display:none" onchange="uploadNewsImg(this)">
+            <input type="hidden" id="news-img">
+          </div>
         </div>
       </div>
       <div class="form-group" style="margin-bottom:14px">
@@ -1187,7 +1199,56 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 <!-- TOAST -->
 <div class="toast-container" id="toast-container"></div>
 
+
+
+<!-- MODAL: View listing -->
+<div class="modal-overlay" id="listing-modal" onclick="if(event.target===this)closeModal('listing-modal')">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title" id="listing-modal-title">Оголошення</div>
+      <button class="modal-close" onclick="closeModal('listing-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Назва</div>
+          <div id="lm-title" style="font-size:16px;font-weight:700;margin-bottom:16px"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Категорія</div>
+          <div id="lm-cat" style="margin-bottom:16px"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Продавець</div>
+          <div id="lm-seller" style="margin-bottom:16px"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Місто</div>
+          <div id="lm-city"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Ціна</div>
+          <div id="lm-price" style="font-size:22px;font-weight:800;color:var(--brand);margin-bottom:16px"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Дата</div>
+          <div id="lm-date" style="margin-bottom:16px"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Статус</div>
+          <div id="lm-status"></div>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Змінити статус</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="setListingStatus('active')"><i class="fa-solid fa-check" style="color:var(--brand)"></i> Активне</button>
+          <button class="btn btn-outline" onclick="setListingStatus('moderate')"><i class="fa-solid fa-clock" style="color:var(--orange)"></i> Модерація</button>
+          <button class="btn btn-danger" onclick="setListingStatus('blocked')"><i class="fa-solid fa-ban"></i> Заблокувати</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="lm-delete-btn"><i class="fa-solid fa-trash"></i> Видалити</button>
+      <button class="btn btn-outline" onclick="closeModal('listing-modal')">Закрити</button>
+    </div>
+  </div>
+</div>
+
+
+
 <script>
+
 // ═══════════════════════════════════════════════
 // DEMO DATA
 // ═══════════════════════════════════════════════
@@ -2086,53 +2147,8 @@ function setListingStatus(status) {
 var style = document.createElement('style');
 style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
 document.head.appendChild(style);
-</script>
 
-<!-- MODAL: View listing -->
-<div class="modal-overlay" id="listing-modal" onclick="if(event.target===this)closeModal('listing-modal')">
-  <div class="modal" style="max-width:640px">
-    <div class="modal-header">
-      <div class="modal-title" id="listing-modal-title">Оголошення</div>
-      <button class="modal-close" onclick="closeModal('listing-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Назва</div>
-          <div id="lm-title" style="font-size:16px;font-weight:700;margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Категорія</div>
-          <div id="lm-cat" style="margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Продавець</div>
-          <div id="lm-seller" style="margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Місто</div>
-          <div id="lm-city"></div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Ціна</div>
-          <div id="lm-price" style="font-size:22px;font-weight:800;color:var(--brand);margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Дата</div>
-          <div id="lm-date" style="margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Статус</div>
-          <div id="lm-status"></div>
-        </div>
-      </div>
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Змінити статус</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline" onclick="setListingStatus('active')"><i class="fa-solid fa-check" style="color:var(--brand)"></i> Активне</button>
-          <button class="btn btn-outline" onclick="setListingStatus('moderate')"><i class="fa-solid fa-clock" style="color:var(--orange)"></i> Модерація</button>
-          <button class="btn btn-danger" onclick="setListingStatus('blocked')"><i class="fa-solid fa-ban"></i> Заблокувати</button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-danger" id="lm-delete-btn"><i class="fa-solid fa-trash"></i> Видалити</button>
-      <button class="btn btn-outline" onclick="closeModal('listing-modal')">Закрити</button>
-    </div>
-  </div>
-</div>
 
-<script>
 // ═══ NEWS ════════════════════════════════════════
 function loadNews() {
   if (!_db) return;
@@ -2179,11 +2195,59 @@ function openNewsModal(id) {
   document.getElementById('news-title').value = '';
   document.getElementById('news-excerpt').value = '';
   document.getElementById('news-body').value = '';
-  document.getElementById('news-img').value = '';
   document.getElementById('news-cat').value = 'Новини';
   document.getElementById('news-published').checked = true;
   document.getElementById('news-modal-title').textContent = 'Написати новину';
+  clearNewsImg();
   openModal('news-modal');
+}
+
+function uploadNewsImg(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var btnLabel = document.getElementById('news-img-btn-label');
+  if (btnLabel) btnLabel.textContent = 'Завантаження...';
+  // Показати превью одразу
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var prev = document.getElementById('news-img-preview');
+    var prevEl = document.getElementById('news-img-preview-el');
+    if (prev && prevEl) { prevEl.src = e.target.result; prev.style.display = ''; }
+  };
+  reader.readAsDataURL(file);
+  // Завантажити в Cloudinary
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', 'ridego_unsigned');
+  fd.append('folder', 'news');
+  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.secure_url) {
+        document.getElementById('news-img').value = data.secure_url;
+        var btn = document.getElementById('news-img-clear');
+        if (btn) btn.style.display = '';
+        if (btnLabel) btnLabel.textContent = 'Змінити фото';
+        showToast('Фото завантажено!', 'success');
+      } else {
+        showToast('Помилка завантаження фото', 'error');
+        if (btnLabel) btnLabel.textContent = 'Завантажити фото';
+      }
+    }).catch(function() {
+      showToast('Помилка завантаження фото', 'error');
+      if (btnLabel) btnLabel.textContent = 'Завантажити фото';
+    });
+}
+
+function clearNewsImg() {
+  document.getElementById('news-img').value = '';
+  document.getElementById('news-img-file').value = '';
+  var prev = document.getElementById('news-img-preview');
+  if (prev) prev.style.display = 'none';
+  var btn = document.getElementById('news-img-clear');
+  if (btn) btn.style.display = 'none';
+  var btnLabel = document.getElementById('news-img-btn-label');
+  if (btnLabel) btnLabel.textContent = 'Завантажити фото';
 }
 
 function editNews(id) {
@@ -2195,6 +2259,15 @@ function editNews(id) {
     document.getElementById('news-excerpt').value = n.excerpt || '';
     document.getElementById('news-body').value = n.body || '';
     document.getElementById('news-img').value = n.img || '';
+    if (n.img) {
+      var prev = document.getElementById('news-img-preview');
+      var prevEl = document.getElementById('news-img-preview-el');
+      if (prev && prevEl) { prevEl.src = n.img; prev.style.display = ''; }
+      var btn = document.getElementById('news-img-clear');
+      if (btn) btn.style.display = '';
+      var btnLabel = document.getElementById('news-img-btn-label');
+      if (btnLabel) btnLabel.textContent = 'Змінити фото';
+    } else { clearNewsImg(); }
     document.getElementById('news-cat').value = n.cat || 'Новини';
     document.getElementById('news-published').checked = !!n.published;
     document.getElementById('news-modal-title').textContent = 'Редагувати новину';
@@ -2242,7 +2315,7 @@ function deleteNews(id) {
     .then(function(){ showToast('Новину видалено','success'); loadNews(); })
     .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
-</script>
 
+</script>
 </body>
 </html>
