@@ -331,7 +331,8 @@
   .stat-label { font-size:13px; color: rgba(255,255,255,0.6); margin-top:4px; font-weight:500; }
 
   /* ===== SECTIONS ===== */
-  .section { max-width:1280px; margin:0 auto; padding:60px 24px; }
+  .section { max-width:1280px; margin:0 auto; padding:48px 24px; }
+  .section + .section { padding-top:0; }
   .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; }
   .section-title { font-size: clamp(22px,3vw,32px); font-weight:800; }
   .section-link { color:var(--brand); text-decoration:none; font-size:14px; font-weight:500; cursor:pointer; }
@@ -2553,6 +2554,15 @@
     </div>
   </div>
 
+
+  <!-- ═══ БАНЕР СЛАЙДЕР (платне місце) ═══ -->
+  <div id="home-banner-slider" style="display:none">
+    <div style="max-width:1280px;margin:0 auto;padding:0 24px 32px">
+      <div id="home-banner-track" style="position:relative;border-radius:20px;overflow:hidden;height:140px;background:var(--dark3)"></div>
+    </div>
+  </div>
+
+  <!-- ═══ КАТЕГОРІЇ ═══ -->
   <div class="section">
     <div class="section-header">
       <h2 class="section-title">Категорії</h2>
@@ -2561,56 +2571,73 @@
       <div class="cat-card" onclick="filterCatalog('Електросамокати')">
         <div class="cat-icon"><i class="fa-solid fa-bolt"></i></div>
         <h3>Електросамокати</h3>
-        <p>1 200+ пропозицій</p>
+        <p id="cnt-scooters">...</p>
       </div>
       <div class="cat-card" onclick="filterCatalog('Велосипеди')">
         <div class="cat-icon"><i class="fa-solid fa-bicycle"></i></div>
         <h3>Велосипеди</h3>
-        <p>640+ пропозицій</p>
+        <p id="cnt-bikes">...</p>
       </div>
       <div class="cat-card" onclick="filterCatalog('Електровелосипеди')">
         <div class="cat-icon"><i class="fa-solid fa-charging-station"></i></div>
         <h3>Електровелосипеди</h3>
-        <p>480+ пропозицій</p>
+        <p id="cnt-ebikes">...</p>
       </div>
       <div class="cat-card" onclick="filterCatalog('Електроскутери')">
         <div class="cat-icon"><i class="fa-solid fa-motorcycle"></i></div>
         <h3>Електроскутери</h3>
-        <p>430+ пропозицій</p>
+        <p id="cnt-escooters">...</p>
       </div>
       <div class="cat-card" onclick="filterCatalog('Електромотоцикли')">
         <div class="cat-icon"><i class="fa-solid fa-road"></i></div>
         <h3>Електромотоцикли</h3>
-        <p>95+ пропозицій</p>
+        <p id="cnt-emoto">...</p>
       </div>
     </div>
   </div>
 
-  <div class="section" style="padding-top:0">
-    <div class="promo-banner">
-      <div class="promo-text">
-        <h3>🎯 Твій самокат чекає</h3>
-        <p>Більше 200 нових оголошень щодня. Знайди ідеальний варіант!</p>
-      </div>
-      <button class="btn-primary" onclick="showPage('catalog')">Дивитись зараз</button>
-    </div>
-  </div>
-
-  <!-- Сервіси на головній -->
-  <div class="section" style="padding-top:0" id="home-services-section">
+  <!-- ═══ ТОП ОГОЛОШЕННЯ ═══ -->
+  <div class="section">
     <div class="section-header">
-      <h2 class="section-title">🔧 Сервісні центри</h2>
+      <div style="display:flex;align-items:center;gap:10px">
+        <h2 class="section-title">ТОП оголошення</h2>
+        <span style="font-size:11px;background:var(--brand);color:#fff;padding:3px 10px;border-radius:50px;font-weight:700">ПЛАТНЕ</span>
+      </div>
+      <a class="section-link" onclick="showPage('catalog')">Всі →</a>
+    </div>
+    <div class="listing-grid" id="home-top-listings"></div>
+    <div id="home-top-empty" style="display:none;text-align:center;padding:24px;color:var(--text-muted);font-size:14px">
+      Хочете бути тут? <button class="btn-outline" style="padding:6px 16px;font-size:13px;margin-left:8px" onclick="showPage('add')">Розмістити ТОП оголошення</button>
+    </div>
+  </div>
+
+  <!-- ═══ СЕРВІСНІ ЦЕНТРИ ═══ -->
+  <div class="section" id="home-services-section">
+    <div class="section-header">
+      <h2 class="section-title">Сервісні центри</h2>
       <a class="section-link" onclick="showPage('services')">Всі сервіси →</a>
     </div>
     <div class="home-svc-grid" id="home-services-grid"></div>
   </div>
 
-  <div class="section" style="padding-top:0">
+  <!-- ═══ НОВІ ОГОЛОШЕННЯ ═══ -->
+  <div class="section">
     <div class="section-header">
-      <h2 class="section-title">ТОП Оголошення 🔥</h2>
+      <h2 class="section-title">Нові оголошення</h2>
       <a class="section-link" onclick="showPage('catalog')">Всі оголошення →</a>
     </div>
     <div class="listing-grid" id="home-listings"></div>
+  </div>
+
+  <!-- ═══ ПРOMO БАНЕР ═══ -->
+  <div class="section">
+    <div class="promo-banner">
+      <div class="promo-text">
+        <h3>Розмістіть оголошення</h3>
+        <p>Безкоштовно або з просуванням — ваш транспорт знайде покупця швидше!</p>
+      </div>
+      <button class="btn-primary" onclick="showPage('add')">Подати оголошення</button>
+    </div>
   </div>
 
 </div>
@@ -2761,7 +2788,25 @@
           </div>
         </div>
       </div>
-      <div class="listing-grid" id="catalog-listings"></div>
+      <!-- TOP оголошення -->
+      <div id="catalog-top-section" style="display:none;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--brand);display:flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-arrow-up"></i> ТОП оголошення
+          </span>
+          <div style="flex:1;height:1px;background:linear-gradient(90deg,var(--brand),transparent)"></div>
+        </div>
+        <div class="listing-grid" id="catalog-top-listings"></div>
+      </div>
+      <!-- Всі оголошення -->
+      <div id="catalog-all-section">
+        <div id="catalog-all-label" style="display:none;margin-bottom:12px">
+          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">
+            Всі оголошення
+          </span>
+        </div>
+        <div class="listing-grid" id="catalog-listings"></div>
+      </div>
     </div>
 
   </div><!-- /cat-picker-body -->
@@ -3963,6 +4008,7 @@ function _renderRoute(route) {
   if (page === 'home')     renderHomeListings();
   if (page === 'messages') renderChats();
   if (page === 'profile')  renderProfile();
+  if (page === 'catalog')  { setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150); }
   if (page === 'services')       renderServices();
   if (page === 'service-detail' && id) showServiceDetail(id);
   if (page === 'add')      setTimeout(initOblastSelect, 50);
@@ -4221,15 +4267,89 @@ function loadUserChats() {
 }
 
 function renderHomeListings() {
-  const el = document.getElementById('home-listings');
-  if (!el) return;
-  const top = _fbListings.slice(0,4);
-  if (top.length === 0) {
-    el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:32px">Оголошень поки немає</p>';
-  } else {
-    el.innerHTML = top.map(l => createCard(l,'home')).join('');
+  var all = _fbListings.concat(myListings).filter(function(l){ return l && l.status !== 'deleted'; });
+
+  // Оновити лічильники категорій
+  var cats = {
+    'Електросамокати': 'cnt-scooters',
+    'Велосипеди': 'cnt-bikes',
+    'Електровелосипеди': 'cnt-ebikes',
+    'Електроскутери': 'cnt-escooters',
+    'Електромотоцикли': 'cnt-emoto'
+  };
+  Object.keys(cats).forEach(function(cat) {
+    var el = document.getElementById(cats[cat]);
+    var cnt = all.filter(function(l){ return l.cat === cat; }).length;
+    if (el) el.textContent = cnt > 0 ? cnt + ' пропозицій' : 'Скоро буде';
+  });
+
+  // ТОП оголошення
+  var topEl = document.getElementById('home-top-listings');
+  var topEmpty = document.getElementById('home-top-empty');
+  var topList = all.filter(function(l){ return l.promo === 'top'; }).slice(0, 4);
+  if (topEl) {
+    if (topList.length) {
+      topEl.innerHTML = topList.map(function(l){ return createCard(l,'home'); }).join('');
+      if (topEmpty) topEmpty.style.display = 'none';
+    } else {
+      topEl.innerHTML = '';
+      if (topEmpty) topEmpty.style.display = '';
+    }
   }
+
+  // Гарячі пропозиції (urgent/highlight)
+  var urgentEl = document.getElementById('home-urgent-listings');
+  var urgentEmpty = document.getElementById('home-urgent-empty');
+  var urgentList = all.filter(function(l){ return l.promo === 'urgent' || l.promo === 'highlight'; }).slice(0, 4);
+  if (urgentEl) {
+    if (urgentList.length) {
+      urgentEl.innerHTML = urgentList.map(function(l){ return createCard(l,'home'); }).join('');
+      if (urgentEmpty) urgentEmpty.style.display = 'none';
+    } else {
+      urgentEl.innerHTML = '';
+      if (urgentEmpty) urgentEmpty.style.display = '';
+    }
+  }
+
+  // Нові оголошення (без промо, найновіші)
+  var newEl = document.getElementById('home-listings');
+  var regular = all.filter(function(l){ return !l.promo; });
+  regular.sort(function(a, b) {
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  });
+  if (newEl) {
+    if (regular.length) {
+      newEl.innerHTML = regular.slice(0, 6).map(function(l){ return createCard(l,'home'); }).join('');
+    } else {
+      newEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:32px">Оголошень поки немає</p>';
+    }
+  }
+
+  // Магазини
+  _renderHomeShops();
   renderHomeServices();
+}
+
+function _renderHomeShops() {
+  var shopsSection = document.getElementById('home-shops-section');
+  var shopsScroll = document.getElementById('home-shops-scroll');
+  if (!shopsScroll) return;
+  var shops = _fbServices.concat(myServices).filter(function(s){ return s && s.badge; });
+  if (!shops.length) {
+    if (shopsSection) shopsSection.style.display = 'none';
+    return;
+  }
+  if (shopsSection) shopsSection.style.display = '';
+  shopsScroll.innerHTML = shops.slice(0, 8).map(function(s) {
+    return '<div onclick="showServiceDetail(\'' + s.id + '\')" style="flex-shrink:0;width:160px;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:box-shadow .2s;text-align:center" onmouseover="this.style.boxShadow=\'0 4px 20px rgba(0,0,0,.15)\'" onmouseout="this.style.boxShadow=\'\'">'
+      + '<div style="font-size:32px;margin-bottom:8px">' + (s.icon || '🔧') + '</div>'
+      + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s.name + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted)">' + (s.city || '') + '</div>'
+      + (s.badge ? '<div style="margin-top:6px;font-size:10px;background:var(--brand-dim);color:var(--brand);padding:2px 8px;border-radius:50px;font-weight:700">' + (s.badgeLabel || s.badge) + '</div>' : '')
+      + '</div>';
+  }).join('');
 }
 
 function renderHomeServices() {
@@ -4751,7 +4871,7 @@ function clearFilters() {
 }
 
 function getFilteredData() {
-  let data = [...LISTINGS, ...myListings].filter(l => l && l.cat && l.price != null);
+  let data = [..._fbListings, ...myListings].filter(l => l && l.cat && l.price != null && l.status !== 'deleted');
   if (selectedCat) data = data.filter(l => l.cat === selectedCat);
   const oblast = document.getElementById('fp-oblast')?.value;
   const city   = document.getElementById('fp-city')?.value;
@@ -4778,7 +4898,7 @@ function runSearch() {
   if (currentSort==='cheap') data.sort((a,b)=>a.price-b.price);
   if (currentSort==='expensive') data.sort((a,b)=>b.price-a.price);
   const wrap = document.getElementById('catalog-results-wrap');
-  wrap.style.display = '';
+  if (wrap) wrap.style.display = '';
   document.getElementById('results-num').textContent = data.length;
   document.getElementById('results-cat-label').textContent = selectedCat ? 'Категорія: '+selectedCat : 'Всі категорії';
   // Сортування: спочатку по ціні якщо потрібно, потім TOP завжди вгорі
@@ -4832,15 +4952,48 @@ function filterCatalog(cat) {
 }
 
 function setCatFilter() {}
-function renderCatalog() {
-  var el = document.getElementById('catalog-list') || document.getElementById('listings-grid');
-  if (!el) return;
-  var all = _fbListings.concat(myListings);
+function renderCatalog(catFilter) {
+  var topEl  = document.getElementById('catalog-top-listings');
+  var allEl  = document.getElementById('catalog-listings');
+  var topSec = document.getElementById('catalog-top-section');
+  var allLbl = document.getElementById('catalog-all-label');
+  if (!allEl) return;
+
+  var all = _fbListings.concat(myListings).filter(function(l){ return l && l.status !== 'deleted'; });
+
+  // Фільтр по категорії
+  if (catFilter) all = all.filter(function(l){ return l.cat === catFilter; });
+
   if (all.length === 0) {
-    el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:48px 24px">Оголошень поки немає.<br>Будьте першим!</p>';
+    if (topSec) topSec.style.display = 'none';
+    allEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:48px 24px">Оголошень поки немає.<br>Будьте першим!</p>';
     return;
   }
-  el.innerHTML = all.map(l => createCard(l,'catalog')).join('');
+
+  // Розділити TOP і звичайні
+  var topListings = all.filter(function(l){ return l.promo === 'top'; });
+  var regular = all.filter(function(l){ return l.promo !== 'top'; });
+
+  // Сортувати regular — новіші першими
+  regular.sort(function(a, b){
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  });
+
+  // Показати TOP секцію
+  if (topEl && topSec) {
+    if (topListings.length > 0) {
+      topSec.style.display = '';
+      topEl.innerHTML = topListings.map(function(l){ return createCard(l,'catalog'); }).join('');
+    } else {
+      topSec.style.display = 'none';
+    }
+  }
+
+  // Показати всі
+  if (allLbl) allLbl.style.display = topListings.length > 0 ? '' : 'none';
+  allEl.innerHTML = regular.map(function(l){ return createCard(l,'catalog'); }).join('');
 }
 
 function createShopBanner(s) {
@@ -9111,7 +9264,7 @@ function doSearch(query) {
   // Перейти в каталог і показати результати
   showPage('catalog');
   setTimeout(function() {
-    var el = document.getElementById('catalog-list') || document.getElementById('listings-grid');
+    var el = document.getElementById('catalog-listings') || document.getElementById('catalog-list') || document.getElementById('listings-grid');
     var hero = document.querySelector('.catalog-hero h1');
     if (hero) hero.textContent = results.length
       ? 'Результати: "' + query + '" (' + results.length + ')'
