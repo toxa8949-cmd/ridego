@@ -33,7 +33,7 @@
   --header-h: 60px;
 }
 
-html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--dark); color: var(--text); overflow-x: hidden; }
+html, body { height: 100%; margin: 0; font-family: 'DM Sans', sans-serif; background: var(--dark); color: var(--text); overflow: hidden; }
 
 /* ── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 5px; }
@@ -76,10 +76,11 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 
 /* ── LAYOUT ─────────────────────── */
 #app { display: none; height: 100vh; overflow: hidden; }
+#app.shown { display: flex; }
 
 /* ── SIDEBAR ────────────────────── */
 .sidebar {
-  position: fixed; left: 0; top: 0; bottom: 0;
+  position: fixed; left: 0; top: 0; bottom: 0; height: 100vh;
   width: var(--sidebar-w); background: var(--dark2);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
@@ -160,8 +161,10 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .main {
   margin-left: var(--sidebar-w);
   height: 100vh;
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  flex: 1;
 }
 
 /* ── TOPBAR ──────────────────────── */
@@ -208,7 +211,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .topbar-icon-btn:hover { border-color: var(--brand); color: var(--brand); }
 
 /* ── CONTENT ─────────────────────── */
-.content { flex: 1; padding: 28px; overflow-y: auto; height: 0; }
+.content { flex: 1; padding: 28px; overflow-y: auto; min-height: 0; }
 
 /* ── STAT CARDS ──────────────────── */
 .stats-grid {
@@ -364,6 +367,7 @@ tr:hover td { background: var(--dark4); }
 
 /* ── FULL PAGES ──────────────────── */
 .page { display: none; }
+.page.active { display: block; }
 .page.active { display: block; }
 
 /* ── PAGE: USERS ─────────────────── */
@@ -621,6 +625,12 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
       </button>
       <button class="nav-item" onclick="showAdminPage('blocked',this)">
         <i class="fa-solid fa-ban"></i> Заблоковані
+      </button>
+
+      <div class="nav-section-title">Контент</div>
+      <button class="nav-item" onclick="showAdminPage('news',this)">
+        <i class="fa-solid fa-newspaper"></i> Новини
+        <span class="nav-badge green" id="nb-news">0</span>
       </button>
 
       <div class="nav-section-title">Система</div>
@@ -1035,9 +1045,77 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
         </div>
       </div>
 
+
+      <!-- ═══ PAGE: NEWS ═══ -->
+      <div id="page-news" class="page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Новини</h1>
+            <p>Управління новинами платформи</p>
+          </div>
+          <button class="btn btn-primary" onclick="openNewsModal()">
+            <i class="fa-solid fa-plus"></i> Написати новину
+          </button>
+        </div>
+
+        <!-- Список новин -->
+        <div id="news-list" style="display:grid;gap:16px"></div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
+
+
+<!-- MODAL: News Editor -->
+<div class="modal-overlay" id="news-modal" onclick="if(event.target===this)closeModal('news-modal')">
+  <div class="modal" style="max-width:700px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title" id="news-modal-title">Написати новину</div>
+      <button class="modal-close" onclick="closeModal('news-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="news-edit-id">
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Заголовок *</label>
+        <input class="form-input" id="news-title" placeholder="Наприклад: Топ-5 електросамокатів 2026 року">
+      </div>
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="form-group">
+          <label class="form-label">Категорія</label>
+          <select class="form-input" id="news-cat">
+            <option value="Новини">Новини</option>
+            <option value="Огляди">Огляди</option>
+            <option value="Поради">Поради</option>
+            <option value="Акції">Акції</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL фото (необов'язково)</label>
+          <input class="form-input" id="news-img" placeholder="https://...">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Короткий опис *</label>
+        <input class="form-input" id="news-excerpt" placeholder="1-2 речення для превью...">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Текст новини *</label>
+        <textarea class="form-input" id="news-body" rows="8" style="resize:vertical;line-height:1.6" placeholder="Повний текст новини..."></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+          <input type="checkbox" id="news-published" checked style="accent-color:var(--brand)">
+          Опублікувати одразу
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--border)">
+      <button class="btn btn-outline" onclick="closeModal('news-modal')">Скасувати</button>
+      <button class="btn btn-primary" onclick="saveNews()"><i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Зберегти</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL: Edit user -->
 <div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeModal('user-modal')">
@@ -1208,6 +1286,7 @@ function loadFirebaseData() {
     renderServicesTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
   }).catch(function(e){ console.error('services:', e); });
 
+  loadNews();
   _db.collection('reports').get().then(function(snap) {
     renderReportsTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
   }).catch(function(e){ console.warn('reports: no access -', e.message); renderReportsTable([]); });
@@ -1458,7 +1537,7 @@ function doLogin() {
   var p = document.getElementById('login-pass').value;
   if (u === ADMIN_CREDS.login && p === ADMIN_CREDS.pass) {
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').classList.add('shown');
     initApp();
   } else {
     document.getElementById('login-error').style.display = 'block';
@@ -2052,5 +2131,116 @@ document.head.appendChild(style);
     </div>
   </div>
 </div>
+
+// ═══ NEWS ════════════════════════════════════════
+function loadNews() {
+  if (!_db) return;
+  _db.collection('news').orderBy('createdAt','desc').get().then(function(snap) {
+    var news = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    var nb = document.getElementById('nb-news');
+    if (nb) nb.textContent = news.length;
+    renderNewsList(news);
+  }).catch(function(e){ console.error('news:', e); });
+}
+
+function renderNewsList(news) {
+  var el = document.getElementById('news-list');
+  if (!el) return;
+  if (!news.length) {
+    el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--text-muted)"><i class="fa-solid fa-newspaper" style="font-size:32px;margin-bottom:12px;display:block"></i>Новин ще немає. Напишіть першу!</div>';
+    return;
+  }
+  el.innerHTML = news.map(function(n) {
+    var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+    var statusColor = n.published ? 'var(--brand)' : 'var(--text-muted)';
+    var statusLabel = n.published ? 'Опубліковано' : 'Чернетка';
+    return '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;gap:16px;align-items:flex-start">'
+      + (n.img ? '<img src="'+n.img+'" style="width:120px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '<div style="width:120px;height:80px;background:var(--dark4);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fa-solid fa-newspaper"></i></div>')
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      + '<span style="font-size:11px;background:var(--brand-dim);color:var(--brand);padding:2px 8px;border-radius:50px;font-weight:600">'+(n.cat||'Новини')+'</span>'
+      + '<span style="font-size:11px;color:'+statusColor+'">● '+statusLabel+'</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);margin-left:auto">'+date+'</span>'
+      + '</div>'
+      + '<div style="font-weight:700;font-size:15px;margin-bottom:4px">'+(n.title||'—')+'</div>'
+      + '<div style="font-size:13px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(n.excerpt||'')+'</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:6px;flex-shrink:0">'
+      + '<button class="action-btn" title="Редагувати" onclick="editNews(''+n.id+'')"><i class="fa-solid fa-pen"></i></button>'
+      + '<button class="action-btn danger" title="Видалити" onclick="deleteNews(''+n.id+'')"><i class="fa-solid fa-trash"></i></button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function openNewsModal(id) {
+  document.getElementById('news-edit-id').value = '';
+  document.getElementById('news-title').value = '';
+  document.getElementById('news-excerpt').value = '';
+  document.getElementById('news-body').value = '';
+  document.getElementById('news-img').value = '';
+  document.getElementById('news-cat').value = 'Новини';
+  document.getElementById('news-published').checked = true;
+  document.getElementById('news-modal-title').textContent = 'Написати новину';
+  openModal('news-modal');
+}
+
+function editNews(id) {
+  _db.collection('news').doc(id).get().then(function(snap) {
+    if (!snap.exists) return;
+    var n = snap.data();
+    document.getElementById('news-edit-id').value = id;
+    document.getElementById('news-title').value = n.title || '';
+    document.getElementById('news-excerpt').value = n.excerpt || '';
+    document.getElementById('news-body').value = n.body || '';
+    document.getElementById('news-img').value = n.img || '';
+    document.getElementById('news-cat').value = n.cat || 'Новини';
+    document.getElementById('news-published').checked = !!n.published;
+    document.getElementById('news-modal-title').textContent = 'Редагувати новину';
+    openModal('news-modal');
+  });
+}
+
+function saveNews() {
+  var title = document.getElementById('news-title').value.trim();
+  var excerpt = document.getElementById('news-excerpt').value.trim();
+  var body = document.getElementById('news-body').value.trim();
+  if (!title) { showToast('Введіть заголовок','error'); return; }
+  if (!excerpt) { showToast('Введіть короткий опис','error'); return; }
+  if (!body) { showToast('Введіть текст новини','error'); return; }
+
+  var data = {
+    title: title,
+    excerpt: excerpt,
+    body: body,
+    img: document.getElementById('news-img').value.trim(),
+    cat: document.getElementById('news-cat').value,
+    published: document.getElementById('news-published').checked,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  var editId = document.getElementById('news-edit-id').value;
+  var promise;
+  if (editId) {
+    promise = _db.collection('news').doc(editId).update(data);
+  } else {
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    promise = _db.collection('news').add(data);
+  }
+
+  promise.then(function() {
+    closeModal('news-modal');
+    showToast('Новину збережено!', 'success');
+    loadNews();
+  }).catch(function(e) { showToast('Помилка: '+e.message,'error'); });
+}
+
+function deleteNews(id) {
+  if (!confirm('Видалити цю новину?')) return;
+  _db.collection('news').doc(id).delete()
+    .then(function(){ showToast('Новину видалено','success'); loadNews(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+}
+
 </body>
 </html>

@@ -2381,7 +2381,30 @@
     font-size: 12px; color: var(--text-muted);
     display: flex; align-items: center; gap: 4px;
   }
-</style>
+
+  /* ===== NEWS ===== */
+  .news-cat-btn {
+    padding: 7px 16px; border-radius: 50px; font-size: 13px; font-weight: 600;
+    border: 1.5px solid var(--border); background: transparent; color: var(--text-muted);
+    cursor: pointer; transition: all .2s;
+  }
+  .news-cat-btn:hover, .news-cat-btn.active {
+    border-color: var(--brand); color: var(--brand); background: var(--brand-dim);
+  }
+  .news-card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; cursor: pointer; transition: box-shadow .2s, transform .2s;
+  }
+  .news-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.15); transform: translateY(-2px); }
+  .news-card-img { width: 100%; height: 200px; object-fit: cover; background: var(--dark3); display: block; }
+  .news-card-img-ph { width: 100%; height: 200px; background: linear-gradient(135deg,var(--dark3),var(--dark4)); display: flex; align-items: center; justify-content: center; font-size: 48px; }
+  .news-card-body { padding: 20px; }
+  .news-card-cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--brand); margin-bottom: 8px; }
+  .news-card-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; line-height: 1.4; }
+  .news-card-excerpt { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; }
+  .news-card-date { font-size: 12px; color: var(--text-muted); }
+
+  </style>
 
   <!-- Firebase Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -2515,6 +2538,7 @@
     </div>
     <nav>
       <a onclick="showPage('catalog')">Каталог</a>
+      <a onclick="showPage('news')">Новини</a>
       <a onclick="showPage('services')">Сервіси</a>
       <a onclick="showPage('profile')">Профіль</a>
     </nav>
@@ -2643,6 +2667,15 @@
       <a class="section-link" onclick="showPage('catalog')">Всі оголошення →</a>
     </div>
     <div class="listing-grid" id="home-listings"></div>
+  </div>
+
+  <!-- ═══ НОВИНИ ═══ -->
+  <div class="section" style="padding-top:0">
+    <div class="section-header">
+      <h2 class="section-title">Новини та огляди</h2>
+      <a class="section-link" onclick="showPage('news')">Всі статті →</a>
+    </div>
+    <div id="home-news-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px"></div>
   </div>
 
   <!-- ═══ ПРOMO БАНЕР ═══ -->
@@ -9306,6 +9339,121 @@ function doSearch(query) {
           '<p>Спробуйте інший запит або перегляньте всі оголошення</p></div>';
     }
   }, 100);
+}
+</script>
+
+
+<!-- ============================================================ -->
+<!-- PAGE: NEWS                                                    -->
+<!-- ============================================================ -->
+<div id="page-news" class="page">
+  <div style="max-width:1280px;margin:0 auto;padding:48px 24px 80px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px">
+      <div>
+        <h1 style="font-size:clamp(28px,4vw,40px);font-weight:800;margin-bottom:8px">Новини та огляди</h1>
+        <p style="color:var(--text-muted)">Корисні матеріали про електротранспорт</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="news-cat-filters">
+        <button class="news-cat-btn active" onclick="filterNewsCat('',this)">Всі</button>
+        <button class="news-cat-btn" onclick="filterNewsCat('Новини',this)">Новини</button>
+        <button class="news-cat-btn" onclick="filterNewsCat('Огляди',this)">Огляди</button>
+        <button class="news-cat-btn" onclick="filterNewsCat('Поради',this)">Поради</button>
+        <button class="news-cat-btn" onclick="filterNewsCat('Акції',this)">Акції</button>
+      </div>
+    </div>
+    <div id="news-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: NEWS DETAIL                                             -->
+<!-- ============================================================ -->
+<div id="page-news-detail" class="page">
+  <div style="max-width:800px;margin:0 auto;padding:48px 24px 80px">
+    <div class="breadcrumb" style="margin-bottom:24px">
+      <span onclick="showPage('home')">Головна</span>
+      <i class="fa-solid fa-chevron-right"></i>
+      <span onclick="showPage('news')">Новини</span>
+      <i class="fa-solid fa-chevron-right"></i>
+      <span id="news-detail-breadcrumb" style="color:var(--text)">Стаття</span>
+    </div>
+    <div id="news-detail-content"></div>
+  </div>
+</div>
+
+
+<script>
+// ── NEWS ─────────────────────────────────────────
+var _allNews = [];
+
+function loadSiteNews() {
+  if (!window._db) return;
+  window._db.collection('news').where('published','==',true).orderBy('createdAt','desc').get()
+    .then(function(snap) {
+      _allNews = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderHomeNews();
+      if (document.getElementById('news-grid')) renderNewsGrid(_allNews);
+    }).catch(function(e){ console.error('news:', e); });
+}
+
+function renderHomeNews() {
+  var el = document.getElementById('home-news-grid');
+  if (!el) return;
+  var top3 = _allNews.slice(0, 3);
+  if (!top3.length) {
+    el.closest('.section') && (el.closest('.section').style.display = 'none');
+    return;
+  }
+  el.innerHTML = top3.map(function(n){ return createNewsCard(n); }).join('');
+}
+
+function renderNewsGrid(news) {
+  var el = document.getElementById('news-grid');
+  if (!el) return;
+  if (!news.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);grid-column:1/-1"><i class="fa-solid fa-newspaper" style="font-size:40px;margin-bottom:16px;display:block"></i>Новин поки немає</div>';
+    return;
+  }
+  el.innerHTML = news.map(function(n){ return createNewsCard(n); }).join('');
+}
+
+function createNewsCard(n) {
+  var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA',{day:'numeric',month:'long',year:'numeric'}) : '';
+  return '<div class="news-card" onclick="showNewsDetail(''+n.id+'')">'
+    + (n.img ? '<img class="news-card-img" src="'+n.img+'" alt="'+n.title+'" loading="lazy">'
+             : '<div class="news-card-img-ph">📰</div>')
+    + '<div class="news-card-body">'
+    + '<div class="news-card-cat">'+(n.cat||'Новини')+'</div>'
+    + '<div class="news-card-title">'+(n.title||'')+'</div>'
+    + '<div class="news-card-excerpt">'+(n.excerpt||'')+'</div>'
+    + '<div class="news-card-date"><i class="fa-regular fa-calendar" style="margin-right:4px"></i>'+date+'</div>'
+    + '</div></div>';
+}
+
+function showNewsDetail(id) {
+  var n = _allNews.find(function(x){ return x.id === id; });
+  if (!n) return;
+  var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA',{day:'numeric',month:'long',year:'numeric'}) : '';
+  var breadcrumb = document.getElementById('news-detail-breadcrumb');
+  if (breadcrumb) breadcrumb.textContent = n.title;
+  var el = document.getElementById('news-detail-content');
+  if (el) el.innerHTML = ''
+    + (n.img ? '<img src="'+n.img+'" alt="'+n.title+'" style="width:100%;border-radius:16px;margin-bottom:28px;max-height:400px;object-fit:cover">' : '')
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
+    + '<span style="font-size:12px;background:var(--brand-dim);color:var(--brand);padding:3px 10px;border-radius:50px;font-weight:700">'+(n.cat||'Новини')+'</span>'
+    + '<span style="font-size:13px;color:var(--text-muted)">'+date+'</span>'
+    + '</div>'
+    + '<h1 style="font-size:clamp(22px,3vw,32px);font-weight:800;margin-bottom:20px;line-height:1.3">'+(n.title||'')+'</h1>'
+    + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+(n.excerpt||'')+'</div>'
+    + '<div style="font-size:16px;line-height:1.8;white-space:pre-wrap">'+(n.body||'')+'</div>';
+  showPage('news-detail');
+}
+
+function filterNewsCat(cat, btn) {
+  document.querySelectorAll('.news-cat-btn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var filtered = cat ? _allNews.filter(function(n){ return n.cat === cat; }) : _allNews;
+  renderNewsGrid(filtered);
 }
 </script>
 
