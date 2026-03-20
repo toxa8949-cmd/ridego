@@ -2167,8 +2167,8 @@ function renderNewsList(news) {
       + '<div style="font-size:13px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(n.excerpt||'')+'</div>'
       + '</div>'
       + '<div style="display:flex;gap:6px;flex-shrink:0">'
-      + '<button class="action-btn" title="Редагувати" onclick="editNews(\''+n.id+'\')"><i class="fa-solid fa-pen"></i></button>'
-      + '<button class="action-btn danger" title="Видалити" onclick="deleteNews(''+n.id+'')"><i class="fa-solid fa-trash"></i></button>'
+      + '<button class="action-btn" title="Редагувати" onclick="editNews(this.dataset.id)" data-id="'+n.id+'"><i class="fa-solid fa-pen"></i></button>'
+      + '<button class="action-btn danger" title="Видалити" onclick="deleteNews(this.dataset.id)" data-id="'+n.id+'"><i class="fa-solid fa-trash"></i></button>'
       + '</div>'
       + '</div>';
   }).join('');
