@@ -695,7 +695,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           </div>
           <div class="stat-card purple">
             <div class="stat-icon purple"><i class="fa-solid fa-eye"></i></div>
-            <div class="stat-value" id="stat-views">12.4K</div>
+            <div class="stat-value" id="stat-views">—</div>
             <div class="stat-label">Відвідувачів сьогодні</div>
             <span class="stat-delta up" id="delta-views"><i class="fa-solid fa-eye"></i>переглядів: —</span>
           </div>
@@ -1954,8 +1954,7 @@ function refreshData() {
   setTimeout(function(){
     btn.querySelector('i').style.animation = '';
     showToast('Дані оновлено','success');
-    var n = 18 + Math.floor(Math.random()*20);
-    document.getElementById('online-count').textContent = n;
+    // Онлайн оновлюється автоматично через Realtime DB
   }, 800);
 }
 
