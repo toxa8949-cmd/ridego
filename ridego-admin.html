@@ -1121,6 +1121,7 @@ var _db = null;
     apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
     authDomain: "ridego-6f981.firebaseapp.com",
     projectId: "ridego-6f981",
+    databaseURL: "https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app",
     storageBucket: "ridego-6f981.firebasestorage.app",
     messagingSenderId: "769845611953",
     appId: "1:769845611953:web:d21b7cf32f5fae84888190"
@@ -1208,7 +1209,7 @@ function loadFirebaseData() {
 
   _db.collection('reports').get().then(function(snap) {
     renderReportsTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
-  }).catch(function(e){ console.error('reports:', e); });
+  }).catch(function(e){ console.warn('reports: no access -', e.message); renderReportsTable([]); });
 
   // Реальний час — слухати нові оголошення
   _db.collection('listings').orderBy('createdAt','desc').limit(5)
