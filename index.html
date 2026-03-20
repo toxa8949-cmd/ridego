@@ -2417,17 +2417,32 @@
         var _cu = (typeof currentUser !== 'undefined') ? currentUser : window.currentUser;
         _cu.uid     = user.uid;
         _cu.email   = user.email;
-        _cu.name    = user.displayName || user.email.split('@')[0];
+        // Ім'я беремо з Firestore якщо є, Google displayName — тільки для нових юзерів
+        _cu._googleName = user.displayName || user.email.split('@')[0];
+        if (!_cu.name) _cu.name = _cu._googleName;
         _cu.initial = (_cu.name||'U')[0].toUpperCase();
         window.currentUser = _cu;
         // Завантажуємо профіль з Firestore
         window._db.collection('users').doc(user.uid).get().then(function(snap) {
           if (snap.exists) {
             var d = snap.data();
-            _cu.name    = d.name || _cu.name;
+            // Якщо юзер змінив ім'я — використовувати з Firestore
+            _cu.name    = d.name || _cu._googleName || _cu.name;
             _cu.initial = (_cu.name||'U')[0].toUpperCase();
             _cu.type    = d.type || 'personal';
+            _cu.phone    = d.phone || '';
+            _cu.city     = d.city || '';
+            _cu.photoUrl = d.photoUrl || '';
             window.currentUser = _cu;
+            // Показати фото якщо є
+            if (d.photoUrl) {
+              profilePhotoUrl = d.photoUrl;
+              ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+              });
+            }
           } else {
             // Новий юзер через Google — зберегти в Firestore
             window._db.collection('users').doc(user.uid).set({
@@ -2479,7 +2494,7 @@
     <a class="logo" onclick="showPage('home')">Ride<span>GO</span></a>
     <div class="search-wrap">
       <i class="fa-solid fa-search"></i>
-      <input type="text" id="headerSearch" placeholder="Самокат, велосипед, скутер...">
+      <input type="text" id="headerSearch" placeholder="Самокат, велосипед, скутер..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
     </div>
     <nav>
       <a onclick="showPage('catalog')">Каталог</a>
@@ -4919,13 +4934,19 @@ function _renderSellerByUid(uid) {
   if (contactsEl) contactsEl.innerHTML = '';
   var socialsEl = document.getElementById('seller-socials');
   if (socialsEl) socialsEl.innerHTML = '';
-  var svcTab = document.getElementById('seller-tab-service');
-  if (svcTab) svcTab.style.display = 'none';
   var urlEl = document.getElementById('seller-page-url');
   if (urlEl) urlEl.textContent = location.href.split('#')[0] + '#seller/uid:' + uid;
   // Завантажити реальні відгуки з Firestore
   _loadSellerReviews(uid);
   _initReviewForm(uid);
+  // Показати вкладку сервісу якщо є
+  var svcTab = document.getElementById('seller-tab-service');
+  var sellerSvc = _fbServices.concat(myServices).filter(function(s){ return s.uid === uid; })[0];
+  if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
+  if (sellerSvc) {
+    var svcContent = document.getElementById('seller-service-content');
+    if (svcContent) svcContent.innerHTML = _buildSvcDetailBody(sellerSvc);
+  }
 }
 
 function renderSellerPage(id) {
@@ -6775,19 +6796,49 @@ function selectProfileType(type) {
 }
 
 function onProfilePhotoChange(input) {
-  const file = input.files[0];
+  var file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    profilePhotoUrl = e.target.result;
-    // Update both header and settings preview
-    ['profile-pic-el','settings-avatar-preview'].forEach(id => {
-      const el = document.getElementById(id);
+  showToast('📸 Завантаження фото...');
+  compressImage(file, 400, 400, 0.85).then(function(blob) {
+    // Показати прев'ю одразу
+    var localUrl = URL.createObjectURL(blob);
+    ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
+      var el = document.getElementById(id);
       if (!el) return;
-      el.innerHTML = `<img src="${profilePhotoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      el.innerHTML = '<img src="' + localUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     });
-  };
-  reader.readAsDataURL(file);
+    // Завантажити в Cloudinary
+    var fd = new FormData();
+    fd.append('file', blob, 'avatar.jpg');
+    fd.append('upload_preset', 'ridego_unsigned');
+    fd.append('folder', 'avatars');
+    fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
+      method: 'POST', body: fd
+    }).then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.secure_url) {
+        profilePhotoUrl = data.secure_url;
+        // Оновити відображення з постійним URL
+        ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.innerHTML = '<img src="' + profilePhotoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+        });
+        // Зберегти URL в Firestore
+        if (window._db && currentUser && currentUser.uid) {
+          window._db.collection('users').doc(currentUser.uid).update({
+            photoUrl: profilePhotoUrl
+          }).catch(function(e){ console.error('photo save:', e); });
+        }
+        showToast('✅ Фото оновлено!');
+      } else {
+        showToast('⚠️ Помилка завантаження фото');
+      }
+    }).catch(function(e){ 
+      console.error('photo upload:', e);
+      showToast('⚠️ Помилка завантаження фото');
+    });
+  });
 }
 
 function saveProfileSettings() {
@@ -6824,6 +6875,21 @@ function saveProfileSettings() {
 
   // Persist to localStorage
   try { localStorage.setItem('eria-profile', JSON.stringify({ name, email, phone, city, oblast, profileType, profilePhotoUrl })); } catch(e) {}
+
+  // Зберегти в Firestore
+  if (window._db && currentUser && currentUser.uid) {
+    var profileData = {
+      name: name,
+      email: email || '',
+      phone: phone || '',
+      city: city || '',
+      oblast: oblast || '',
+      type: profileType || 'personal',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    window._db.collection('users').doc(currentUser.uid).update(profileData)
+      .catch(function(e){ console.error('profile save:', e); });
+  }
 
   showToast('✅ Профіль збережено!');
   switchPTab('my', document.querySelector('.ptab'));
@@ -9015,6 +9081,50 @@ function _confirmReport(id, btn) {
   showToast('✅ Скаргу надіслано. Дякуємо!');
 }
 </script>
+
+
+// ── SEARCH ──────────────────────────────────────────────────────
+var _searchTimeout = null;
+
+function handleSearch(query, immediate) {
+  clearTimeout(_searchTimeout);
+  var delay = immediate ? 0 : 350;
+  _searchTimeout = setTimeout(function() {
+    doSearch(query.trim());
+  }, delay);
+}
+
+function doSearch(query) {
+  if (!query) return;
+  var q = query.toLowerCase();
+  var results = _fbListings.concat(myListings).filter(function(l) {
+    if (!l) return false;
+    return (l.title && l.title.toLowerCase().includes(q)) ||
+           (l.cat && l.cat.toLowerCase().includes(q)) ||
+           (l.city && l.city.toLowerCase().includes(q)) ||
+           (l.seller && l.seller.toLowerCase().includes(q)) ||
+           (l.desc && l.desc.toLowerCase().includes(q)) ||
+           (l.badge && l.badge.toLowerCase().includes(q));
+  });
+
+  // Перейти в каталог і показати результати
+  showPage('catalog');
+  setTimeout(function() {
+    var el = document.getElementById('catalog-list') || document.getElementById('listings-grid');
+    var hero = document.querySelector('.catalog-hero h1');
+    if (hero) hero.textContent = results.length
+      ? 'Результати: "' + query + '" (' + results.length + ')'
+      : 'Нічого не знайдено';
+    if (el) {
+      el.innerHTML = results.length
+        ? results.map(function(l){ return createCard(l, 'catalog'); }).join('')
+        : '<div style="text-align:center;padding:60px 24px;color:var(--text-muted)">' +
+          '<div style="font-size:48px;margin-bottom:16px">🔍</div>' +
+          '<div style="font-size:18px;font-weight:700;margin-bottom:8px">Нічого не знайдено</div>' +
+          '<p>Спробуйте інший запит або перегляньте всі оголошення</p></div>';
+    }
+  }, 100);
+}
 
 </body>
 </html>
