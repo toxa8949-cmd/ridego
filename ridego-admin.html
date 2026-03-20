@@ -562,6 +562,10 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 }
 .period-btn.active { background: var(--brand-dim); border-color: var(--border-brand); color: var(--brand); }
 </style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -1109,6 +1113,201 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 // ═══════════════════════════════════════════════
 const ADMIN_CREDS = { login: 'admin', pass: 'ridego2024' };
 
+// ═══ FIREBASE INIT ═══════════════════════════════
+var _db = null;
+(function() {
+  var cfg = {
+    apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
+    authDomain: "ridego-6f981.firebaseapp.com",
+    projectId: "ridego-6f981",
+    storageBucket: "ridego-6f981.firebasestorage.app",
+    messagingSenderId: "769845611953",
+    appId: "1:769845611953:web:d21b7cf32f5fae84888190"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(cfg);
+  _db = firebase.firestore();
+})();
+
+// ═══ LOAD REAL DATA FROM FIREBASE ════════════════
+function loadFirebaseData() {
+  if (!_db) return;
+
+  // Лічильники для дашборду
+  _db.collection('users').get().then(function(snap) {
+    var el = document.getElementById('stat-users');
+    if (el) el.textContent = snap.size;
+    renderUsersTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+  }).catch(function(e){ console.error('users:', e); });
+
+  _db.collection('listings').where('status','!=','deleted').get().then(function(snap) {
+    var el = document.getElementById('stat-listings');
+    if (el) el.textContent = snap.size;
+    renderListingsTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+  }).catch(function(e){
+    // fallback без фільтра
+    _db.collection('listings').get().then(function(snap) {
+      var active = snap.docs.filter(function(d){ return d.data().status !== 'deleted'; });
+      var el = document.getElementById('stat-listings');
+      if (el) el.textContent = active.length;
+      renderListingsTable(active.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+    });
+  });
+
+  _db.collection('services').get().then(function(snap) {
+    var el = document.getElementById('stat-services');
+    if (el) el.textContent = snap.size;
+    renderServicesTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+  }).catch(function(e){ console.error('services:', e); });
+
+  _db.collection('reports').get().then(function(snap) {
+    renderReportsTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+  }).catch(function(e){ console.error('reports:', e); });
+
+  // Реальний час — слухати нові оголошення
+  _db.collection('listings').orderBy('createdAt','desc').limit(5)
+    .onSnapshot(function(snap) {
+      var items = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      var actEl = document.getElementById('activity-log');
+      if (!actEl) return;
+      actEl.innerHTML = items.map(function(l) {
+        var ago = l.createdAt ? _timeAgo(l.createdAt.seconds) : '';
+        return '<div class="activity-item">'
+          + '<div class="activity-dot" style="background:#58a6ff"></div>'
+          + '<div class="activity-body"><div class="activity-title">Нове оголошення: ' + (l.title||'—') + '</div>'
+          + '<div class="activity-meta">' + (l.sellerName||l.seller||'') + ' · ' + ago + '</div></div></div>';
+      }).join('');
+    }, function(e){ console.error('snapshot:', e); });
+}
+
+function _timeAgo(seconds) {
+  var diff = Math.floor(Date.now()/1000) - seconds;
+  if (diff < 60) return diff + ' с тому';
+  if (diff < 3600) return Math.floor(diff/60) + ' хв тому';
+  if (diff < 86400) return Math.floor(diff/3600) + ' год тому';
+  return Math.floor(diff/86400) + ' дн тому';
+}
+
+// ═══ OVERRIDE RENDER TABLES ═══════════════════════
+function renderUsersTable(data) {
+  var tbody = document.getElementById('users-tbody');
+  if (!tbody) return;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">Немає користувачів</td></tr>'; return; }
+  tbody.innerHTML = data.slice(0,50).map(function(u) {
+    var name = u.name || u.email || '—';
+    var email = u.email || '—';
+    var city = u.city || '—';
+    var type = u.type === 'business' ? '<span style="color:var(--blue)">Магазин</span>' : 'Фізособа';
+    var status = u.status === 'blocked'
+      ? '<span style="color:var(--red)">Заблокований</span>'
+      : '<span style="color:var(--brand)">Активний</span>';
+    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+    return '<tr>'
+      + '<td>' + name + '</td>'
+      + '<td style="color:var(--text-muted)">' + email + '</td>'
+      + '<td>' + city + '</td>'
+      + '<td>' + type + '</td>'
+      + '<td>' + status + '</td>'
+      + '<td>' + reg + '</td>'
+      + '<td><button class="action-btn" onclick="blockUser(\'' + u.id + '\',\'' + name + '\')">Блок</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderListingsTable(data) {
+  var tbody = document.getElementById('listings-tbody');
+  if (!tbody) return;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">Немає оголошень</td></tr>'; return; }
+  tbody.innerHTML = data.slice(0,50).map(function(l) {
+    var statusColor = l.status === 'deleted' ? 'var(--red)' : l.status === 'moderate' ? 'var(--orange)' : 'var(--brand)';
+    var statusLabel = l.status === 'deleted' ? 'Видалено' : l.status === 'moderate' ? 'Модерація' : 'Активне';
+    var date = l.createdAt ? new Date(l.createdAt.seconds*1000).toLocaleDateString('uk-UA') : (l.time||'—');
+    return '<tr>'
+      + '<td>' + (l.title||'—') + '</td>'
+      + '<td style="color:var(--text-muted)">' + (l.cat||'—') + '</td>'
+      + '<td>' + (l.sellerName||l.seller||'—') + '</td>'
+      + '<td>' + (l.price ? l.price.toLocaleString() + ' грн' : '—') + '</td>'
+      + '<td>' + (l.city||'—') + '</td>'
+      + '<td>' + date + '</td>'
+      + '<td><span style="color:' + statusColor + '">' + statusLabel + '</span></td>'
+      + '<td><button class="action-btn danger" onclick="deleteListing(\'' + l.id + '\')">Видалити</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderServicesTable(data) {
+  var tbody = document.getElementById('services-tbody');
+  if (!tbody) return;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає сервісів</td></tr>'; return; }
+  tbody.innerHTML = data.map(function(s) {
+    return '<tr>'
+      + '<td>' + (s.name||'—') + '</td>'
+      + '<td>' + (s.city||'—') + '</td>'
+      + '<td style="color:var(--text-muted)">' + (Array.isArray(s.cats)?s.cats.join(', '):'—') + '</td>'
+      + '<td>' + (s.rating||'—') + '</td>'
+      + '<td><span style="color:var(--brand)">Активний</span></td>'
+      + '<td><button class="action-btn danger" onclick="deleteService(\'' + s.id + '\')">Видалити</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderReportsTable(data) {
+  var tbody = document.getElementById('reports-tbody');
+  if (!tbody) return;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Скарг немає</td></tr>'; return; }
+  tbody.innerHTML = data.map(function(r) {
+    var date = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+    var statusColor = r.status === 'resolved' ? 'var(--brand)' : 'var(--orange)';
+    var statusLabel = r.status === 'resolved' ? 'Вирішено' : 'Нова';
+    return '<tr>'
+      + '<td>' + (r.listingId||'—') + '</td>'
+      + '<td>Оголошення</td>'
+      + '<td>' + (r.reason||'—') + '</td>'
+      + '<td style="color:var(--text-muted)">' + date + '</td>'
+      + '<td><span style="color:' + statusColor + '">' + statusLabel + '</span></td>'
+      + '<td><button class="action-btn" onclick="resolveReport(\'' + r.id + '\')">Вирішити</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+// ═══ ADMIN ACTIONS ════════════════════════════════
+function blockUser(uid, name) {
+  if (!confirm('Заблокувати користувача ' + name + '?')) return;
+  _db.collection('users').doc(uid).update({ status: 'blocked' })
+    .then(function(){ showAdminToast('Користувача заблоковано'); loadFirebaseData(); })
+    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
+}
+
+function deleteListing(id) {
+  if (!confirm('Видалити оголошення?')) return;
+  _db.collection('listings').doc(id).update({ status: 'deleted' })
+    .then(function(){ showAdminToast('Оголошення видалено'); loadFirebaseData(); })
+    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
+}
+
+function deleteService(id) {
+  if (!confirm('Видалити сервіс?')) return;
+  _db.collection('services').doc(id).delete()
+    .then(function(){ showAdminToast('Сервіс видалено'); loadFirebaseData(); })
+    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
+}
+
+function resolveReport(id) {
+  _db.collection('reports').doc(id).update({ status: 'resolved' })
+    .then(function(){ showAdminToast('Скаргу вирішено'); loadFirebaseData(); })
+    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
+}
+
+function showAdminToast(msg) {
+  var tc = document.getElementById('toast-container');
+  if (!tc) return;
+  var t = document.createElement('div');
+  t.className = 'toast show';
+  t.textContent = msg;
+  tc.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+
+
 const COLORS = ['#00c853','#58a6ff','#ffa726','#bc8cff','#ff4757','#26c6da','#ef5350'];
 
 const USERS = [
@@ -1198,16 +1397,15 @@ function initApp() {
   renderBarChart(7);
   renderNewUsers();
   renderActivityLog();
-  renderUsersTable(USERS);
-  renderListingsTable(LISTINGS_DATA);
-  renderServicesTable(SERVICES_DATA);
-  renderReportsTable(REPORTS_DATA);
-  renderBlockedTable(BLOCKED_DATA);
-  renderLogsTable(LOGS_DATA);
-  // Live online count
+  // Завантажити реальні дані з Firebase
+  loadFirebaseData();
+  // Оновлювати кожні 30 секунд
+  setInterval(loadFirebaseData, 30000);
+  // Live online count (симуляція)
   setInterval(function(){
     var n = 18 + Math.floor(Math.random()*20);
-    document.getElementById('online-count').textContent = n;
+    var el = document.getElementById('online-count');
+    if (el) el.textContent = n;
   }, 5000);
 }
 
