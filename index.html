@@ -3,7 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RideGO — Маркетплейс електротранспорту</title>
+<title>RideGO — Маркетплейс електротранспорту України</title>
+<meta name="description" content="RideGO — найбільший маркетплейс електротранспорту в Україні. Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.">
+<meta name="keywords" content="електросамокат, велосипед, електровелосипед, електроскутер, купити, продати, маркетплейс, Україна">
+<meta name="robots" content="index, follow">
+<meta name="author" content="RideGO">
+<link rel="canonical" href="https://ridego-sigma.vercel.app/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RideGO">
+<meta property="og:title" content="RideGO — Маркетплейс електротранспорту України">
+<meta property="og:description" content="Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.">
+<meta property="og:url" content="https://ridego-sigma.vercel.app/">
+<meta property="og:image" content="https://ridego-sigma.vercel.app/og-image.jpg">
+<meta property="og:locale" content="uk_UA">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RideGO — Маркетплейс електротранспорту">
+<meta name="twitter:description" content="Купуй та продавай електротранспорт в Україні">
+<meta name="twitter:image" content="https://ridego-sigma.vercel.app/og-image.jpg">
+
+<!-- Schema.org: WebSite -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "RideGO",
+  "url": "https://ridego-sigma.vercel.app/",
+  "description": "Маркетплейс електротранспорту України",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://ridego-sigma.vercel.app/#catalog?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
@@ -4095,6 +4131,18 @@ window.addEventListener('popstate', () => {
 
 // ── Override showPage to update URL ──────────────────────────────────
 function showPage(page, sellerId) {
+  var pageSEO = {
+    home:    { title: 'Головна', desc: 'Купуй та продавай електросамокати, велосипеди, скутери в Україні.' },
+    catalog: { title: 'Каталог оголошень', desc: 'Всі оголошення електротранспорту в Україні. Електросамокати, велосипеди, скутери.' },
+    services:{ title: 'Сервісні центри', desc: 'Ремонт та обслуговування електротранспорту по всій Україні.' },
+    news:    { title: 'Новини та огляди', desc: 'Останні новини, огляди та поради про електротранспорт.' },
+    add:     { title: 'Подати оголошення', desc: 'Продайте свій електротранспорт на RideGO.' },
+  };
+  if (pageSEO[page]) {
+    _updateSEO({ title: pageSEO[page].title, desc: pageSEO[page].desc, url: 'https://ridego-sigma.vercel.app/#' + page });
+    _setListingSchema(null);
+    _setNewsSchema(null);
+  }
   if (page === 'seller' && sellerId) {
     _setHash('seller/' + sellerId);
   } else if (page === 'detail') {
@@ -5349,6 +5397,14 @@ function showDetail(id, _skipPush) {
   const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
   if (!l) return;
   currentDetailId = id;
+  // SEO
+  _updateSEO({
+    title: l.title,
+    desc: l.desc ? l.desc.substring(0,160) : (l.title + ' — ' + (l.cat||'') + ' в ' + (l.city||'Україні')),
+    img: l.img || '',
+    url: 'https://ridego-sigma.vercel.app/#detail/' + id
+  });
+  _setListingSchema(l);
   // Рахувати перегляди в Firestore
   if (window._db && id && typeof id === 'string') {
     var today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
@@ -9063,6 +9119,7 @@ function deleteMysvc(id) {
 // Завантажити дані після повного завантаження DOM
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(loadFirebaseData, 300);
+  setTimeout(loadSiteNews, 800);
 });
 </script>
 
@@ -9433,6 +9490,13 @@ function createNewsCard(n) {
 function showNewsDetail(id) {
   var n = _allNews.find(function(x){ return x.id === id; });
   if (!n) return;
+  _updateSEO({
+    title: n.title,
+    desc: n.excerpt || '',
+    img: n.img || '',
+    url: 'https://ridego-sigma.vercel.app/#news/' + id
+  });
+  _setNewsSchema(n);
   var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA',{day:'numeric',month:'long',year:'numeric'}) : '';
   var breadcrumb = document.getElementById('news-detail-breadcrumb');
   if (breadcrumb) breadcrumb.textContent = n.title;
@@ -9456,6 +9520,96 @@ function filterNewsCat(cat, btn) {
   renderNewsGrid(filtered);
 }
 </script>
+
+
+// ── SEO: динамічні meta теги ─────────────────────
+function _updateSEO(opts) {
+  var title = opts.title ? opts.title + ' — RideGO' : 'RideGO — Маркетплейс електротранспорту України';
+  var desc = opts.desc || 'Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.';
+  var img = opts.img || 'https://ridego-sigma.vercel.app/og-image.jpg';
+  var url = opts.url || 'https://ridego-sigma.vercel.app/';
+
+  document.title = title;
+  _setMeta('description', desc);
+  _setOG('title', title);
+  _setOG('description', desc);
+  _setOG('image', img);
+  _setOG('url', url);
+  _setMeta('twitter:title', title, true);
+  _setMeta('twitter:description', desc, true);
+  _setMeta('twitter:image', img, true);
+
+  var canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = url;
+}
+
+function _setMeta(name, content, isTwitter) {
+  var attr = isTwitter ? 'name' : 'name';
+  var el = document.querySelector('meta[name="'+name+'"]');
+  if (!el) { el = document.createElement('meta'); el.setAttribute('name', name); document.head.appendChild(el); }
+  el.setAttribute('content', content);
+}
+
+function _setOG(prop, content) {
+  var el = document.querySelector('meta[property="og:'+prop+'"]');
+  if (!el) { el = document.createElement('meta'); el.setAttribute('property', 'og:'+prop); document.head.appendChild(el); }
+  el.setAttribute('content', content);
+}
+
+// Schema.org для оголошення
+function _setListingSchema(l) {
+  var existing = document.getElementById('schema-listing');
+  if (existing) existing.remove();
+  if (!l) return;
+  var schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    'name': l.title || '',
+    'description': l.desc || '',
+    'image': l.imgs || (l.img ? [l.img] : []),
+    'offers': {
+      '@type': 'Offer',
+      'price': l.price || 0,
+      'priceCurrency': 'UAH',
+      'availability': 'https://schema.org/InStock',
+      'seller': { '@type': 'Person', 'name': l.sellerName || l.seller || '' }
+    },
+    'brand': { '@type': 'Brand', 'name': l.brand || 'RideGO' }
+  };
+  var s = document.createElement('script');
+  s.type = 'application/ld+json';
+  s.id = 'schema-listing';
+  s.textContent = JSON.stringify(schema);
+  document.head.appendChild(s);
+}
+
+// Schema.org для новини
+function _setNewsSchema(n) {
+  var existing = document.getElementById('schema-news');
+  if (existing) existing.remove();
+  if (!n) return;
+  var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toISOString() : new Date().toISOString();
+  var schema = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    'headline': n.title || '',
+    'description': n.excerpt || '',
+    'image': n.img ? [n.img] : [],
+    'datePublished': date,
+    'dateModified': date,
+    'author': { '@type': 'Organization', 'name': 'RideGO' },
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'RideGO',
+      'url': 'https://ridego-sigma.vercel.app/'
+    }
+  };
+  var s = document.createElement('script');
+  s.type = 'application/ld+json';
+  s.id = 'schema-news';
+  s.textContent = JSON.stringify(schema);
+  document.head.appendChild(s);
+}
 
 </body>
 </html>

@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ridego-sigma.vercel.app/sitemap.xml
+
+# Заборонити індексацію адмін панелі
+Disallow: /ridego-admin.html
+
+# Дозволити всі бота
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
