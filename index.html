@@ -2483,6 +2483,22 @@
 
     console.log('✅ RideGO Firebase підключено!');
 
+    // Унікальні відвідувачі — рахувати 1 раз на день через sessionStorage
+    var today = new Date().toISOString().slice(0,10);
+    var visitKey = 'ridego_visit_' + today;
+    if (!sessionStorage.getItem(visitKey)) {
+      sessionStorage.setItem(visitKey, '1');
+      window._db.collection('analytics').doc('visitors_' + today).set({
+        date: today,
+        count: firebase.firestore.FieldValue.increment(1)
+      }, { merge: true }).catch(function(){});
+    }
+
+    // Presence для онлайн лічильника
+    var presenceRef = window._rtdb.ref('presence/' + Math.random().toString(36).slice(2));
+    presenceRef.set({ t: Date.now() });
+    presenceRef.onDisconnect().remove();
+
 
   })();
   </script>
@@ -5300,6 +5316,18 @@ function showDetail(id, _skipPush) {
   const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
   if (!l) return;
   currentDetailId = id;
+  // Рахувати перегляди в Firestore
+  if (window._db && id && typeof id === 'string') {
+    var today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+    window._db.collection('analytics').doc('views_' + today).set({
+      date: today,
+      count: firebase.firestore.FieldValue.increment(1)
+    }, { merge: true }).catch(function(){});
+    // Також збільшити лічильник самого оголошення
+    window._db.collection('listings').doc(id).update({
+      views: firebase.firestore.FieldValue.increment(1)
+    }).catch(function(){});
+  }
 
   // update URL
   if (!_skipPush) {

@@ -566,6 +566,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -678,25 +679,25 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
             <div class="stat-icon green"><i class="fa-solid fa-users"></i></div>
             <div class="stat-value" id="stat-users">248</div>
             <div class="stat-label">Всього користувачів</div>
-            <span class="stat-delta up"><i class="fa-solid fa-arrow-up"></i>+14 сьогодні</span>
+            <span class="stat-delta up" id="delta-users"><i class="fa-solid fa-arrow-up"></i>сьогодні: —</span>
           </div>
           <div class="stat-card blue">
             <div class="stat-icon blue"><i class="fa-solid fa-tags"></i></div>
             <div class="stat-value" id="stat-listings">1 847</div>
             <div class="stat-label">Активних оголошень</div>
-            <span class="stat-delta up"><i class="fa-solid fa-arrow-up"></i>+38 сьогодні</span>
+            <span class="stat-delta up" id="delta-listings"><i class="fa-solid fa-arrow-up"></i>сьогодні: —</span>
           </div>
           <div class="stat-card orange">
             <div class="stat-icon orange"><i class="fa-solid fa-wrench"></i></div>
             <div class="stat-value" id="stat-services">32</div>
             <div class="stat-label">Сервісних центрів</div>
-            <span class="stat-delta up"><i class="fa-solid fa-arrow-up"></i>+2 цього тижня</span>
+            <span class="stat-delta up" id="delta-services"><i class="fa-solid fa-arrow-up"></i>всього: —</span>
           </div>
           <div class="stat-card purple">
             <div class="stat-icon purple"><i class="fa-solid fa-eye"></i></div>
             <div class="stat-value" id="stat-views">12.4K</div>
-            <div class="stat-label">Переглядів сьогодні</div>
-            <span class="stat-delta down"><i class="fa-solid fa-arrow-down"></i>-3% vs вчора</span>
+            <div class="stat-label">Відвідувачів сьогодні</div>
+            <span class="stat-delta up" id="delta-views"><i class="fa-solid fa-eye"></i>переглядів: —</span>
           </div>
         </div>
 
@@ -817,15 +818,15 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
         <div class="mini-stats">
           <div class="mini-stat">
             <div class="mini-stat-icon">👤</div>
-            <div><div class="mini-stat-val">248</div><div class="mini-stat-lbl">Всього</div></div>
+            <div><div class="mini-stat-val" id="mini-users-total">—</div><div class="mini-stat-lbl">Всього</div></div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon">✅</div>
-            <div><div class="mini-stat-val">231</div><div class="mini-stat-lbl">Активних</div></div>
+            <div><div class="mini-stat-val" id="mini-users-active">—</div><div class="mini-stat-lbl">Активних</div></div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon">🚫</div>
-            <div><div class="mini-stat-val">17</div><div class="mini-stat-lbl">Заблоковано</div></div>
+            <div><div class="mini-stat-val" id="mini-users-blocked">—</div><div class="mini-stat-lbl">Заблоковано</div></div>
           </div>
         </div>
 
@@ -876,15 +877,15 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
         <div class="mini-stats">
           <div class="mini-stat">
             <div class="mini-stat-icon">📋</div>
-            <div><div class="mini-stat-val">1 847</div><div class="mini-stat-lbl">Активних</div></div>
+            <div><div class="mini-stat-val" id="mini-listings-active">—</div><div class="mini-stat-lbl">Активних</div></div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon">⏳</div>
-            <div><div class="mini-stat-val">12</div><div class="mini-stat-lbl">На модерації</div></div>
+            <div><div class="mini-stat-val" id="mini-listings-moderate">—</div><div class="mini-stat-lbl">На модерації</div></div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon">🗑️</div>
-            <div><div class="mini-stat-val">89</div><div class="mini-stat-lbl">Видалено</div></div>
+            <div><div class="mini-stat-val" id="mini-listings-deleted">—</div><div class="mini-stat-lbl">Видалено</div></div>
           </div>
         </div>
 
@@ -1126,6 +1127,7 @@ var _db = null;
   };
   if (!firebase.apps.length) firebase.initializeApp(cfg);
   _db = firebase.firestore();
+  window._rtdb = firebase.database();
 })();
 
 // ═══ LOAD REAL DATA FROM FIREBASE ════════════════
@@ -1134,24 +1136,69 @@ function loadFirebaseData() {
 
   // Лічильники для дашборду
   _db.collection('users').get().then(function(snap) {
+    var users = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    var total = users.length;
+    var active = users.filter(function(u){ return u.status !== 'blocked'; }).length;
+    var blocked = users.filter(function(u){ return u.status === 'blocked'; }).length;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayTs = today.getTime()/1000;
+    var newToday = users.filter(function(u){ return u.createdAt && u.createdAt.seconds >= todayTs; }).length;
+
     var el = document.getElementById('stat-users');
-    if (el) el.textContent = snap.size;
-    renderUsersTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
+    if (el) el.textContent = total;
+    var d1 = document.getElementById('delta-users');
+    if (d1) d1.innerHTML = '<i class="fa-solid fa-arrow-up"></i>+'+newToday+' сьогодні';
+    var m1 = document.getElementById('mini-users-total'); if(m1) m1.textContent = total;
+    var m2 = document.getElementById('mini-users-active'); if(m2) m2.textContent = active;
+    var m3 = document.getElementById('mini-users-blocked'); if(m3) m3.textContent = blocked;
+
+    // Підрахувати оголошення для кожного юзера
+    _db.collection('listings').get().then(function(lSnap) {
+      var listingsByUid = {};
+      lSnap.docs.forEach(function(d) {
+        var l = d.data();
+        if (l.uid && l.status !== 'deleted') {
+          listingsByUid[l.uid] = (listingsByUid[l.uid] || 0) + 1;
+        }
+      });
+      users.forEach(function(u) { u.listings = listingsByUid[u.id] || 0; });
+      renderUsersTable(users);
+      renderBlockedTable(users);
+      renderNewUsers();
+    });
   }).catch(function(e){ console.error('users:', e); });
 
-  _db.collection('listings').where('status','!=','deleted').get().then(function(snap) {
+  _db.collection('listings').get().then(function(snap) {
+    var all = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    var active = all.filter(function(l){ return l.status !== 'deleted' && l.status !== 'blocked'; });
+    var moderate = all.filter(function(l){ return l.status === 'moderate'; });
+    var deleted = all.filter(function(l){ return l.status === 'deleted'; });
+    // Нові сьогодні
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayTs = today.getTime()/1000;
+    var newToday = active.filter(function(l){ return l.createdAt && l.createdAt.seconds >= todayTs; }).length;
+
     var el = document.getElementById('stat-listings');
-    if (el) el.textContent = snap.size;
-    renderListingsTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
-  }).catch(function(e){
-    // fallback без фільтра
-    _db.collection('listings').get().then(function(snap) {
-      var active = snap.docs.filter(function(d){ return d.data().status !== 'deleted'; });
-      var el = document.getElementById('stat-listings');
-      if (el) el.textContent = active.length;
-      renderListingsTable(active.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
-    });
-  });
+    if (el) el.textContent = active.length;
+    var d2 = document.getElementById('delta-listings');
+    if (d2) d2.innerHTML = '<i class="fa-solid fa-arrow-up"></i>+'+newToday+' сьогодні';
+    // Унікальні відвідувачі сьогодні
+    var todayStr = new Date().toISOString().slice(0,10);
+    _db.collection('analytics').doc('visitors_' + todayStr).get().then(function(snap) {
+      var visits = snap.exists ? (snap.data().count || 0) : 0;
+      var vEl = document.getElementById('stat-views');
+      if (vEl) vEl.textContent = visits > 999 ? (visits/1000).toFixed(1)+'K' : visits;
+      var dv = document.getElementById('delta-views');
+      if (dv) dv.innerHTML = '<i class="fa-solid fa-user"></i> унікальних: ' + visits;
+    }).catch(function(){});
+    var m4 = document.getElementById('mini-listings-active'); if(m4) m4.textContent = active.length;
+    var m5 = document.getElementById('mini-listings-moderate'); if(m5) m5.textContent = moderate.length;
+    var m6 = document.getElementById('mini-listings-deleted'); if(m6) m6.textContent = deleted.length;
+
+    renderListingsTable(active);
+    // Оновити графік активності
+    _updateBarChart(all);
+  }).catch(function(e){ console.error('listings:', e); });
 
   _db.collection('services').get().then(function(snap) {
     var el = document.getElementById('stat-services');
@@ -1185,6 +1232,38 @@ function _timeAgo(seconds) {
   if (diff < 3600) return Math.floor(diff/60) + ' хв тому';
   if (diff < 86400) return Math.floor(diff/3600) + ' год тому';
   return Math.floor(diff/86400) + ' дн тому';
+}
+
+function _updateBarChart(listings) {
+  // Побудувати дані за останні 7 днів
+  var days = 7;
+  var labels = [];
+  var counts = [];
+  for (var i = days-1; i >= 0; i--) {
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0,0,0,0);
+    var nextD = new Date(d); nextD.setDate(nextD.getDate()+1);
+    labels.push(d.getDate());
+    var cnt = listings.filter(function(l) {
+      if (!l.createdAt || !l.createdAt.seconds) return false;
+      var ts = l.createdAt.seconds * 1000;
+      return ts >= d.getTime() && ts < nextD.getTime();
+    }).length;
+    counts.push(cnt);
+  }
+  var maxC = Math.max.apply(null, counts) || 1;
+  var html = '';
+  for (var j = 0; j < labels.length; j++) {
+    var h = Math.round((counts[j]/maxC)*100) || 5;
+    html += '<div class="bar-group">'
+      + '<div class="bar-wrap">'
+      + '<div class="bar-listings" style="height:'+h+'%" title="Оголошення: '+counts[j]+'"></div>'
+      + '</div>'
+      + '<div class="bar-label">'+labels[j]+'</div></div>';
+  }
+  var bc = document.getElementById('bar-chart');
+  if (bc) bc.innerHTML = html;
 }
 
 // ═══ OVERRIDE RENDER TABLES ═══════════════════════
@@ -1401,12 +1480,14 @@ function initApp() {
   loadFirebaseData();
   // Оновлювати кожні 30 секунд
   setInterval(loadFirebaseData, 30000);
-  // Live online count (симуляція)
-  setInterval(function(){
-    var n = 18 + Math.floor(Math.random()*20);
-    var el = document.getElementById('online-count');
-    if (el) el.textContent = n;
-  }, 5000);
+  // Реальний лічильник онлайн через Realtime Database
+  if (window._rtdb) {
+    window._rtdb.ref('presence').on('value', function(snap) {
+      var count = snap.numChildren();
+      var el = document.getElementById('online-count');
+      if (el) el.textContent = count || 0;
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1458,61 +1539,92 @@ function setPeriod(days, btn) {
 // ═══════════════════════════════════════════════
 function renderNewUsers() {
   var tbody = document.getElementById('new-users-tbody');
-  var recent = USERS.slice(0,5);
-  tbody.innerHTML = recent.map(function(u,i){
-    return '<tr>'
-      +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%COLORS.length]+'22;color:'+COLORS[i%COLORS.length]+'">'+u.name[0]+'</div>'
-      +'<div><div class="user-name">'+u.name+'</div><div class="user-email">'+u.email+'</div></div></div></td>'
-      +'<td><span class="badge '+(u.type==='business'?'badge-purple':'badge-blue')+'">'+(u.type==='business'?'Бізнес':'Фізособа')+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+u.reg+'</span></td>'
-      +'</tr>';
-  }).join('');
+  if (!_db) return;
+  _db.collection('users').orderBy('createdAt','desc').limit(5).get().then(function(snap) {
+    if (!snap.size) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Немає даних</td></tr>'; return; }
+    tbody.innerHTML = snap.docs.map(function(d,i) {
+      var u = d.data();
+      var name = u.name || u.email || '—';
+      var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+      return '<tr>'
+        +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%COLORS.length]+'22;color:'+COLORS[i%COLORS.length]+'">'+(name[0]||'?')+'</div>'
+        +'<div><div class="user-name">'+name+'</div><div class="user-email">'+(u.email||'—')+'</div></div></div></td>'
+        +'<td><span class="badge '+(u.type==='business'?'badge-purple':'badge-blue')+'">'+(u.type==='business'?'Бізнес':'Фізособа')+'</span></td>'
+        +'<td><span style="font-size:12px;color:var(--text-muted)">'+reg+'</span></td>'
+        +'</tr>';
+    }).join('');
+  }).catch(function() { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Помилка завантаження</td></tr>'; });
 }
 
 function renderActivityLog() {
   var el = document.getElementById('activity-log');
-  el.innerHTML = ACTIVITY.map(function(a){
-    return '<div class="tl-item"><div class="tl-dot" style="background:'+a.color+'"></div>'
-      +'<div class="tl-content"><div class="tl-title">'+a.title+'</div><div class="tl-meta">'+a.meta+'</div></div></div>';
-  }).join('');
+  if (!_db || !el) return;
+  _db.collection('listings').orderBy('createdAt','desc').limit(8).get().then(function(snap) {
+    el.innerHTML = snap.docs.map(function(d) {
+      var l = d.data();
+      var ago = l.createdAt ? _timeAgo(l.createdAt.seconds) : '';
+      return '<div class="tl-item"><div class="tl-dot" style="background:#58a6ff"></div>'
+        +'<div class="tl-content"><div class="tl-title">Нове оголошення: '+(l.title||'—')+'</div>'
+        +'<div class="tl-meta">'+(l.sellerName||l.seller||'')+(ago?' · '+ago:'')+'</div></div></div>';
+    }).join('') || '<div style="color:var(--text-muted);padding:16px">Активності поки немає</div>';
+  }).catch(function(){});
 }
 
 // ═══════════════════════════════════════════════
 // USERS TABLE
 // ═══════════════════════════════════════════════
-function renderUsersTable(users) {
+function renderUsersTable(data) {
+  _cachedUsers = data; // зберегти для фільтрації
   var tbody = document.getElementById('users-tbody');
-  tbody.innerHTML = users.map(function(u,i){
-    var statusBadge = u.status==='active'
-      ? '<span class="badge badge-green">Активний</span>'
-      : '<span class="badge badge-red">Заблокований</span>';
-    var typeBadge = u.type==='business'
+  if (!tbody) return;
+  var nb = document.getElementById('nb-users');
+  if (nb) nb.textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає користувачів</td></tr>'; return; }
+  tbody.innerHTML = data.slice(0,100).map(function(u,i) {
+    var name = u.name || u.email || '—';
+    var statusBadge = u.status === 'blocked'
+      ? '<span class="badge badge-red">Заблокований</span>'
+      : '<span class="badge badge-green">Активний</span>';
+    var typeBadge = u.type === 'business'
       ? '<span class="badge badge-purple">Бізнес</span>'
       : '<span class="badge badge-blue">Фізособа</span>';
+    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+    var uid = u.id || u.uid || '';
     return '<tr>'
-      +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%COLORS.length]+'22;color:'+COLORS[i%COLORS.length]+'">'+u.name[0]+'</div>'
-      +'<div><div class="user-name">'+u.name+'</div><div class="user-email">'+u.email+'</div></div></div></td>'
+      +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%COLORS.length]+'22;color:'+COLORS[i%COLORS.length]+'">'+(name[0]||'?').toUpperCase()+'</div>'
+      +'<div><div class="user-name">'+name+'</div><div class="user-email">'+(u.email||'—')+'</div></div></div></td>'
       +'<td>'+typeBadge+'</td>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px">'+u.listings+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+u.reg+'</span></td>'
+      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px">'+(u.listings||0)+'</span></td>'
+      +'<td><span style="font-size:12px;color:var(--text-muted)">'+reg+'</span></td>'
       +'<td>'+statusBadge+'</td>'
       +'<td>'
-      +'<button class="action-btn" title="Редагувати" onclick="editUser('+u.id+')"><i class="fa-solid fa-pen"></i></button>'
-      +'<button class="action-btn '+(u.status==='blocked'?'':'danger')+'" title="'+(u.status==='blocked'?'Розблокувати':'Заблокувати')+'" onclick="toggleBlock('+u.id+')">'
-      +'<i class="fa-solid fa-'+(u.status==='blocked'?'lock-open':'ban')+'"></i></button>'
-      +'<button class="action-btn danger" title="Видалити" onclick="deleteUser('+u.id+')"><i class="fa-solid fa-trash"></i></button>'
+      +(u.status==='blocked'
+        ? '<button class="action-btn" title="Розблокувати" onclick="unblockUserFb(\''+uid+'\')"><i class="fa-solid fa-lock-open"></i></button>'
+        : '<button class="action-btn danger" title="Заблокувати" onclick="blockUserFb(\''+uid+'\',\''+name+'\')"><i class="fa-solid fa-ban"></i></button>')
       +'</td></tr>';
   }).join('');
 }
 
+// Кеш для фільтрації
+var _cachedUsers = [];
+var _cachedListings = [];
+
 function filterUsers(q) {
-  var filtered = USERS.filter(function(u){
-    return u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase());
+  var filtered = _cachedUsers.filter(function(u){
+    var name = (u.name||'').toLowerCase();
+    var email = (u.email||'').toLowerCase();
+    return name.includes(q.toLowerCase()) || email.includes(q.toLowerCase());
   });
   renderUsersTable(filtered);
 }
-function filterUserStatus(v) { renderUsersTable(v ? USERS.filter(function(u){ return u.status===v||(v==='new'&&true); }) : USERS); }
-function filterUserType(v)   { renderUsersTable(v ? USERS.filter(function(u){ return u.type===v; }) : USERS); }
+function filterUserStatus(v) {
+  var filtered = v ? _cachedUsers.filter(function(u){ return u.status === v; }) : _cachedUsers;
+  renderUsersTable(filtered);
+}
+function filterUserType(v) {
+  var filtered = v ? _cachedUsers.filter(function(u){ return u.type === v; }) : _cachedUsers;
+  renderUsersTable(filtered);
+}
 
 function editUser(id) {
   var u = USERS.find(function(x){ return x.id===id; });
@@ -1531,35 +1643,32 @@ function editUser(id) {
 }
 
 function saveUser() {
-  var id = +document.getElementById('edit-user-id').value;
-  var u  = USERS.find(function(x){ return x.id===id; });
-  if (!u) return;
-  u.name   = document.getElementById('edit-name').value;
-  u.email  = document.getElementById('edit-email').value;
-  u.phone  = document.getElementById('edit-phone').value;
-  u.city   = document.getElementById('edit-city').value;
-  u.type   = document.getElementById('edit-type').value;
-  u.status = document.getElementById('edit-status').value;
-  u.blockReason = document.getElementById('edit-block-reason').value;
-  u.notes  = document.getElementById('edit-notes').value;
+  var uid = document.getElementById('edit-user-id').value;
+  if (!uid) return;
+  var data = {
+    name:   document.getElementById('edit-name').value,
+    email:  document.getElementById('edit-email').value,
+    phone:  document.getElementById('edit-phone').value,
+    city:   document.getElementById('edit-city').value,
+    type:   document.getElementById('edit-type').value,
+    status: document.getElementById('edit-status').value,
+  };
+  var blockReason = document.getElementById('edit-block-reason').value;
+  if (blockReason) data.blockReason = blockReason;
   closeModal('user-modal');
-  renderUsersTable(USERS);
-  showToast('Збережено: '+u.name,'success');
-  LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Редаговано користувача', obj:u.name+' (#'+u.id+')', ip:'127.0.0.1'});
-  renderLogsTable(LOGS_DATA);
+  _db.collection('users').doc(uid).update(data)
+    .then(function(){ showToast('Збережено','success'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
 
 function blockUser() {
-  var id  = +document.getElementById('edit-user-id').value;
-  var u   = USERS.find(function(x){ return x.id===id; });
-  if (!u) return;
-  u.status = 'blocked';
-  u.blockReason = document.getElementById('edit-block-reason').value || 'Порушення правил';
+  var uid = document.getElementById('edit-user-id').value;
+  if (!uid) return;
+  var reason = document.getElementById('edit-block-reason').value || 'Порушення правил';
   closeModal('user-modal');
-  renderUsersTable(USERS);
-  showToast('Заблоковано: '+u.name,'error');
-  LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Заблоковано', obj:u.name+' (#'+u.id+')', ip:'127.0.0.1'});
-  renderLogsTable(LOGS_DATA);
+  _db.collection('users').doc(uid).update({ status: 'blocked', blockReason: reason })
+    .then(function(){ showToast('Заблоковано','error'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
 
 function toggleBlock(id) {
@@ -1583,17 +1692,11 @@ function toggleBlock(id) {
   renderLogsTable(LOGS_DATA);
 }
 
-function deleteUser(id) {
-  var u = USERS.find(function(x){ return x.id===id; });
-  confirmAction('Видалити '+u.name+'?','Ця дія незворотна. Всі оголошення також будуть видалені.', function(){
-    var idx = USERS.findIndex(function(x){ return x.id===id; });
-    if (idx>=0) USERS.splice(idx,1);
-    renderUsersTable(USERS);
-    document.getElementById('stat-users').textContent = USERS.length;
-    showToast('Видалено: '+u.name,'error');
-    LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Видалено користувача', obj:u.name+' (#'+id+')', ip:'127.0.0.1'});
-    renderLogsTable(LOGS_DATA);
-  });
+function deleteUser(uid) {
+  if (!uid || !confirm('Видалити цього користувача? Ця дія незворотна.')) return;
+  _db.collection('users').doc(uid).delete()
+    .then(function(){ showToast('Користувача видалено','error'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
 
 function openAddUserModal() {
@@ -1608,8 +1711,9 @@ function openAddUserModal() {
 
 function exportUsers() {
   var csv = 'ID,Імя,Email,Телефон,Місто,Тип,Статус,Оголошення,Реєстрація\n';
-  USERS.forEach(function(u){
-    csv += [u.id,u.name,u.email,u.phone,u.city,u.type,u.status,u.listings,u.reg].join(',') + '\n';
+  _cachedUsers.forEach(function(u){
+    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+    csv += [u.id,u.name||'',u.email||'',u.phone||'',u.city||'',u.type||'',u.status||'',u.listings||0,reg].join(',') + '\n';
   });
   var a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
@@ -1624,121 +1728,170 @@ function exportUsers() {
 var CAT_ICONS = {'Електросамокати':'⚡','Велосипеди':'🚲','Скутери':'🛵','Мотоцикли':'🏍'};
 
 function renderListingsTable(data) {
+  _cachedListings = data; // зберегти для фільтрації
   var tbody = document.getElementById('listings-tbody');
-  tbody.innerHTML = data.map(function(l){
-    var icon = CAT_ICONS[l.cat] || '🔧';
-    var statusBadge = l.status==='active' ? '<span class="badge badge-green">Активне</span>'
-      : l.status==='moderate' ? '<span class="badge badge-orange">Модерація</span>'
-      : '<span class="badge badge-red">Заблоковано</span>';
+  if (!tbody) return;
+  var nb = document.getElementById('nb-listings');
+  if (nb) nb.textContent = data.length;
+  // Оновити донат по категоріях
+  _updateDonut(data);
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">Немає оголошень</td></tr>'; return; }
+  tbody.innerHTML = data.slice(0,100).map(function(l) {
+    var icon = {'Електросамокати':'⚡','Велосипеди':'🚲','Електровелосипеди':'🔋','Електроскутери':'🛵','Електромотоцикли':'🏍'}[l.cat] || '🔧';
+    var statusBadge = l.status === 'deleted' ? '<span class="badge badge-red">Видалено</span>'
+      : l.status === 'moderate' ? '<span class="badge badge-orange">Модерація</span>'
+      : '<span class="badge badge-green">Активне</span>';
+    var date = l.createdAt ? new Date(l.createdAt.seconds*1000).toLocaleDateString('uk-UA') : (l.time||'—');
     return '<tr>'
       +'<td><div class="user-cell"><div class="listing-thumb">'+icon+'</div>'
-      +'<div><div class="user-name">'+l.title+'</div><div class="user-email">'+l.cat+'</div></div></div></td>'
-      +'<td><span style="font-size:13px">'+l.seller+'</span></td>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--brand)">'+l.price+' грн</span></td>'
-      +'<td><span style="font-size:13px">'+l.city+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+l.date+'</span></td>'
+      +'<div><div class="user-name">'+(l.title||'—')+'</div><div class="user-email">'+(l.cat||'—')+'</div></div></div></td>'
+      +'<td><span style="font-size:13px">'+(l.sellerName||l.seller||'—')+'</span></td>'
+      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--brand)">'+(l.price?l.price.toLocaleString()+' грн':'—')+'</span></td>'
+      +'<td><span style="font-size:13px">'+(l.city||'—')+'</span></td>'
+      +'<td><span style="font-size:12px;color:var(--text-muted)">'+date+'</span></td>'
       +'<td>'+statusBadge+'</td>'
-      +'<td>'
-      +'<button class="action-btn" title="Переглянути" onclick="viewListing('+l.id+')"><i class="fa-solid fa-eye"></i></button>'
-      +'<button class="action-btn danger" title="Видалити" onclick="deleteListing('+l.id+')"><i class="fa-solid fa-trash"></i></button>'
-      +'</td></tr>';
+      +'<td><button class="action-btn danger" title="Видалити" onclick="deleteListing(\''+l.id+'\')"><i class="fa-solid fa-trash"></i></button></td>'
+      +'</tr>';
   }).join('');
 }
 
-function deleteListing(id) {
-  var l = LISTINGS_DATA.find(function(x){ return x.id===id; });
-  confirmAction('Видалити "'+l.title+'"?','Оголошення буде назавжди видалено.', function(){
-    var idx = LISTINGS_DATA.findIndex(function(x){ return x.id===id; });
-    if (idx>=0) LISTINGS_DATA.splice(idx,1);
-    renderListingsTable(LISTINGS_DATA);
-    showToast('Оголошення видалено','error');
-    LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Видалено оголошення', obj:l.title+' (#'+id+')', ip:'127.0.0.1'});
-    renderLogsTable(LOGS_DATA);
+function _updateDonut(listings) {
+  var cats = {};
+  listings.forEach(function(l){ if(l.cat) cats[l.cat] = (cats[l.cat]||0)+1; });
+  var total = listings.length || 1;
+  var catList = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0,4);
+  var colors = ['var(--brand)','var(--blue)','var(--orange)','var(--purple)'];
+  // Оновити центр донату
+  var numEl = document.querySelector('.donut-num');
+  if (numEl) numEl.textContent = total > 999 ? (total/1000).toFixed(1)+'K' : total;
+  // Оновити легенду
+  var legend = document.querySelector('.donut-legend');
+  if (legend) {
+    legend.innerHTML = catList.map(function(cat,i) {
+      var pct = Math.round(cats[cat]/total*100);
+      return '<div class="donut-leg-item">'
+        +'<div class="donut-leg-left"><div class="donut-leg-dot" style="background:'+colors[i]+'"></div>'+cat+'</div>'
+        +'<span class="donut-leg-pct">'+pct+'%</span></div>';
+    }).join('');
+  }
+  // Оновити SVG arcs
+  var circumference = 339;
+  var offset = 0;
+  catList.forEach(function(cat,i) {
+    var arc = document.getElementById('donut-'+(i+1));
+    if (!arc) return;
+    var pct = cats[cat]/total;
+    arc.style.stroke = colors[i].replace('var(','').replace(')','');
+    arc.setAttribute('stroke-dashoffset', offset);
+    arc.setAttribute('stroke-dasharray', (pct*circumference)+' '+(circumference - pct*circumference));
+    offset += pct*circumference;
   });
 }
 
-// ═══════════════════════════════════════════════
-// SERVICES TABLE
-// ═══════════════════════════════════════════════
+function deleteListing(id) {
+  if (!confirm('Видалити це оголошення?')) return;
+  _db.collection('listings').doc(id).update({ status: 'deleted' })
+    .then(function(){ showToast('Оголошення видалено','success'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+}
+
 function renderServicesTable(data) {
   var tbody = document.getElementById('services-tbody');
-  tbody.innerHTML = data.map(function(s){
-    var stars = '★'.repeat(Math.round(s.rating));
+  if (!tbody) return;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає сервісів</td></tr>'; return; }
+  tbody.innerHTML = data.map(function(s) {
+    var stars = s.rating ? '★'.repeat(Math.round(s.rating)) : '—';
     return '<tr>'
-      +'<td><div class="user-name">'+s.name+'</div></td>'
-      +'<td>'+s.city+'</td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+s.cats+'</span></td>'
-      +'<td><span style="color:var(--orange);font-size:13px">'+stars+'</span> <span style="font-size:12px">'+s.rating+'</span></td>'
+      +'<td><div class="user-name">'+(s.name||'—')+'</div></td>'
+      +'<td>'+(s.city||'—')+'</td>'
+      +'<td><span style="font-size:12px;color:var(--text-muted)">'+(Array.isArray(s.cats)?s.cats.join(', '):'—')+'</span></td>'
+      +'<td><span style="color:var(--orange);font-size:13px">'+stars+'</span>'+(s.rating?' <span style="font-size:12px">'+s.rating+'</span>':'')+'</td>'
       +'<td><span class="badge badge-green">Активний</span></td>'
-      +'<td>'
-      +'<button class="action-btn"><i class="fa-solid fa-pen"></i></button>'
-      +'<button class="action-btn danger"><i class="fa-solid fa-ban"></i></button>'
-      +'</td></tr>';
+      +'<td><button class="action-btn danger" onclick="deleteServiceFb(\''+s.id+'\')"><i class="fa-solid fa-trash"></i></button></td>'
+      +'</tr>';
   }).join('');
 }
 
-// ═══════════════════════════════════════════════
-// REPORTS TABLE
-// ═══════════════════════════════════════════════
+function deleteServiceFb(id) {
+  if (!confirm('Видалити сервіс?')) return;
+  _db.collection('services').doc(id).delete()
+    .then(function(){ showToast('Сервіс видалено','success'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+}
+
 function renderReportsTable(data) {
   var tbody = document.getElementById('reports-tbody');
-  tbody.innerHTML = data.map(function(r){
-    var statusBadge = r.status==='new'
-      ? '<span class="badge badge-orange">Нова</span>'
-      : '<span class="badge badge-green">Вирішена</span>';
+  var nb = document.getElementById('nb-reports');
+  if (nb) nb.textContent = data.filter(function(r){ return r.status !== 'resolved'; }).length;
+  if (!tbody) return;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Скарг немає</td></tr>'; return; }
+  tbody.innerHTML = data.map(function(r) {
+    var date = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
+    var statusBadge = r.status === 'resolved'
+      ? '<span class="badge badge-green">Вирішена</span>'
+      : '<span class="badge badge-orange">Нова</span>';
     return '<tr>'
-      +'<td><div class="user-name">'+r.obj+'</div><div class="user-email">'+r.type+'</div></td>'
-      +'<td>'+r.reason+'</td>'
-      +'<td>'+r.reporter+'</td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+r.date+'</span></td>'
+      +'<td><div class="user-name">'+(r.listingId||'—')+'</div><div class="user-email">Оголошення</div></td>'
+      +'<td>'+(r.reason||'—')+'</td>'
+      +'<td>'+(r.reporterUid||'—')+'</td>'
+      +'<td><span style="font-size:12px;color:var(--text-muted)">'+date+'</span></td>'
       +'<td>'+statusBadge+'</td>'
       +'<td>'
-      +'<button class="action-btn" onclick="showToast(\'Скаргу вирішено\',\'success\')"><i class="fa-solid fa-check"></i></button>'
-      +'<button class="action-btn danger" onclick="showToast(\'Скаргу відхилено\',\'info\')"><i class="fa-solid fa-xmark"></i></button>'
+      +(r.status !== 'resolved' ? '<button class="action-btn" onclick="resolveReportFb(\''+r.id+'\')"><i class="fa-solid fa-check"></i></button>' : '')
       +'</td></tr>';
   }).join('');
 }
 
-// ═══════════════════════════════════════════════
-// BLOCKED TABLE
-// ═══════════════════════════════════════════════
+function resolveReportFb(id) {
+  _db.collection('reports').doc(id).update({ status: 'resolved' })
+    .then(function(){ showToast('Скаргу вирішено','success'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+}
+
 function renderBlockedTable(data) {
   var tbody = document.getElementById('blocked-tbody');
-  tbody.innerHTML = data.map(function(u){
+  if (!tbody) return;
+  var blocked = data.filter ? data.filter(function(u){ return u.status === 'blocked'; }) : data;
+  if (!blocked.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Заблокованих немає</td></tr>'; return; }
+  tbody.innerHTML = blocked.map(function(u) {
+    var name = u.name || u.email || '—';
+    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
     return '<tr>'
-      +'<td><div class="user-cell"><div class="user-ava" style="background:rgba(255,71,87,.1);color:var(--red)">'+u.name[0]+'</div>'
-      +'<div><div class="user-name">'+u.name+'</div><div class="user-email">'+u.email+'</div></div></div></td>'
-      +'<td><span class="badge badge-red">'+(u.blockReason||'—')+'</span></td>'
+      +'<td><div class="user-cell"><div class="user-ava" style="background:rgba(255,71,87,.1);color:var(--red)">'+(name[0]||'?').toUpperCase()+'</div>'
+      +'<div><div class="user-name">'+name+'</div><div class="user-email">'+(u.email||'—')+'</div></div></div></td>'
+      +'<td><span class="badge badge-red">'+(u.blockReason||'Заблокований')+'</span></td>'
       +'<td><span style="font-size:12px">Admin</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+u.reg+'</span></td>'
-      +'<td><button class="action-btn" title="Розблокувати" onclick="unblockFromList('+u.id+')"><i class="fa-solid fa-lock-open"></i></button></td>'
+      +'<td><span style="font-size:12px;color:var(--text-muted)">'+reg+'</span></td>'
+      +'<td><button class="action-btn" title="Розблокувати" onclick="unblockUserFb(\''+(u.id||u.uid||'')+'\')"><i class="fa-solid fa-lock-open"></i></button></td>'
       +'</tr>';
   }).join('');
 }
 
-function unblockFromList(id) {
-  var u = USERS.find(function(x){ return x.id===id; });
-  if (!u) return;
-  u.status = 'active';
-  renderUsersTable(USERS);
-  renderBlockedTable(USERS.filter(function(x){ return x.status==='blocked'; }));
-  showToast('Розблоковано: '+u.name,'success');
+function blockUserFb(uid, name) {
+  if (!confirm('Заблокувати '+name+'?')) return;
+  _db.collection('users').doc(uid).update({ status: 'blocked' })
+    .then(function(){ showToast('Заблоковано: '+name,'success'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
 
-// ═══════════════════════════════════════════════
-// LOGS TABLE
-// ═══════════════════════════════════════════════
+function unblockUserFb(uid) {
+  _db.collection('users').doc(uid).update({ status: 'active' })
+    .then(function(){ showToast('Розблоковано','success'); loadFirebaseData(); })
+    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+}
+
 function renderLogsTable(data) {
   var tbody = document.getElementById('logs-tbody');
-  tbody.innerHTML = data.map(function(l){
+  if (!tbody) return;
+  tbody.innerHTML = (data||[]).map(function(l) {
     return '<tr>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted)">'+l.time+'</span></td>'
-      +'<td><span class="badge badge-blue">'+l.admin+'</span></td>'
-      +'<td><span style="font-size:13px">'+l.action+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+l.obj+'</span></td>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-sub)">'+l.ip+'</span></td>'
+      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted)">'+(l.time||'—')+'</span></td>'
+      +'<td><span class="badge badge-blue">'+(l.admin||'Admin')+'</span></td>'
+      +'<td><span style="font-size:13px">'+(l.action||'—')+'</span></td>'
+      +'<td><span style="font-size:12px;color:var(--text-muted)">'+(l.obj||'—')+'</span></td>'
+      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-sub)">'+(l.ip||'—')+'</span></td>'
       +'</tr>';
-  }).join('');
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Логів немає</td></tr>';
 }
 
 // ═══════════════════════════════════════════════
@@ -1779,6 +1932,16 @@ function nowStr() {
 }
 
 function globalSearch(q) {
+  if (!q) return;
+  q = q.toLowerCase();
+  var uResults = _cachedUsers.filter(function(u){ return (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q); });
+  var lResults = _cachedListings.filter(function(l){ return (l.title||'').toLowerCase().includes(q)||(l.city||'').toLowerCase().includes(q); });
+  if (uResults.length) { showAdminPage('users', document.querySelector('[onclick*="users"]')); renderUsersTable(uResults); }
+  else if (lResults.length) { showAdminPage('listings', document.querySelector('[onclick*="listings"]')); renderListingsTable(lResults); }
+  else showToast('Нічого не знайдено','info');
+  return;
+}
+function _old_globalSearch(q) {
   if (!q.trim()) return;
   // Search in users
   var found = USERS.filter(function(u){ return u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase()); });
