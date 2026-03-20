@@ -34,29 +34,67 @@ function getSellerById(name) {
 // ============================================================
 let _routerLock = false; // prevent infinite loop between showPage ↔ hashchange
 
-function _setHash(hash) {
-  if (location.hash !== '#' + hash) {
-    history.pushState(null, '', '#' + hash);
+// ── HISTORY API ROUTER ──────────────────────────────
+function _setPath(path) {
+  if (location.pathname !== path) {
+    history.pushState(null, '', path);
   }
 }
 
-// Parse current hash → { page, id }
-function _parseHash(hash) {
-  const h = (hash || location.hash).replace(/^#\/?/, '').trim();
-  if (!h || h === 'home') return { page: 'home' };
-  if (h === 'catalog')   return { page: 'catalog' };
-  if (h === 'add')       return { page: 'add' };
-  if (h === 'services')  return { page: 'services' };
-  if (h === 'messages')  return { page: 'messages' };
-  if (h === 'profile')   return { page: 'profile' };
-  const detailMatch = h.match(/^detail\/(\d+)$/);
-  if (detailMatch) return { page: 'detail', id: parseInt(detailMatch[1]) };
-  const serviceMatch = h.match(/^service\/(.+)$/);
+// Маппінг URL категорій → slug → назва
+var CAT_SLUGS = {
+  'elektrosamokaty':   'Електросамокати',
+  'velosypedy':        'Велосипеди',
+  'elektrovelosypedy': 'Електровелосипеди',
+  'elektroskutery':    'Електроскутери',
+  'elektromotocykly':  'Електромотоцикли',
+};
+var CAT_TO_SLUG = {};
+Object.keys(CAT_SLUGS).forEach(function(slug) { CAT_TO_SLUG[CAT_SLUGS[slug]] = slug; });
+
+function _parsePath(path) {
+  var p = (path || location.pathname).replace(/\/+$/, '') || '/';
+  if (p === '/' || p === '/home') return { page: 'home' };
+  if (p === '/catalog')   return { page: 'catalog' };
+  if (p === '/add')       return { page: 'add' };
+  if (p === '/services')  return { page: 'services' };
+  if (p === '/messages')  return { page: 'messages' };
+  if (p === '/profile')   return { page: 'profile' };
+  if (p === '/news')      return { page: 'news' };
+  // /listing/ID
+  var listingMatch = p.match(/^\/listing\/(.+)$/);
+  if (listingMatch) return { page: 'detail', id: listingMatch[1] };
+  // /service/ID
+  var serviceMatch = p.match(/^\/service\/(.+)$/);
   if (serviceMatch) return { page: 'service-detail', id: serviceMatch[1] };
-  const sellerMatch = h.match(/^seller\/(.+)$/);
-  if (sellerMatch) return { page: 'seller', id: sellerMatch[1] };
+  // /seller/UID
+  var sellerMatch = p.match(/^\/seller\/(.+)$/);
+  if (sellerMatch) return { page: 'seller', id: 'uid:' + sellerMatch[1] };
+  // /category/slug
+  var catMatch = p.match(/^\/category\/(.+)$/);
+  if (catMatch && CAT_SLUGS[catMatch[1]]) return { page: 'catalog', cat: CAT_SLUGS[catMatch[1]] };
+  // /news/ID
+  var newsMatch = p.match(/^\/news\/(.+)$/);
+  if (newsMatch) return { page: 'news-detail', id: newsMatch[1] };
   return { page: 'home' };
 }
+
+// Зворотна сумісність — старі # посилання
+function _setHash(hash) {
+  var pathMap = {
+    '': '/', 'home': '/', 'catalog': '/catalog', 'add': '/add',
+    'services': '/services', 'messages': '/messages', 'profile': '/profile', 'news': '/news'
+  };
+  if (pathMap[hash] !== undefined) { _setPath(pathMap[hash]); return; }
+  if (hash.startsWith('detail/')) { _setPath('/listing/' + hash.replace('detail/', '')); return; }
+  if (hash.startsWith('service/')) { _setPath('/service/' + hash.replace('service/', '')); return; }
+  if (hash.startsWith('seller/uid:')) { _setPath('/seller/' + hash.replace('seller/uid:', '')); return; }
+  if (hash.startsWith('seller/')) { _setPath('/seller/' + hash.replace('seller/', '')); return; }
+  _setPath('/' + hash);
+}
+
+// Зворотна сумісність
+function _parseHash(hash) { return _parsePath(); }
 
 // Navigate from router (no pushState — already set by caller or hashchange)
 function _renderRoute(route) {
@@ -108,9 +146,9 @@ function _pageTitle(page, id) {
 }
 
 // React to browser back/forward
-window.addEventListener('popstate', () => {
+window.addEventListener('popstate', function() {
   if (_routerLock) return;
-  _renderRoute(_parseHash());
+  _renderRoute(_parsePath());
 });
 
 // ── Override showPage to update URL ──────────────────────────────────
@@ -123,7 +161,8 @@ function showPage(page, sellerId) {
     add:     { title: 'Подати оголошення', desc: 'Продайте свій електротранспорт на RideGO.' },
   };
   if (pageSEO[page]) {
-    _updateSEO({ title: pageSEO[page].title, desc: pageSEO[page].desc, url: 'https://ridego-sigma.vercel.app/#' + page });
+    var _pageUrl = 'https://ridego-sigma.vercel.app' + (page === 'home' ? '/' : '/' + page);
+    _updateSEO({ title: pageSEO[page].title, desc: pageSEO[page].desc, url: _pageUrl });
     _setListingSchema(null);
     _setNewsSchema(null);
   }
@@ -154,22 +193,21 @@ function showSeller(sellerName) {
 
 function showSellerByUid(uid) {
   if (!uid) { showToast('ℹ️ Профіль продавця не знайдено'); return; }
-  showPage('seller', 'uid:' + uid);
+  _setPath('/seller/' + uid);
+  _renderRoute({ page: 'seller', id: 'uid:' + uid });
 }
 
 // ── Copy seller link  (full URL with hash) ────────────────────────────
 function copySellerLink() {
-  const s = _fbSellers.find(x => x.id === currentSellerId);
-  const hash  = s ? `#seller/${s.id}` : '#';
-  const base  = location.href.split('#')[0];
-  const url   = base + hash;
-  navigator.clipboard?.writeText(url).catch(() => {});
+  var uid = currentSellerId ? currentSellerId.replace('uid:', '') : '';
+  var url = location.origin + (uid ? '/seller/' + uid : '/');
+  navigator.clipboard && navigator.clipboard.writeText(url).catch(function(){});
   showToast('🔗 Посилання скопійовано!');
 }
 
 // ── Init: read hash on first load ─────────────────────────────────────
 function _initRouter() {
-  const route = _parseHash();
+  var route = _parsePath();
   _renderRoute(route);
 }
 
@@ -1404,7 +1442,7 @@ function showDetail(id, _skipPush) {
 
   // update URL
   if (!_skipPush) {
-    _setHash('detail/' + id);
+    _setPath('/listing/' + id);
     document.title = 'RideGO — ' + l.title;
   }
 

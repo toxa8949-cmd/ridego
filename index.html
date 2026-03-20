@@ -35,7 +35,7 @@
   "description": "Маркетплейс електротранспорту України",
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://ridego-sigma.vercel.app/#catalog?q={search_term_string}",
+    "target": "https://ridego-sigma.vercel.app/catalog?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
 }
@@ -74,9 +74,12 @@
 
     // Auth state — відновлення сесії
     var _authInitialized = false;
+    // Зберегти hash ДО спрацювання onAuthStateChanged
+    var _pageToRestore = window.location.pathname || '/';
     window._auth.onAuthStateChanged(function(user) {
       if (user) {
-        var isNewLogin = !_authInitialized && !window._authWasLoggedIn || window._justLoggedIn;
+        // isNewLogin тільки при реальному натисканні кнопки логін
+        var isNewLogin = window._justLoggedIn === true;
         window._justLoggedIn = false;
         window._authWasLoggedIn = true;
         // isLoggedIn — глобальна змінна оголошена в body
@@ -122,19 +125,17 @@
           }
           if (typeof renderProfile === 'function') renderProfile();
           if (typeof _updateChatBadge === 'function') _updateChatBadge();
-          // Якщо це свіжий логін — перейти на профіль
-          // Але НЕ при оновленні сторінки — тоді відновити поточний hash
-          if (window._justLoggedIn && typeof showPage === 'function') {
+          // Навігація після авторизації
+          if (isNewLogin && typeof showPage === 'function') {
+            // Реальний логін через кнопку — перейти на профіль
             showPage('profile');
-          } else if (isNewLogin && !window._hashRestored && typeof _initRouter === 'function') {
-            // При першому завантаженні — відновити сторінку з hash
+          } else if (!window._hashRestored) {
+            // Оновлення сторінки — відновити попередню сторінку
             window._hashRestored = true;
-            var currentHash = window.location.hash;
-            if (!currentHash || currentHash === '#' || currentHash === '#home') {
-              showPage('profile');
-            } else {
-              _initRouter();
+            if (_pageToRestore && _pageToRestore !== '/' && _pageToRestore !== '/home') {
+              if (typeof _initRouter === 'function') _initRouter();
             }
+            // якщо hash порожній або #home — залишитись на головній (не переходити на профіль)
           }
           // Завантажити чати юзера
           loadUserChats();
