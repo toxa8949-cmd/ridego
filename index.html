@@ -2486,8 +2486,8 @@
     // Унікальні відвідувачі — рахувати 1 раз на день через sessionStorage
     var today = new Date().toISOString().slice(0,10);
     var visitKey = 'ridego_visit_' + today;
-    if (!sessionStorage.getItem(visitKey)) {
-      sessionStorage.setItem(visitKey, '1');
+    if (!localStorage.getItem(visitKey)) {
+      localStorage.setItem(visitKey, '1');
       window._db.collection('analytics').doc('visitors_' + today).set({
         date: today,
         count: firebase.firestore.FieldValue.increment(1)
