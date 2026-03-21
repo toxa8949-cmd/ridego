@@ -360,6 +360,9 @@ function loadFirebaseData() {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       renderHomeListings();
       renderCatalog();
+      // Якщо поточний URL — /listing/ID, показати після завантаження
+      var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
+      if (_lstPath) showDetail(_lstPath[1], true);
     }).catch(function(e){ console.log('listings:', e.message); });
   // Сервіси
   window._db.collection('services').orderBy('rating','desc').limit(30).get()
@@ -370,6 +373,9 @@ function loadFirebaseData() {
       _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
+      // Якщо поточний URL — /service/ID, показати деталь після завантаження
+      var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
+      if (_svcPath) showServiceDetail(_svcPath[1]);
     }).catch(function(e){ console.log('services:', e.message); });
 }
 
