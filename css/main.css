@@ -2401,3 +2401,173 @@
     font-style: italic; background: var(--brand-dim); border-radius: 0 8px 8px 0;
   }
   .news-article-body img { max-width: 100%; border-radius: 12px; margin: 16px 0; display: block; }
+
+/* ═══════════════════════════════════════════════════
+   MOBILE FIXES — всі сторінки
+   ═══════════════════════════════════════════════════ */
+
+/* Загальні фікси */
+@media(max-width:768px) {
+  * { box-sizing: border-box; }
+
+  /* Кнопки — текст не виходить за межі */
+  button, .btn-primary, .btn-outline, .btn-call, .btn-msg {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Хедер */
+  header .header-inner { padding: 0 12px; gap: 8px; }
+
+  /* ── Сервіси ── */
+  .services-hero { padding: 24px 16px; }
+  .services-hero h1 { font-size: 22px; }
+  .services-body { padding: 0 16px 80px; }
+  .services-grid { grid-template-columns: 1fr !important; gap: 12px; }
+  .service-card { border-radius: 14px; }
+
+  /* Сторінка сервісу деталь */
+  .service-detail-header {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+    padding: 16px;
+  }
+  .service-detail-cover { height: 180px; }
+  .service-detail-info { padding: 16px; }
+  .service-detail-name { font-size: 20px; }
+  .service-detail-body {
+    grid-template-columns: 1fr !important;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  /* Мій сервіс */
+  .mysvc-hero { padding: 16px; flex-direction: column; align-items: flex-start; }
+  .mysvc-hero-left { gap: 12px; }
+  .mysvc-hero-title { font-size: 17px; }
+  .mysvc-service-row { grid-template-columns: 1fr auto !important; }
+  .mysvc-section { padding: 14px; }
+
+  /* ── Каталог ── */
+  .catalog-hero { padding: 24px 16px; }
+  .catalog-hero h1 { font-size: 20px; }
+  .catalog-page-wrap { padding: 0; }
+  .filter-panel { padding: 16px; }
+  .cat-picker-body { padding: 16px; }
+  .listing-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  /* ── Деталь оголошення ── */
+  .detail-grid { grid-template-columns: 1fr !important; gap: 16px; }
+  .detail-card { padding: 16px; }
+  .detail-card .btn-call,
+  .detail-card .btn-msg { font-size: 14px; padding: 11px 12px; }
+  .detail-main-img { height: 260px; }
+
+  /* ── Продавець ── */
+  .seller-hero { padding: 20px 16px; }
+  .seller-stats-row { gap: 8px; }
+  .seller-stat { padding: 12px; }
+
+  /* ── Профіль ── */
+  .profile-header { padding: 20px 16px; flex-direction: column; align-items: center; text-align: center; }
+  .profile-tabs { overflow-x: auto; }
+  .ptab { white-space: nowrap; padding: 10px 14px; font-size: 13px; }
+
+  /* ── Форма додавання ── */
+  .add-wizard { padding: 16px; }
+  .cat-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .cat-card-item { padding: 16px 10px; }
+  .form-row { grid-template-columns: 1fr !important; }
+
+  /* ── Повідомлення ── */
+  .messages-layout { grid-template-columns: 1fr !important; height: auto; }
+  .chat-list-panel { height: 300px; border-right: none; border-bottom: 1px solid var(--border); }
+
+  /* ── Новини ── */
+  #news-grid { grid-template-columns: 1fr !important; }
+  #home-news-grid { grid-template-columns: 1fr !important; }
+
+  /* ── Головна ── */
+  .hero-content { padding: 32px 16px; }
+  .hero h1 { font-size: 28px; }
+  .hero-btns { flex-direction: column; gap: 10px; }
+  .hero-btns button { width: 100%; }
+  .hero-stats { gap: 16px; }
+  .cats { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .section { padding: 32px 16px; }
+  .section-header { flex-wrap: wrap; gap: 8px; }
+
+  /* ── Загальні таблиці ── */
+  .spec-table { font-size: 13px; }
+  .spec-table td:first-child { width: 45%; }
+}
+
+@media(max-width:400px) {
+  .listing-grid { grid-template-columns: 1fr !important; }
+  .cats { grid-template-columns: repeat(2, 1fr) !important; }
+  .hero h1 { font-size: 24px; }
+  .stat-num { font-size: 22px; }
+  .detail-main-img { height: 220px; }
+}
+
+/* ── Сервіс деталь — мобільний фікс ── */
+@media(max-width:768px) {
+  .service-detail-wrap { padding: 16px 12px 80px; }
+  .service-detail-header {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .service-detail-cover { height: 160px; border-radius: 14px; font-size: 56px; }
+  .service-detail-name { font-size: 20px; }
+  .service-detail-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px;
+  }
+  /* Блоки всередині деталі сервісу */
+  #svc-detail-body > div,
+  #svc-detail-body [style*="display:grid"],
+  #svc-detail-body [style*="display: grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+  /* Карточки всередині */
+  #svc-detail-body [style*="background:var(--card-bg)"],
+  #svc-detail-body [style*="background: var(--card-bg)"],
+  #svc-detail-body [style*="border-radius:16px"],
+  #svc-detail-body [style*="border-radius: 16px"] {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+  }
+  /* Список послуг */
+  .svc-list-item { padding: 12px 14px; flex-wrap: wrap; gap: 6px; }
+  .svc-list-name { font-size: 13px; }
+  .svc-list-price { font-size: 14px; }
+  /* Кнопки */
+  #svc-detail-header button,
+  #svc-detail-body button {
+    width: 100% !important;
+    max-width: 100% !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Соціальні посилання */
+  #svc-detail-body [style*="display:flex"][style*="gap:10px"] {
+    flex-wrap: wrap;
+  }
+}
+@media(max-width:480px) {
+  .service-detail-wrap { padding: 12px 10px 80px; }
+  .service-detail-name { font-size: 18px; }
+}
