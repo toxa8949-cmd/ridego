@@ -374,6 +374,19 @@ function loadFirebaseData() {
 }
 
 // Завантажити чати для поточного юзера
+
+function _updateChatBadge() {
+  var badge = document.getElementById('header-msg-badge');
+  if (!badge) return;
+  var unread = _fbChats.filter(function(c){ return c.unread && c.unread > 0; }).length;
+  if (unread > 0) {
+    badge.textContent = unread;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 function loadUserChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
   window._db.collection('chats')
@@ -388,7 +401,7 @@ function loadUserChats() {
         return data;
       });
       renderChats();
-      _updateChatBadge();
+      if (typeof _updateChatBadge === "function") _updateChatBadge();
     }).catch(function(e){ console.log('chats:', e.message); });
 }
 
