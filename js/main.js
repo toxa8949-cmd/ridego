@@ -380,8 +380,15 @@ function loadUserChats() {
     .where('participants','array-contains', currentUser.uid)
     .orderBy('lastMessageAt','desc').limit(20).get()
     .then(function(snap) {
-      _fbChats = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-      if (typeof renderChatList === 'function') renderChatList();
+      _fbChats = snap.docs.map(function(d){
+        var data = Object.assign({id:d.id}, d.data());
+        // Знайти ім'я співрозмовника
+        var otherId = data.participants ? data.participants.find(function(p){ return p !== currentUser.uid; }) : null;
+        if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
+        return data;
+      });
+      renderChats();
+      _updateChatBadge();
     }).catch(function(e){ console.log('chats:', e.message); });
 }
 
@@ -3234,58 +3241,207 @@ function renderFavs() {
 // ============================================================
 // MESSAGES
 // ============================================================
+// ═══ CHAT (Firebase Realtime DB) ════════════════════
+var _activeChatId = null;
+var _chatUnsubscribe = null;
+
 function renderChats() {
-  const list = document.getElementById('chat-list');
-  list.innerHTML = _fbChats.map(c=>`
-    <div class="chat-item ${activeChat===c.id?'active':''}" onclick="openChatById(${c.id})">
-      <div class="chat-avatar">${c.initial}</div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="chat-name">${c.name}</div>
-          <div class="chat-time">${c.messages[c.messages.length-1].time}</div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">
-          <div class="chat-last">${c.messages[c.messages.length-1].text}</div>
-          ${c.unread?`<div class="unread">${c.unread}</div>`:''}
-        </div>
-        <div style="font-size:11px;color:var(--brand);margin-top:2px">${c.sub}</div>
-      </div>
-    </div>`).join('');
+  var list = document.getElementById('chat-list');
+  if (!list) return;
+  if (!isLoggedIn) {
+    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Увійдіть щоб переглянути повідомлення</div>';
+    return;
+  }
+  if (!_fbChats.length) {
+    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)"><i class="fa-regular fa-comment-dots" style="font-size:32px;display:block;margin-bottom:12px"></i>Повідомлень поки немає</div>';
+    return;
+  }
+  list.innerHTML = _fbChats.map(function(c) {
+    var otherName = c.names ? (c.names[currentUser.uid] ? '' : '') : '';
+    // Знайти ім'я співрозмовника
+    var otherId = c.participants ? c.participants.find(function(p){ return p !== currentUser.uid; }) : null;
+    var name = c.otherName || otherId || 'Користувач';
+    var lastMsg = c.lastMessage || '';
+    var lastTime = c.lastMessageAt ? _formatChatTime(c.lastMessageAt.seconds) : '';
+    var initial = (name[0] || '?').toUpperCase();
+    var isActive = _activeChatId === c.id;
+    return '<div class="chat-item ' + (isActive ? 'active' : '') + '" onclick="openChatById(this.dataset.id)" data-id="' + c.id + '">'
+      + '<div class="chat-avatar">' + initial + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<div class="chat-name">' + name + '</div>'
+      + '<div class="chat-time">' + lastTime + '</div>'
+      + '</div>'
+      + '<div class="chat-last" style="margin-top:3px">' + lastMsg + '</div>'
+      + '</div></div>';
+  }).join('');
 }
-function openChatById(id) {
-  activeChat = id;
-  const c = _fbChats.find(x=>x.id===id);
-  c.unread = 0;
-  document.getElementById('chat-header-name').textContent = c.name;
-  document.getElementById('chat-header-sub').textContent = c.sub;
-  document.getElementById('chat-header-avatar').textContent = c.initial;
-  const area = document.getElementById('messages-area');
-  area.innerHTML = c.messages.map(m=>`
-    <div class="msg ${m.mine?'mine':'theirs'}">
-      <div class="msg-bubble">${m.text}</div>
-      <div class="msg-time">${m.time}</div>
-    </div>`).join('');
-  area.scrollTop = area.scrollHeight;
+
+function _formatChatTime(seconds) {
+  if (!seconds) return '';
+  var d = new Date(seconds * 1000);
+  var now = new Date();
+  var diff = now - d;
+  if (diff < 86400000 && d.getDate() === now.getDate()) {
+    return d.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'});
+  }
+  return d.toLocaleDateString('uk-UA', {day:'numeric', month:'short'});
+}
+
+function openChatById(chatId) {
+  if (!chatId || !isLoggedIn) return;
+  _activeChatId = chatId;
+  var c = _fbChats.find(function(x){ return x.id === chatId; });
+
+  // Оновити хедер
+  var otherId = c && c.participants ? c.participants.find(function(p){ return p !== currentUser.uid; }) : null;
+  var name = (c && c.otherName) || 'Користувач';
+  var sub  = (c && c.listingTitle) ? 'Оголошення: ' + c.listingTitle : '';
+  var headerName = document.getElementById('chat-header-name');
+  var headerSub  = document.getElementById('chat-header-sub');
+  var headerAva  = document.getElementById('chat-header-avatar');
+  if (headerName) headerName.textContent = name;
+  if (headerSub)  headerSub.textContent  = sub;
+  if (headerAva)  headerAva.textContent  = (name[0] || '?').toUpperCase();
+
+  // Показати область чату
+  var area = document.getElementById('messages-area');
+  if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Завантаження...</div>';
+
+  // Відписатись від попереднього слухача
+  if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
+
+  // Слухати повідомлення в реальному часі через RTDB
+  if (window._rtdb) {
+    var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
+    _chatUnsubscribe = msgsRef.on('value', function(snap) {
+      var msgs = [];
+      snap.forEach(function(child) {
+        msgs.push(child.val());
+      });
+      _renderMessages(msgs);
+    });
+  } else if (window._db) {
+    // Fallback — Firestore
+    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
+      .collection('messages').orderBy('createdAt').onSnapshot(function(snap) {
+        var msgs = snap.docs.map(function(d){ return d.data(); });
+        _renderMessages(msgs);
+      });
+  }
+
   renderChats();
 }
+
+function _renderMessages(msgs) {
+  var area = document.getElementById('messages-area');
+  if (!area) return;
+  if (!msgs.length) {
+    area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Напишіть перше повідомлення!</div>';
+    return;
+  }
+  area.innerHTML = msgs.map(function(m) {
+    var mine = m.senderUid === currentUser.uid;
+    var time = m.createdAt ? _formatChatTime(typeof m.createdAt === 'object' ? m.createdAt.seconds : m.createdAt/1000) : '';
+    return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
+      + '<div class="msg-bubble">' + (m.text || '') + '</div>'
+      + '<div class="msg-time">' + time + '</div>'
+      + '</div>';
+  }).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+function sendMessage() {
+  if (!_activeChatId || !isLoggedIn) return;
+  var input = document.getElementById('chat-input');
+  var text = (input ? input.value : '').trim();
+  if (!text) return;
+  input.value = '';
+
+  var msg = {
+    text: text,
+    senderUid: currentUser.uid,
+    senderName: currentUser.name || currentUser.email || '',
+    createdAt: Date.now()
+  };
+
+  // Зберегти в RTDB
+  if (window._rtdb) {
+    window._rtdb.ref('chats/' + _activeChatId + '/messages').push(msg);
+    window._rtdb.ref('chats/' + _activeChatId).update({
+      lastMessage: text,
+      lastMessageAt: { seconds: Math.floor(Date.now()/1000) }
+    });
+  }
+
+  // Також оновити Firestore для списку чатів
+  if (window._db) {
+    window._db.collection('chats').doc(_activeChatId).update({
+      lastMessage: text,
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(){});
+  }
+}
+
+
+function _startChatFromListing() {
+  var l = [..._fbListings, ...myListings].find(function(x){ return x && x.id === currentDetailId; });
+  if (!l) return;
+  _startChat(l.uid, currentDetailId, l.title);
+}
+
 function openChat() {
   showPage('messages');
-  setTimeout(()=>openChatById(1),100);
 }
-function sendMessage() {
-  if(!activeChat) return;
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if(!text) return;
-  const c = _fbChats.find(x=>x.id===activeChat);
-  c.messages.push({mine:true,text,time:'Щойно'});
-  input.value='';
-  openChatById(activeChat);
-  // Auto reply
-  setTimeout(()=>{
-    c.messages.push({mine:false,text:'Дякую! Я відповім трохи пізніше 🙂',time:'Щойно'});
-    openChatById(activeChat);
-  },1200);
+
+// Відкрити або створити чат з продавцем
+function _startChat(sellerUid, listingId, listingTitle) {
+  if (!isLoggedIn) { showToast('⚠️ Увійдіть щоб написати'); showPage('profile'); return; }
+  if (sellerUid === currentUser.uid) { showToast('ℹ️ Це ваше оголошення'); return; }
+
+  // Знайти існуючий чат
+  var existing = _fbChats.find(function(c) {
+    return c.participants && c.participants.indexOf(sellerUid) >= 0
+      && (!listingId || c.listingId === listingId);
+  });
+
+  if (existing) {
+    showPage('messages');
+    setTimeout(function(){ openChatById(existing.id); }, 200);
+    return;
+  }
+
+  // Створити новий чат
+  if (!window._db) return;
+  var chatData = {
+    participants: [currentUser.uid, sellerUid],
+    listingId: listingId || null,
+    listingTitle: listingTitle || '',
+    lastMessage: '',
+    lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    // Імена для відображення
+    [currentUser.uid + '_name']: currentUser.name || currentUser.email || '',
+    [sellerUid + '_name']: ''
+  };
+
+  window._db.collection('chats').add(chatData).then(function(ref) {
+    var newChat = Object.assign({ id: ref.id }, chatData);
+    newChat.otherName = ''; // завантажимо пізніше
+    _fbChats.unshift(newChat);
+    showPage('messages');
+    setTimeout(function(){ openChatById(ref.id); }, 200);
+    // Завантажити ім'я продавця
+    window._db.collection('users').doc(sellerUid).get().then(function(snap) {
+      if (snap.exists) {
+        var sellerName = snap.data().name || '';
+        window._db.collection('chats').doc(ref.id).update({ otherName: sellerName });
+        var chat = _fbChats.find(function(c){ return c.id === ref.id; });
+        if (chat) chat.otherName = sellerName;
+        renderChats();
+      }
+    });
+  }).catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
 }
 
 // ============================================================
@@ -4311,11 +4467,7 @@ function _buildSvcDetailHeader(s){
 }
 
 function _openSvcChat(sellerUid, svcName) {
-  if (!isLoggedIn) { showToast('⚠️ Увійдіть щоб написати'); showPage('profile'); return; }
-  if (sellerUid === currentUser.uid) { showToast('ℹ️ Це ваш власний сервіс'); return; }
-  // Перейти на повідомлення
-  showPage('messages');
-  showToast('💬 Напишіть своє питання про ' + svcName);
+  _startChat(sellerUid, null, svcName);
 }
 
 function _buildSvcDetailBody(s){
