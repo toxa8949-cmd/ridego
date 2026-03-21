@@ -1,5 +1,9 @@
 // Завантажити дані після повного завантаження DOM
 document.addEventListener('DOMContentLoaded', function() {
+  // Очистити поле пошуку при завантаженні (браузер може автозаповнити)
+  var searchEl = document.getElementById('headerSearch');
+  if (searchEl) { searchEl.value = ''; searchEl.setAttribute('autocomplete', 'off'); }
+
   setTimeout(loadFirebaseData, 300);
   setTimeout(loadSiteNews, 800);
 });
