@@ -1426,6 +1426,11 @@ function showDetail(id, _skipPush) {
   const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
   if (!l) return;
   currentDetailId = id;
+  // Скинути кнопку телефону
+  var _revBtn = document.getElementById('reveal-phone-btn');
+  var _revDiv = document.getElementById('phone-revealed');
+  if (_revBtn) { _revBtn.style.display = ''; _revBtn.disabled = false; _revBtn.innerHTML = '<i class="fa-solid fa-phone" style="margin-right:8px"></i>Показати номер'; }
+  if (_revDiv) _revDiv.style.display = 'none';
   // SEO
   _updateSEO({
     title: l.title,
@@ -1651,8 +1656,39 @@ function toggleFavDetail() {
 }
 
 function revealPhone() {
-  document.getElementById('reveal-phone-btn').style.display = 'none';
-  document.getElementById('phone-revealed').style.display = '';
+  var btn = document.getElementById('reveal-phone-btn');
+  var revealed = document.getElementById('phone-revealed');
+  var phoneEl = document.getElementById('phone-number');
+  if (!btn || !revealed || !phoneEl) return;
+
+  // Знайти поточне оголошення
+  var l = [..._fbListings, ...myListings].find(function(x){ return x && x.id === currentDetailId; });
+  if (!l || !l.uid) {
+    showToast('⚠️ Номер недоступний');
+    return;
+  }
+
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Завантаження...';
+  btn.disabled = true;
+
+  // Завантажити номер з профілю продавця
+  window._db.collection('users').doc(l.uid).get().then(function(snap) {
+    var phone = snap.exists ? snap.data().phone : '';
+    if (phone) {
+      phoneEl.href = 'tel:' + phone.replace(/\s/g, '');
+      phoneEl.textContent = phone;
+      btn.style.display = 'none';
+      revealed.style.display = '';
+    } else {
+      btn.innerHTML = '<i class="fa-solid fa-phone" style="margin-right:8px"></i>Номер не вказано';
+      btn.disabled = false;
+      showToast('ℹ️ Продавець не вказав номер телефону');
+    }
+  }).catch(function() {
+    btn.innerHTML = '<i class="fa-solid fa-phone" style="margin-right:8px"></i>Показати номер';
+    btn.disabled = false;
+    showToast('⚠️ Помилка завантаження');
+  });
 }
 
 
