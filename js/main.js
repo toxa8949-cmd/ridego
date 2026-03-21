@@ -4569,6 +4569,9 @@ function showServiceDetail(id){
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
   document.getElementById("page-service-detail").classList.add("active");
   window.scrollTo({top:0,behavior:"smooth"});
+  // Оновити URL
+  _setPath('/service/' + id);
+  _updateSEO({ title: s.name, desc: s.desc ? s.desc.slice(0,160) : s.name + ' — сервісний центр у ' + (s.city||''), url: 'https://ridego-sigma.vercel.app/service/' + id });
 }
 
 function openAddServiceModal(){
