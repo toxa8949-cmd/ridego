@@ -48,7 +48,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="/css/main.css">
 </head>
 
   <!-- Firebase Compat SDK -->
@@ -190,7 +190,7 @@
     <a class="logo" onclick="showPage('home')">Ride<span>GO</span></a>
     <div class="search-wrap">
       <i class="fa-solid fa-search"></i>
-      <input type="text" id="headerSearch" placeholder="Самокат, велосипед, скутер..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
+      <input type="text" id="headerSearch" placeholder="Самокат, велосипед, скутер..." autocomplete="off" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
     </div>
     <nav>
       <a onclick="showPage('catalog')">Каталог</a>
@@ -1808,7 +1808,7 @@
 
 
 
-  <script src="js/main.js"></script>
-  <script src="js/extra.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/extra.js"></script>
 </body>
 </html>
