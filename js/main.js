@@ -99,7 +99,7 @@ function _parseHash(hash) { return _parsePath(); }
 // Navigate from router (no pushState — already set by caller or hashchange)
 function _renderRoute(route) {
   _routerLock = true;
-  const { page, id } = route;
+  const { page, id, cat } = route;
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + page);
@@ -115,7 +115,20 @@ function _renderRoute(route) {
   if (page === 'home')     renderHomeListings();
   if (page === 'messages') renderChats();
   if (page === 'profile')  renderProfile();
-  if (page === 'catalog')  { setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150); }
+  if (page === 'catalog') {
+    // Якщо немає категорії в URL — скинути вибір
+    if (!route.cat) {
+      selectedCat = null;
+      document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); });
+      var fp = document.getElementById('filter-panel');
+      if (fp) fp.classList.remove('open');
+      var rw = document.getElementById('catalog-results-wrap');
+      if (rw) rw.style.display = 'none';
+      var dv = document.getElementById('catalog-divider');
+      if (dv) dv.style.display = 'none';
+    }
+    setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150);
+  }
   if (page === 'services')       renderServices();
   if (page === 'service-detail' && id) showServiceDetail(id);
   if (page === 'add')      setTimeout(initOblastSelect, 50);
