@@ -340,7 +340,7 @@ function showNewsDetail(id) {
     + '</div>'
     + '<h1 style="font-size:clamp(22px,3vw,32px);font-weight:800;margin-bottom:20px;line-height:1.3">'+(n.title||'')+'</h1>'
     + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+(n.excerpt||'')+'</div>'
-    + '<div style="font-size:16px;line-height:1.8;white-space:pre-wrap">'+(n.body||'')+'</div>';
+    + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'')+'</div>';
   showPage('news-detail');
 }
 
