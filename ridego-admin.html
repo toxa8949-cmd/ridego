@@ -572,6 +572,26 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+#news-editor:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+#news-editor h2 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; }
+#news-editor h3 { font-size: 18px; font-weight: 600; margin: 14px 0 6px; }
+#news-editor blockquote {
+  border-left: 3px solid var(--brand); padding-left: 16px;
+  color: var(--text-muted); margin: 12px 0; font-style: italic;
+}
+#news-editor ul { padding-left: 20px; margin: 8px 0; }
+#news-editor ul li { margin-bottom: 4px; }
+#news-preview-content h2 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; }
+#news-preview-content h3 { font-size: 18px; font-weight: 600; margin: 14px 0 6px; }
+#news-preview-content blockquote { border-left: 3px solid var(--brand); padding-left: 16px; color: var(--text-muted); margin: 12px 0; font-style: italic; }
+#news-preview-content img { max-width: 100%; border-radius: 8px; margin: 12px 0; display: block; }
+</style>
 </head>
 <body>
 
@@ -1069,17 +1089,21 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 
 <!-- MODAL: News Editor -->
 <div class="modal-overlay" id="news-modal" onclick="if(event.target===this)closeModal('news-modal')">
-  <div class="modal" style="max-width:700px;width:100%">
+  <div class="modal" style="max-width:860px;width:100%;max-height:92vh;display:flex;flex-direction:column">
     <div class="modal-header">
       <div class="modal-title" id="news-modal-title">Написати новину</div>
       <button class="modal-close" onclick="closeModal('news-modal')">×</button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="overflow-y:auto;flex:1">
       <input type="hidden" id="news-edit-id">
+
+      <!-- Рядок 1: Заголовок -->
       <div class="form-group" style="margin-bottom:14px">
         <label class="form-label">Заголовок *</label>
         <input class="form-input" id="news-title" placeholder="Наприклад: Топ-5 електросамокатів 2026 року">
       </div>
+
+      <!-- Рядок 2: Категорія + Опис -->
       <div class="form-row" style="margin-bottom:14px">
         <div class="form-group">
           <label class="form-label">Категорія</label>
@@ -1091,30 +1115,66 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Фото</label>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div id="news-img-preview" style="display:none;width:100%;height:140px;border-radius:8px;overflow:hidden;background:var(--dark4)">
-              <img id="news-img-preview-el" style="width:100%;height:100%;object-fit:cover">
-            </div>
-            <div style="display:flex;gap:8px">
-              <button type="button" class="btn btn-outline" style="flex:1;padding:9px" onclick="document.getElementById('news-img-file').click()">
-                <i class="fa-solid fa-upload" style="margin-right:6px"></i><span id="news-img-btn-label">Завантажити фото</span>
-              </button>
-              <button type="button" class="action-btn danger" id="news-img-clear" style="display:none" onclick="clearNewsImg()" title="Видалити фото"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <input type="file" id="news-img-file" accept="image/*" style="display:none" onchange="uploadNewsImg(this)">
-            <input type="hidden" id="news-img">
-          </div>
+          <label class="form-label">Короткий опис *</label>
+          <input class="form-input" id="news-excerpt" placeholder="1-2 речення для превью...">
         </div>
       </div>
+
+      <!-- Головне фото -->
       <div class="form-group" style="margin-bottom:14px">
-        <label class="form-label">Короткий опис *</label>
-        <input class="form-input" id="news-excerpt" placeholder="1-2 речення для превью...">
+        <label class="form-label">Головне фото</label>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div id="news-img-preview" style="display:none;width:100%;height:160px;border-radius:8px;overflow:hidden;background:var(--dark4)">
+            <img id="news-img-preview-el" style="width:100%;height:100%;object-fit:contain">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-outline" style="flex:1;padding:9px" onclick="document.getElementById('news-img-file').click()">
+              <i class="fa-solid fa-upload" style="margin-right:6px"></i><span id="news-img-btn-label">Завантажити фото</span>
+            </button>
+            <button type="button" class="action-btn danger" id="news-img-clear" style="display:none" onclick="clearNewsImg()" title="Видалити"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <input type="file" id="news-img-file" accept="image/*" style="display:none" onchange="uploadNewsImg(this)">
+          <input type="hidden" id="news-img">
+        </div>
       </div>
+
+      <!-- Редактор тексту -->
       <div class="form-group" style="margin-bottom:14px">
         <label class="form-label">Текст новини *</label>
-        <textarea class="form-input" id="news-body" rows="8" style="resize:vertical;line-height:1.6" placeholder="Повний текст новини..."></textarea>
+
+        <!-- Панель інструментів -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap;background:var(--dark4);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:8px">
+          <button type="button" class="action-btn" title="Жирний" onclick="newsFormat('bold')"><i class="fa-solid fa-bold"></i></button>
+          <button type="button" class="action-btn" title="Курсив" onclick="newsFormat('italic')"><i class="fa-solid fa-italic"></i></button>
+          <button type="button" class="action-btn" title="Підкреслений" onclick="newsFormat('underline')"><i class="fa-solid fa-underline"></i></button>
+          <div style="width:1px;background:var(--border);margin:0 4px"></div>
+          <button type="button" class="action-btn" title="Заголовок H2" onclick="newsFormat('h2')"><b>H2</b></button>
+          <button type="button" class="action-btn" title="Заголовок H3" onclick="newsFormat('h3')"><b>H3</b></button>
+          <button type="button" class="action-btn" title="Список" onclick="newsFormat('list')"><i class="fa-solid fa-list-ul"></i></button>
+          <button type="button" class="action-btn" title="Цитата" onclick="newsFormat('quote')"><i class="fa-solid fa-quote-left"></i></button>
+          <div style="width:1px;background:var(--border);margin:0 4px"></div>
+          <button type="button" class="action-btn" title="Додати фото в текст" onclick="document.getElementById('news-inline-img-file').click()">
+            <i class="fa-solid fa-image"></i> Фото
+          </button>
+          <input type="file" id="news-inline-img-file" accept="image/*" style="display:none" onchange="insertNewsImg(this)">
+          <div style="width:1px;background:var(--border);margin:0 4px"></div>
+          <button type="button" class="action-btn" title="Попередній перегляд" onclick="toggleNewsPreview()"><i class="fa-solid fa-eye"></i></button>
+        </div>
+
+        <!-- Редактор -->
+        <div id="news-editor"
+          contenteditable="true"
+          style="min-height:220px;background:var(--dark3);border:1px solid var(--border);border-radius:0 0 8px 8px;padding:16px;font-size:15px;line-height:1.8;outline:none;color:var(--text)"
+          data-placeholder="Почніть писати текст новини...">
+        </div>
+
+        <!-- Попередній перегляд -->
+        <div id="news-preview-panel" style="display:none;margin-top:12px;background:var(--dark3);border:1px solid var(--border);border-radius:8px;padding:20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Попередній перегляд</div>
+          <div id="news-preview-content" style="font-size:15px;line-height:1.8"></div>
+        </div>
       </div>
+
       <div style="display:flex;align-items:center;gap:12px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
           <input type="checkbox" id="news-published" checked style="accent-color:var(--brand)">
@@ -2190,16 +2250,66 @@ function renderNewsList(news) {
   }).join('');
 }
 
-function openNewsModal(id) {
+function openNewsModal() {
   document.getElementById('news-edit-id').value = '';
   document.getElementById('news-title').value = '';
   document.getElementById('news-excerpt').value = '';
-  document.getElementById('news-body').value = '';
   document.getElementById('news-cat').value = 'Новини';
   document.getElementById('news-published').checked = true;
   document.getElementById('news-modal-title').textContent = 'Написати новину';
+  document.getElementById('news-editor').innerHTML = '';
+  document.getElementById('news-preview-panel').style.display = 'none';
   clearNewsImg();
   openModal('news-modal');
+}
+
+function newsFormat(cmd) {
+  var editor = document.getElementById('news-editor');
+  editor.focus();
+  if (cmd === 'h2') {
+    document.execCommand('formatBlock', false, 'h2');
+  } else if (cmd === 'h3') {
+    document.execCommand('formatBlock', false, 'h3');
+  } else if (cmd === 'list') {
+    document.execCommand('insertUnorderedList');
+  } else if (cmd === 'quote') {
+    document.execCommand('formatBlock', false, 'blockquote');
+  } else {
+    document.execCommand(cmd);
+  }
+}
+
+function insertNewsImg(input) {
+  var file = input.files[0];
+  if (!file) return;
+  showToast('📸 Завантаження фото...');
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', 'ridego_unsigned');
+  fd.append('folder', 'news');
+  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.secure_url) {
+        var editor = document.getElementById('news-editor');
+        editor.focus();
+        var img = '<img src="' + data.secure_url + '" style="max-width:100%;border-radius:8px;margin:12px 0;display:block">';
+        document.execCommand('insertHTML', false, img);
+        showToast('✅ Фото додано!');
+      }
+    }).catch(function(){ showToast('⚠️ Помилка завантаження'); });
+  input.value = '';
+}
+
+function toggleNewsPreview() {
+  var panel = document.getElementById('news-preview-panel');
+  var editor = document.getElementById('news-editor');
+  if (panel.style.display === 'none') {
+    document.getElementById('news-preview-content').innerHTML = editor.innerHTML;
+    panel.style.display = '';
+  } else {
+    panel.style.display = 'none';
+  }
 }
 
 function uploadNewsImg(input) {
@@ -2259,6 +2369,8 @@ function editNews(id) {
     document.getElementById('news-excerpt').value = n.excerpt || '';
     document.getElementById('news-body').value = n.body || '';
     document.getElementById('news-img').value = n.img || '';
+    document.getElementById('news-editor').innerHTML = n.body || '';
+    document.getElementById('news-preview-panel').style.display = 'none';
     if (n.img) {
       var prev = document.getElementById('news-img-preview');
       var prevEl = document.getElementById('news-img-preview-el');
@@ -2278,10 +2390,10 @@ function editNews(id) {
 function saveNews() {
   var title = document.getElementById('news-title').value.trim();
   var excerpt = document.getElementById('news-excerpt').value.trim();
-  var body = document.getElementById('news-body').value.trim();
+  var body = document.getElementById('news-editor').innerHTML.trim();
   if (!title) { showToast('Введіть заголовок','error'); return; }
   if (!excerpt) { showToast('Введіть короткий опис','error'); return; }
-  if (!body) { showToast('Введіть текст новини','error'); return; }
+  if (!body || body === '<br>') { showToast('Введіть текст новини','error'); return; }
 
   var data = {
     title: title,
