@@ -3970,11 +3970,15 @@ function toggleTheme() {
 // ============================================================
 // INIT
 // ============================================================
-// restore saved theme
+// Денна тема за замовчуванням
 try {
-  if (localStorage.getItem('eria-theme') === 'light') {
+  var savedTheme = localStorage.getItem('eria-theme');
+  // Якщо не збережено — ставимо light за замовчуванням
+  if (savedTheme === 'light' || savedTheme === null) {
     document.body.classList.add('light');
-    document.getElementById('themeKnob').textContent = '☀️';
+    var knob = document.getElementById('themeKnob');
+    if (knob) knob.textContent = '☀️';
+    if (savedTheme === null) localStorage.setItem('eria-theme', 'light');
   }
 } catch(e) {}
 
