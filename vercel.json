@@ -3,65 +3,23 @@
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "Cross-Origin-Opener-Policy",
-          "value": "same-origin-allow-popups"
-        },
-        {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "unsafe-none"
-        }
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "unsafe-none" }
       ]
     }
   ],
   "rewrites": [
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
-    },
-    {
-      "source": "/listing/:id",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/category/:slug",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/seller/:uid",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/service/:id",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/news/:id",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/catalog",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/add",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/services",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/messages",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/profile",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/news",
-      "destination": "/index.html"
-    }
+    { "source": "/sitemap.xml",    "destination": "/api/sitemap" },
+    { "source": "/listing/:id",    "destination": "/index.html" },
+    { "source": "/category/:slug", "destination": "/index.html" },
+    { "source": "/seller/:uid",    "destination": "/index.html" },
+    { "source": "/service/:id",    "destination": "/index.html" },
+    { "source": "/news/:id",       "destination": "/index.html" },
+    { "source": "/catalog",        "destination": "/index.html" },
+    { "source": "/add",            "destination": "/index.html" },
+    { "source": "/services",       "destination": "/index.html" },
+    { "source": "/messages",       "destination": "/index.html" },
+    { "source": "/profile",        "destination": "/index.html" },
+    { "source": "/news",           "destination": "/index.html" }
   ]
 }
