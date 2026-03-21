@@ -363,6 +363,12 @@ function loadFirebaseData() {
       // Якщо поточний URL — /listing/ID, показати після завантаження
       var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
       if (_lstPath) showDetail(_lstPath[1], true);
+      // Якщо /category/slug — вибрати категорію
+      var _catPath = window.location.pathname.match(/^\/category\/(.+)$/);
+      if (_catPath && CAT_SLUGS[_catPath[1]]) {
+        var _catName = CAT_SLUGS[_catPath[1]];
+        setTimeout(function() { filterCatalog(_catName); }, 200);
+      }
     }).catch(function(e){ console.log('listings:', e.message); });
   // Сервіси
   window._db.collection('services').orderBy('rating','desc').limit(30).get()
@@ -879,6 +885,7 @@ function selectTransport(btn) {
   document.querySelectorAll('.transport-btn').forEach(b => b.classList.remove('selected'));
   if (wasSelected) {
     selectedCat = null;
+    _setPath('/catalog');
     document.getElementById('filter-panel').classList.remove('open');
     document.getElementById('catalog-results-wrap').style.display = 'none';
     const div = document.getElementById('catalog-divider');
@@ -887,6 +894,9 @@ function selectTransport(btn) {
   }
   btn.classList.add('selected');
   selectedCat = btn.dataset.cat;
+  // Оновити URL
+  var slug = CAT_TO_SLUG[selectedCat];
+  if (slug) _setPath('/category/' + slug);
   openFilterPanel(selectedCat);
 }
 
@@ -1089,9 +1099,13 @@ function setLayout(mode) {
 }
 
 function filterCatalog(cat) {
+  // Оновити URL на /category/slug
+  var slug = CAT_TO_SLUG[cat];
+  if (slug) _setPath('/category/' + slug);
+  else _setPath('/catalog');
   showPage('catalog');
   setTimeout(() => {
-    const btn = document.querySelector(`.transport-btn[data-cat="${cat}"]`);
+    const btn = document.querySelector('.transport-btn[data-cat="' + cat + '"]');
     if (btn) selectTransport(btn);
   }, 60);
 }
