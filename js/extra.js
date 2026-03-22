@@ -3,10 +3,9 @@ document.addEventListener('DOMContentLoaded', function() {
   var searchEl = document.getElementById('headerSearch');
   if (searchEl) {
     searchEl.value = '';
-    searchEl.setAttribute('autocomplete', 'off');
-    searchEl.setAttribute('name', 'ridego-search-' + Date.now()); // унікальне ім'я — Chrome не матчить збережені паролі
     // Додаткова перестраховка — очистити після того як браузер може вставити значення
-    setTimeout(function() { if (searchEl.value && !searchEl.dataset.userTyped) searchEl.value = ''; }, 300);
+    setTimeout(function() { if (searchEl.value && !searchEl.dataset.userTyped) searchEl.value = ''; }, 100);
+    setTimeout(function() { if (searchEl.value && !searchEl.dataset.userTyped) searchEl.value = ''; }, 500);
     searchEl.addEventListener('input', function() { searchEl.dataset.userTyped = '1'; });
   }
 
