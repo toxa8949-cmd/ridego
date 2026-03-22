@@ -235,6 +235,24 @@ function getSellerById(name) {
 }
 
 // ── FAQ TOGGLE ───────────────────────────────────────────────
+// ── PROFILE CATS ─────────────────────────────────────────────
+function updateProfileCats() {
+  var checked = [];
+  document.querySelectorAll('#set-cats-wrap input[type=checkbox]:checked').forEach(function(cb) {
+    checked.push(cb.value);
+  });
+  var hiddenEl = document.getElementById('set-cats-value');
+  if (hiddenEl) hiddenEl.value = JSON.stringify(checked);
+}
+function _fillProfileCats(cats) {
+  if (!cats || !cats.length) return;
+  document.querySelectorAll('#set-cats-wrap input[type=checkbox]').forEach(function(cb) {
+    cb.checked = cats.indexOf(cb.value) >= 0;
+  });
+  updateProfileCats();
+}
+// ── PROFILE CATS END ──────────────────────────────────────────
+
 function toggleFaq(el) {
   var isOpen = el.classList.contains('open');
   // Закрити всі
@@ -4044,6 +4062,10 @@ function renderProfile() {
       fill('set-address',   d.address);
       fill('set-hours',     d.hours);
       fill('set-about',     d.about || d.desc);
+      // Заповнити категорії
+      if (d.cats && d.cats.length && typeof _fillProfileCats === 'function') {
+        _fillProfileCats(d.cats);
+      }
 
       // Завантажити фото з Firestore якщо є
       if (d.photoUrl && !profilePhotoUrl) {
@@ -4178,6 +4200,10 @@ function saveProfileSettings() {
   const address  = document.getElementById('set-address')?.value.trim();
   const hours    = document.getElementById('set-hours')?.value.trim();
   const about    = document.getElementById('set-about')?.value.trim();
+  // Категорії
+  var catsRaw = document.getElementById('set-cats-value')?.value;
+  var profileCats = [];
+  try { profileCats = catsRaw ? JSON.parse(catsRaw) : []; } catch(e) {}
 
   if (!name) { showToast("⚠️ Введіть ваше ім'я"); return; }
   if (pass && pass !== pass2) { showToast('⚠️ Паролі не збігаються'); return; }
@@ -4223,6 +4249,7 @@ function saveProfileSettings() {
       hours:     hours || '',
       about:     about || '',
       desc:      about || '',
+      cats:      profileCats,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     window._db.collection('users').doc(currentUser.uid).update(profileData)
