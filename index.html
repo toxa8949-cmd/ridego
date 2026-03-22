@@ -211,12 +211,13 @@
       <span>Повідомлення</span>
       <span class="header-msg-badge" id="header-msg-badge" style="display:none">0</span>
     </button>
-    <!-- Тільки мобільний: іконки пошуку і профілю -->
+    <!-- Тільки мобільний: іконки пошуку і повідомлень -->
     <button class="mobile-search-btn" onclick="toggleMobileSearch()" aria-label="Пошук">
       <i class="fa-solid fa-search"></i>
     </button>
-    <button class="mobile-profile-btn" onclick="showPage('profile')" aria-label="Профіль">
-      <i class="fa-solid fa-user"></i>
+    <button class="mobile-msg-btn" onclick="showPage('messages')" aria-label="Повідомлення" style="position:relative">
+      <i class="fa-solid fa-comment-dots"></i>
+      <span class="header-msg-badge" id="mobile-msg-badge" style="display:none">0</span>
     </button>
   </div>
   <!-- Мобільний рядок пошуку (розгортається по кліку) -->
@@ -242,11 +243,7 @@
       <span class="mnav-fab-label">Додати</span>
     </button>
     <button class="mnav-item" onclick="showPage('services')"><i class="fa-solid fa-wrench"></i>Сервіси</button>
-    <button class="mnav-item mnav-msg" onclick="showPage('messages')" style="position:relative">
-      <i class="fa-solid fa-comment-dots"></i>
-      <span class="header-msg-badge" id="mobile-msg-badge" style="display:none">0</span>
-      Чат
-    </button>
+    <button class="mnav-item" onclick="showPage('profile')"><i class="fa-solid fa-user"></i>Профіль</button>
   </div>
 </div>
 
