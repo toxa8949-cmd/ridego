@@ -6,6 +6,30 @@ document.addEventListener('DOMContentLoaded', function() {
   // Показати skeleton заглушки поки грузяться дані
   if (typeof showSkeletons === 'function') showSkeletons();
 
+  // Skeleton для новин
+  var homeNewsEl = document.getElementById('home-news-grid');
+  if (homeNewsEl) homeNewsEl.innerHTML = [1,2,3].map(function() {
+    return '<div class="skel-card"><div class="skeleton skel-img"></div>'
+      + '<div class="skel-body">'
+      + '<div class="skeleton skel-line short"></div>'
+      + '<div class="skeleton skel-line full"></div>'
+      + '<div class="skeleton skel-line full"></div>'
+      + '<div class="skeleton skel-line short"></div>'
+      + '</div></div>';
+  }).join('');
+
+  // Offline listener — показувати toast при втраті з'єднання
+  window.addEventListener('offline', function() {
+    if (typeof showToast === 'function') showToast('⚠️ З\'єднання з інтернетом втрачено');
+  });
+  window.addEventListener('online', function() {
+    if (typeof showToast === 'function') showToast('✅ З\'єднання відновлено');
+    // Перезавантажити дані якщо кеш порожній
+    if (typeof loadFirebaseData === 'function' && typeof _fbListings !== 'undefined' && !_fbListings.length) {
+      loadFirebaseData();
+    }
+  });
+
   setTimeout(loadFirebaseData, 300);
   setTimeout(loadSiteNews, 800);
 });
@@ -285,6 +309,19 @@ var _allNews = [];
 
 function loadSiteNews() {
   if (!window._db) return;
+  // Skeleton для news-grid поки грузиться
+  var newsGridEl = document.getElementById('news-grid');
+  if (newsGridEl && !_allNews.length) {
+    newsGridEl.innerHTML = [1,2,3,4,5,6].map(function() {
+      return '<div class="skel-card"><div class="skeleton skel-img"></div>'
+        + '<div class="skel-body">'
+        + '<div class="skeleton skel-line short"></div>'
+        + '<div class="skeleton skel-line full"></div>'
+        + '<div class="skeleton skel-line full"></div>'
+        + '<div class="skeleton skel-line short"></div>'
+        + '</div></div>';
+    }).join('');
+  }
   window._db.collection('news').where('published','==',true).orderBy('createdAt','desc').get()
     .then(function(snap) {
       _allNews = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });

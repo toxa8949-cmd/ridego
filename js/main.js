@@ -394,12 +394,31 @@ function _loadUserServices(uid) {
     }).catch(function(e){ console.log('services load:', e.message); });
 }
 
-function loadFirebaseData() {
+// Кеш-мітка — не перезапитувати Firebase частіше ніж раз на 5 хв
+var _fbDataLoadedAt = 0;
+var _FB_CACHE_TTL   = 5 * 60 * 1000; // 5 хвилин
+
+function loadFirebaseData(force) {
   if (!window._db) return;
+  var now = Date.now();
+  // Якщо дані вже є і не застаріли — не робити зайвий запит
+  if (!force && _fbListings.length && (now - _fbDataLoadedAt) < _FB_CACHE_TTL) {
+    renderHomeListings();
+    renderCatalog();
+    return;
+  }
+
+  // Offline-перевірка
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    showToast('⚠️ Немає з\'єднання з інтернетом');
+    return;
+  }
+
   // Оголошення
   window._db.collection('listings').orderBy('createdAt','desc').limit(50).get()
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      _fbDataLoadedAt = Date.now();
       renderHomeListings();
       renderCatalog();
       // Якщо поточний URL — /listing/ID, показати після завантаження
@@ -411,17 +430,19 @@ function loadFirebaseData() {
         var _catName = CAT_SLUGS[_catPath[1]];
         setTimeout(function() { filterCatalog(_catName); }, 200);
       }
-    }).catch(function(e){ console.log('listings:', e.message); });
+    }).catch(function(e){
+      console.log('listings:', e.message);
+      if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
+    });
+
   // Сервіси
   window._db.collection('services').orderBy('rating','desc').limit(30).get()
     .then(function(snap) {
       var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-      // Прибрати дублікати — якщо сервіс вже є в myServices, не додавати в _fbServices
       var myIds = myServices.map(function(s){ return s.id; });
       _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
-      // Якщо поточний URL — /service/ID, показати деталь після завантаження
       var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
       if (_svcPath) showServiceDetail(_svcPath[1]);
     }).catch(function(e){ console.log('services:', e.message); });
@@ -1518,22 +1539,30 @@ let galleryIdx = 0;
 function showDetail(id, _skipPush) {
   const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
   if (!l) {
-    // Дані ще не завантажені — завантажити оголошення напряму з Firestore
+    // Дані ще не завантажені — показати skeleton і завантажити напряму з Firestore
     if (window._db && id) {
-      // Показати сторінку деталей зі спінером поки грузиться
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       var detailPage = document.getElementById('page-detail');
       if (detailPage) detailPage.classList.add('active');
+      window.scrollTo({ top: 0 });
+      // Skeleton для заголовку і фото
       var titleEl = document.getElementById('detail-title');
-      if (titleEl) titleEl.textContent = 'Завантаження...';
+      if (titleEl) titleEl.innerHTML = '<span class="skeleton" style="display:inline-block;width:60%;height:22px;border-radius:6px"></span>';
+      var imgWrap = document.getElementById('detail-main-img-wrap');
+      if (imgWrap) imgWrap.innerHTML = '<div class="skeleton" style="width:100%;height:100%;border-radius:12px"></div>';
+      var priceEl = document.getElementById('detail-price');
+      if (priceEl) priceEl.innerHTML = '<span class="skeleton" style="display:inline-block;width:120px;height:28px;border-radius:6px"></span>';
+      var descEl = document.getElementById('detail-desc');
+      if (descEl) descEl.innerHTML = '<div class="skeleton" style="height:14px;margin-bottom:8px;border-radius:4px"></div><div class="skeleton" style="height:14px;width:80%;border-radius:4px"></div>';
+
       window._db.collection('listings').doc(id).get().then(function(snap) {
         if (!snap.exists) { showToast('⚠️ Оголошення не знайдено'); return; }
         var data = Object.assign({ id: snap.id }, snap.data());
-        // Додати в кеш і показати
         _fbListings.unshift(data);
         showDetail(id, _skipPush);
       }).catch(function(e) {
-        showToast('⚠️ Помилка завантаження: ' + e.message);
+        if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
+        else showToast('⚠️ Помилка завантаження: ' + e.message);
       });
     }
     return;
@@ -3544,16 +3573,26 @@ function sendMessage() {
     createdAt: Date.now()
   };
 
+  // Одразу оновити локальний кеш — список чатів покаже свіжий preview без затримки
+  var localChat = _fbChats.find(function(c){ return c.id === _activeChatId; });
+  if (localChat) {
+    localChat.lastMessage   = text;
+    localChat.lastMessageAt = { seconds: Math.floor(Date.now() / 1000) };
+    // Підняти чат на верх списку
+    _fbChats = [localChat].concat(_fbChats.filter(function(c){ return c.id !== _activeChatId; }));
+    renderChats();
+  }
+
   // Зберегти в RTDB
   if (window._rtdb) {
     window._rtdb.ref('chats/' + _activeChatId + '/messages').push(msg);
     window._rtdb.ref('chats/' + _activeChatId).update({
       lastMessage: text,
-      lastMessageAt: { seconds: Math.floor(Date.now()/1000) }
+      lastMessageAt: { seconds: Math.floor(Date.now() / 1000) }
     });
   }
 
-  // Також оновити Firestore для списку чатів
+  // Оновити Firestore для списку чатів і для onSnapshot listener
   if (window._db) {
     window._db.collection('chats').doc(_activeChatId).update({
       lastMessage: text,
