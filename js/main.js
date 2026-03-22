@@ -4795,8 +4795,7 @@ function openPromoModal(listingId, afterAdd) {
   _selectedPromoDays = 7;
 
   // Назва оголошення в заголовок — безпечний пошук
-  const allListings = (typeof LISTINGS !== 'undefined' ? LISTINGS : []).concat(
-                      _allListings();
+  const allListings = _allListings();
   const l = allListings.find(x => x && (x.id === +listingId || x.id === listingId));
   const subEl = document.getElementById('promo-modal-listing-name');
   if (subEl) {
