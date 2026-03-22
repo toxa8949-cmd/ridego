@@ -32,6 +32,29 @@
     --shadow: 0 4px 24px rgba(0,0,0,0.10);
   }
 
+  /* ── ANTI-FLASH: застосовуємо light тему одразу через html клас
+     встановлений синхронним скриптом в <head> ── */
+  html.light-preload {
+    background: #f0f4f0;
+  }
+  html.light-preload body {
+    --brand: #00a846;
+    --brand-dark: #008c3a;
+    --brand-dim: rgba(0,168,70,0.10);
+    --dark: #f0f4f0;
+    --dark2: #ffffff;
+    --dark3: #e8f0e8;
+    --text: #1a2e1a;
+    --text-muted: #5a7a5a;
+    --border: rgba(0,0,0,0.09);
+    --card-bg: #ffffff;
+    --header-bg: rgba(255,255,255,0.95);
+    --hero-bg: #1a2e1a;
+    --shadow: 0 4px 24px rgba(0,0,0,0.10);
+    background: #f0f4f0;
+    color: #1a2e1a;
+  }
+
   /* all elements transition smoothly */
   *, *::before, *::after {
     transition: background-color .35s ease, border-color .35s ease, color .2s ease, box-shadow .3s ease;
