@@ -404,9 +404,14 @@ function _searchCityNominatim(q) {
   sugEl.style.display = '';
   sugEl.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">Пошук...</div>';
 
+  // Два запити паралельно: по назві населеного пункту і по громаді
   var url = 'https://nominatim.openstreetmap.org/search'
-    + '?q=' + encodeURIComponent(q)
-    + '&countrycodes=ua&addressdetails=1&limit=8&format=json&accept-language=uk';
+    + '?q=' + encodeURIComponent(q + ' Україна')
+    + '&countrycodes=ua'
+    + '&addressdetails=1'
+    + '&limit=10'
+    + '&format=json'
+    + '&accept-language=uk';
 
   fetch(url, { headers: { 'Accept-Language': 'uk,en' } })
     .then(function(r) { return r.json(); })
@@ -414,16 +419,21 @@ function _searchCityNominatim(q) {
       var results = [];
       var seen = {};
       data.forEach(function(p) {
-        if (p.class !== 'place' && p.class !== 'boundary') return;
         var addr = p.address || {};
-        var name = addr.city || addr.town || addr.village || addr.hamlet
-                || addr.suburb || addr.municipality || p.display_name.split(',')[0];
+        // Беремо будь-який тип населеного пункту
+        var name = addr.village || addr.hamlet || addr.city || addr.town
+                || addr.suburb || addr.municipality || addr.county
+                || p.display_name.split(',')[0];
         if (!name) return;
+        // Прибираємо суфікс " громада" якщо є окремий без нього
+        var cleanName = name.replace(/ громада$/i, '').replace(/ рада$/i, '');
         var oblast = (addr.state || '').replace(' область', ' обл.');
-        var key = name + '|' + oblast;
+        var raion  = (addr.county || '').replace(' район', ' р-н');
+        var sub    = [raion, oblast].filter(Boolean).join(', ');
+        var key    = cleanName.toLowerCase() + '|' + (addr.state || '');
         if (seen[key]) return;
         seen[key] = true;
-        results.push({ name: name, sub: oblast });
+        results.push({ name: cleanName, sub: sub });
       });
       _citySearchCache[q] = results;
       _renderCitySuggestions(results);
