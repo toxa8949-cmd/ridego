@@ -251,7 +251,119 @@ function toggleFaq(el) {
   }
 }
 
-// ── MOBILE SEARCH TOGGLE ─────────────────────────────────────
+// ── PROMO HELPERS ─────────────────────────────────────────────
+// Перевіряє чи активний промо юзера (не протермінований)
+function _isPromoActive(l) {
+  if (!l || !l.promo) return false;
+  if (!l.promoUntil) return true; // старі записи без дати — вважаємо активними
+  return new Date(l.promoUntil) > new Date();
+}
+
+// Очистити протерміновані промо — викликати після завантаження даних
+function _cleanExpiredPromos(listings) {
+  var expired = [];
+  listings.forEach(function(l) {
+    if (l.promo && l.promoUntil && new Date(l.promoUntil) <= new Date()) {
+      expired.push(l.id);
+      delete l.promo;
+      delete l.promoUntil;
+      delete l.promoDays;
+    }
+  });
+  // Оновити в Firestore асинхронно
+  if (window._db && expired.length) {
+    expired.forEach(function(id) {
+      window._db.collection('listings').doc(id).update({
+        promo: firebase.firestore.FieldValue.delete(),
+        promoUntil: firebase.firestore.FieldValue.delete(),
+        promoDays: firebase.firestore.FieldValue.delete()
+      }).catch(function(){});
+    });
+  }
+  return listings;
+}
+
+// Відсортувати масив з промо-логікою:
+// 1. TOP — ротація (не більше MAX_TOP підряд, потім regular, потім знову TOP)
+// 2. highlight — перемішані з regular але підняті вище
+// 3. urgent — підняті але позначені
+// 4. regular — за датою (новіші першими)
+var MAX_TOP_IN_ROW = 4; // не більше 4 TOP підряд без regular між ними
+
+function _sortWithPromo(data, sortType) {
+  // Спочатку фільтруємо тільки активні промо
+  data.forEach(function(l) {
+    if (l.promo && !_isPromoActive(l)) {
+      delete l.promo;
+    }
+  });
+
+  var tops      = data.filter(function(l){ return l.promo === 'top'; });
+  var highlights= data.filter(function(l){ return l.promo === 'highlight'; });
+  var urgents   = data.filter(function(l){ return l.promo === 'urgent'; });
+  var regulars  = data.filter(function(l){ return !l.promo || l.promo === 'banner'; });
+
+  // Сортувати кожну групу
+  var byDate = function(a, b) {
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  };
+  var byDateAsc = function(a, b) { return byDate(b, a); };
+
+  // TOP ротується — щоб не було 100 TOP підряд
+  // Алгоритм: показуємо по MAX_TOP_IN_ROW TOP, потім MAX_TOP_IN_ROW regular, і так чергуємо
+  tops.sort(byDate);
+  highlights.sort(byDate);
+  urgents.sort(byDate);
+
+  if (sortType === 'cheap') {
+    regulars.sort(function(a,b){ return a.price - b.price; });
+  } else if (sortType === 'expensive') {
+    regulars.sort(function(a,b){ return b.price - a.price; });
+  } else {
+    regulars.sort(byDate);
+  }
+
+  // Urgent і highlight — підняті над regular але не займають весь екран
+  // Вставляємо по 1 urgent/highlight на кожні 3 regular
+  var mixed = [];
+  var urgIdx = 0, hlIdx = 0, regIdx = 0;
+  var regBatch = 3;
+
+  // 1. Спочатку MAX_TOP_IN_ROW * чергування
+  var topIdx = 0;
+  var totalItems = data.length;
+  var inserted = 0;
+
+  while (topIdx < tops.length || regIdx < regulars.length || urgIdx < urgents.length || hlIdx < highlights.length) {
+    // Вставити до MAX_TOP_IN_ROW TOP
+    var topBatch = Math.min(MAX_TOP_IN_ROW, tops.length - topIdx);
+    for (var i = 0; i < topBatch; i++) {
+      mixed.push(tops[topIdx++]);
+    }
+    // Вставити 1 urgent якщо є
+    if (urgIdx < urgents.length) mixed.push(urgents[urgIdx++]);
+    // Вставити 1 highlight якщо є
+    if (hlIdx < highlights.length) mixed.push(highlights[hlIdx++]);
+    // Вставити regBatch regular
+    for (var j = 0; j < regBatch && regIdx < regulars.length; j++) {
+      mixed.push(regulars[regIdx++]);
+    }
+    // Якщо нічого не додали — виходимо
+    if (topBatch === 0 && urgIdx >= urgents.length && hlIdx >= highlights.length && regIdx >= regulars.length) break;
+    if (topBatch === 0 && tops.length === 0) {
+      // Тільки regular залишились
+      while (regIdx < regulars.length) mixed.push(regulars[regIdx++]);
+      while (urgIdx < urgents.length) mixed.push(urgents[urgIdx++]);
+      while (hlIdx < highlights.length) mixed.push(highlights[hlIdx++]);
+      break;
+    }
+  }
+  return mixed;
+}
+
+// ── PROMO HELPERS END ────────────────────────────────────────
 function toggleMobileSearch() {
   var bar = document.getElementById('mobileSearchBar');
   if (!bar) return;
@@ -559,13 +671,14 @@ function createCard(l, backPage) {
   // ── Платні формати ──────────────────────────────────────────
   let promoClass = '';
   let promoBadge = '';
-  if (l.promo === 'top') {
+  const activePromo = _isPromoActive(l) ? l.promo : null;
+  if (activePromo === 'top') {
     promoClass = 'is-top';
     promoBadge = `<div class="promo-badge-top"><i class="fa-solid fa-arrow-up"></i> TOP</div>`;
-  } else if (l.promo === 'highlight') {
+  } else if (activePromo === 'highlight') {
     promoClass = 'is-highlight';
     promoBadge = `<div class="promo-badge-highlight"><i class="fa-solid fa-star"></i> Хіт</div>`;
-  } else if (l.promo === 'urgent') {
+  } else if (activePromo === 'urgent') {
     promoClass = 'is-urgent';
     promoBadge = `<div class="promo-badge-urgent"><i class="fa-solid fa-fire"></i> Терміново</div>`;
   }
@@ -773,7 +886,8 @@ function loadUserChats() {
 }
 
 function renderHomeListings() {
-  var all = _fbListings.concat(myListings).filter(function(l){ return l && l.status !== 'deleted'; });
+  var all = _fbListings.concat(myListings).filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive'; });
+  _cleanExpiredPromos(all);
 
   // Оновити лічильники категорій
   var cats = {
@@ -789,13 +903,20 @@ function renderHomeListings() {
     if (el) el.textContent = cnt > 0 ? cnt + ' пропозицій' : 'Скоро буде';
   });
 
-  // ТОП оголошення
+  // ТОП оголошення — ротація, не більше 4 за раз
   var topEl = document.getElementById('home-top-listings');
   var topEmpty = document.getElementById('home-top-empty');
-  var topList = all.filter(function(l){ return l.promo === 'top'; }).slice(0, 4);
+  var topList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'top'; });
+  // Ротація: показуємо різні TOP кожного завантаження (зсув по createdAt)
+  topList.sort(function(a, b) {
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  });
+  var topShow = topList.slice(0, 4);
   if (topEl) {
-    if (topList.length) {
-      topEl.innerHTML = topList.map(function(l){ return createCard(l,'home'); }).join('');
+    if (topShow.length) {
+      topEl.innerHTML = topShow.map(function(l){ return createCard(l,'home'); }).join('');
       if (topEmpty) topEmpty.style.display = 'none';
     } else {
       topEl.innerHTML = '';
@@ -803,13 +924,15 @@ function renderHomeListings() {
     }
   }
 
-  // Гарячі пропозиції (urgent/highlight)
+  // Гарячі пропозиції (urgent)
   var urgentEl = document.getElementById('home-urgent-listings');
   var urgentEmpty = document.getElementById('home-urgent-empty');
-  var urgentList = all.filter(function(l){ return l.promo === 'urgent' || l.promo === 'highlight'; }).slice(0, 4);
+  var urgentList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'urgent'; });
+  var highlightList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'highlight'; });
+  var hotList = urgentList.concat(highlightList).slice(0, 4);
   if (urgentEl) {
-    if (urgentList.length) {
-      urgentEl.innerHTML = urgentList.map(function(l){ return createCard(l,'home'); }).join('');
+    if (hotList.length) {
+      urgentEl.innerHTML = hotList.map(function(l){ return createCard(l,'home'); }).join('');
       if (urgentEmpty) urgentEmpty.style.display = 'none';
     } else {
       urgentEl.innerHTML = '';
@@ -819,7 +942,7 @@ function renderHomeListings() {
 
   // Нові оголошення (без промо, найновіші)
   var newEl = document.getElementById('home-listings');
-  var regular = all.filter(function(l){ return !l.promo; });
+  var regular = all.filter(function(l){ return !_isPromoActive(l); });
   regular.sort(function(a, b) {
     var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
     var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
@@ -1424,11 +1547,10 @@ var _catalogAllShown = false;  // чи показали все
 
 function runSearch() {
   var data = getFilteredData();
-  if (currentSort === 'cheap')     data.sort((a,b) => a.price - b.price);
-  if (currentSort === 'expensive') data.sort((a,b) => b.price - a.price);
-  // TOP/highlight/urgent завжди вище звичайних
-  const promoOrder = { top:0, highlight:1, urgent:2 };
-  data.sort((a,b) => (promoOrder[a.promo] ?? 3) - (promoOrder[b.promo] ?? 3));
+  _cleanExpiredPromos(data);
+
+  // Сортування з урахуванням промо-логіки
+  data = _sortWithPromo(data, currentSort);
 
   _catalogData     = data;
   _catalogPage     = 0;
@@ -1460,17 +1582,32 @@ function _appendCatalogPage() {
   const slice = _catalogData.slice(start, start + PAGE_SIZE);
   if (!slice.length) return;
 
-  const BANNER_INTERVAL = 6;
+  const BANNER_INTERVAL = 8; // між кожними 8 звичайними картками — shop banner
   const shopBanners = _fbSellers.filter(s => s.type === 'shop' && s.banner);
   let html = '';
-  let bannerIdx = Math.floor(start / BANNER_INTERVAL); // продовжити банери
+  let shopBannerIdx = Math.floor(start / BANNER_INTERVAL);
+  let regularCount = 0; // лічильник НЕ-banner карток для вставки shop banners
+
   slice.forEach((l, i) => {
-    html += createCard(l, 'catalog');
-    const globalIdx = start + i;
-    if ((globalIdx + 1) % BANNER_INTERVAL === 0 && bannerIdx < shopBanners.length) {
-      html += createShopBanner(shopBanners[bannerIdx++]);
+    if (_isPromoActive(l) && l.promo === 'banner') {
+      // Промо-банер від продавця — рендеримо як широкий блок
+      var seller = _fbSellers.find(function(s){ return s.uid === l.uid; });
+      if (seller) {
+        html += createShopBanner(seller);
+      } else {
+        html += createCard(l, 'catalog'); // fallback якщо продавець не знайдений
+      }
+    } else {
+      html += createCard(l, 'catalog');
+      regularCount++;
+      const globalIdx = start + i;
+      // Вставити shop banner кожні BANNER_INTERVAL звичайних карток
+      if (regularCount % BANNER_INTERVAL === 0 && shopBannerIdx < shopBanners.length) {
+        html += createShopBanner(shopBanners[shopBannerIdx++]);
+      }
     }
   });
+
   grid.insertAdjacentHTML('beforeend', html);
   _catalogPage++;
 
@@ -4710,36 +4847,42 @@ function _updatePromoUI() {
 function applyPromo() {
   if (!_promoListingId) return;
 
-  // Знайти оголошення безпечно
-  let listing = (typeof myListings !== 'undefined' ? myListings : [])
-    .find(x => x && (x.id === +_promoListingId || x.id === _promoListingId));
+  var listing = (_fbListings.concat(myListings))
+    .find(function(x){ return x && (x.id === _promoListingId || x.id === +_promoListingId); });
 
-  if (!listing) {
-    // Для демонстрації — додати до myListings якщо є в LISTINGS
-    const base = _fbListings.concat(myListings).find(x => x.id === _promoListingId);
-    if (base) {
-      // Не модифікуємо глобальний LISTINGS — просто показуємо toast
-      showToast('✅ Просування активовано! (' + PROMO_NAMES[_selectedPromoType] + ' · ' + _selectedPromoDays + ' дн.)');
-      closePromoModal();
-      return;
-    }
+  var promoData = {
+    promo:      _selectedPromoType,
+    promoDays:  _selectedPromoDays,
+    promoUntil: new Date(Date.now() + _selectedPromoDays * 86400000).toISOString()
+  };
+
+  // Зберегти в Firestore
+  if (window._db && _promoListingId && typeof _promoListingId === 'string') {
+    window._db.collection('listings').doc(_promoListingId).update(promoData)
+      .then(function() {
+        showToast('🚀 ' + PROMO_NAMES[_selectedPromoType] + ' активовано на ' + _selectedPromoDays + ' днів!');
+      })
+      .catch(function(e) {
+        showToast('⚠️ Помилка збереження: ' + e.message);
+      });
   }
 
+  // Оновити локально
   if (listing) {
-    listing.promo = _selectedPromoType;
-    listing.promoDays = _selectedPromoDays;
-    listing.promoUntil = new Date(Date.now() + _selectedPromoDays * 86400000).toISOString();
+    Object.assign(listing, promoData);
   }
-
-  const price = PROMO_PRICES[_selectedPromoType][_selectedPromoDays];
-  showToast('🚀 ' + PROMO_NAMES[_selectedPromoType] + ' активовано на ' + _selectedPromoDays + ' днів! (' + price + ' грн)');
+  // Оновити в обох кешах
+  var inFb = _fbListings.find(function(x){ return x && x.id === _promoListingId; });
+  if (inFb) Object.assign(inFb, promoData);
+  var inMy = myListings.find(function(x){ return x && x.id === _promoListingId; });
+  if (inMy) Object.assign(inMy, promoData);
 
   closePromoModal();
-
-  // Оновити список оголошень у профілі
-  if (document.getElementById('ptab-my').style.display !== 'none' ||
-      document.getElementById('page-profile').classList.contains('active')) {
-    renderMyListings();
+  renderHomeListings();
+  if (typeof renderMyListings === 'function') renderMyListings();
+  if (typeof runSearch === 'function' && document.getElementById('catalog-results-wrap') &&
+      document.getElementById('catalog-results-wrap').style.display !== 'none') {
+    runSearch();
   }
 }
 
