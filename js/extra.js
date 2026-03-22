@@ -132,10 +132,15 @@ function _loadSellerReviews(sellerUid) {
   if (!window._db) return;
   window._db.collection('reviews')
     .where('sellerUid', '==', sellerUid)
-    .orderBy('createdAt', 'desc')
     .limit(50)
     .get().then(function(snap) {
       var revs = snap.docs.map(function(d){ return d.data(); });
+      // Сортуємо на клієнті — новіші першими
+      revs.sort(function(a, b) {
+        var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+        var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+        return tb - ta;
+      });
       var avg = revs.length ? revs.reduce(function(s,r){ return s+r.rating; }, 0) / revs.length : 0;
       document.getElementById('rev-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
       document.getElementById('rev-stars').textContent = avg > 0
