@@ -1803,6 +1803,7 @@ function renderUsersTable(data) {
       +(u.status==='blocked'
         ? '<button class="action-btn" title="Розблокувати" onclick="unblockUserFb(\''+uid+'\')"><i class="fa-solid fa-lock-open"></i></button>'
         : '<button class="action-btn danger" title="Заблокувати" onclick="blockUserFb(\''+uid+'\',\''+name+'\')"><i class="fa-solid fa-ban"></i></button>')
+      +'<button class="action-btn" title="Управління балансом" onclick="openBalanceModal(\''+uid+'\',\''+name+'\')" style="background:rgba(0,200,83,.15);color:var(--brand);border-color:var(--border-brand)"><i class="fa-solid fa-coins"></i></button>'
       +'</td></tr>';
   }).join('');
 }
@@ -2428,6 +2429,240 @@ function deleteNews(id) {
     .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
 }
 
+// ============================================================
+// BALANCE MANAGEMENT
+// ============================================================
+var _balanceUid = '';
+var _balanceUserName = '';
+var _balanceData = {};
+
+function openBalanceModal(uid, name) {
+  _balanceUid = uid;
+  _balanceUserName = name;
+  _balanceData = {};
+
+  document.getElementById('balance-modal-title').textContent = 'Баланс: ' + name;
+  document.getElementById('balance-uid').textContent = uid;
+  document.getElementById('balance-current').innerHTML = '<span style="color:var(--text-muted)">Завантаження...</span>';
+  document.getElementById('balance-slots-input').value = '';
+  document.getElementById('balance-promo-type').value = 'top';
+  document.getElementById('balance-promo-days').value = '7';
+  document.getElementById('balance-comment').value = '';
+  document.getElementById('balance-action').value = 'add';
+
+  // Завантажити поточний баланс
+  _db.collection('users').doc(uid).get().then(function(snap) {
+    if (!snap.exists) { document.getElementById('balance-current').textContent = 'Юзер не знайдений'; return; }
+    _balanceData = snap.data();
+    renderBalanceCurrent();
+  }).catch(function(e) {
+    document.getElementById('balance-current').textContent = 'Помилка: ' + e.message;
+  });
+
+  openModal('balance-modal');
+}
+
+function renderBalanceCurrent() {
+  var d = _balanceData;
+  var slots = (d.slots || 0);
+  var welcome = (d.slotsWelcome || 0);
+  var expiry = d.slotsWelcomeExpiry
+    ? new Date(d.slotsWelcomeExpiry.seconds * 1000).toLocaleDateString('uk-UA')
+    : '—';
+  var promoBalance = d.promoBalance || {};
+
+  document.getElementById('balance-current').innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + _balCard('Слоти (куплені)', slots, '#00c853')
+    + _balCard('Стартові слоти', welcome + (welcome > 0 ? ' <span style="font-size:10px;opacity:.7">(до '+expiry+')</span>' : ''), '#ffa726')
+    + _balCard('TOP оголошень', promoBalance.top || 0, '#bc8cff')
+    + _balCard('Підсвічувань', promoBalance.highlight || 0, '#58a6ff')
+    + _balCard('Термінових', promoBalance.urgent || 0, '#ff4757')
+    + _balCard('Банерів', promoBalance.banner || 0, '#ffd166')
+    + '</div>';
+}
+
+function _balCard(label, val, color) {
+  return '<div style="background:var(--dark4);border:1px solid var(--border);border-radius:10px;padding:12px 14px">'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">' + label + '</div>'
+    + '<div style="font-size:20px;font-weight:800;color:' + color + '">' + val + '</div>'
+    + '</div>';
+}
+
+function applyBalance() {
+  if (!_balanceUid) return;
+  var action   = document.getElementById('balance-action').value;
+  var tab      = document.getElementById('balance-tab-active').dataset.tab;
+  var comment  = document.getElementById('balance-comment').value.trim() || 'Ручне нарахування';
+
+  if (tab === 'slots') {
+    var amount = parseInt(document.getElementById('balance-slots-input').value);
+    if (!amount || amount < 1) { showToast('Введіть кількість слотів', 'error'); return; }
+
+    var update = {};
+    if (action === 'add') {
+      update.slots = firebase.firestore.FieldValue.increment(amount);
+    } else {
+      var current = _balanceData.slots || 0;
+      if (amount > current) { showToast('Недостатньо слотів (є ' + current + ')', 'error'); return; }
+      update.slots = firebase.firestore.FieldValue.increment(-amount);
+    }
+
+    _db.collection('users').doc(_balanceUid).update(update).then(function() {
+      _logAdminAction('balance_slots', {
+        uid: _balanceUid, name: _balanceUserName,
+        action: action, amount: amount, comment: comment
+      });
+      showToast((action === 'add' ? '+' : '-') + amount + ' слотів → ' + _balanceUserName, 'success');
+      closeModal('balance-modal');
+    }).catch(function(e) { showToast('Помилка: ' + e.message, 'error'); });
+
+  } else {
+    // Промо баланс
+    var promoType = document.getElementById('balance-promo-type').value;
+    var promoDays = parseInt(document.getElementById('balance-promo-days').value) || 7;
+    var promoAmt  = parseInt(document.getElementById('balance-slots-input').value);
+    if (!promoAmt || promoAmt < 1) { showToast('Введіть кількість', 'error'); return; }
+
+    var promoKey = 'promoBalance.' + promoType;
+    var promoUpdate = {};
+    if (action === 'add') {
+      promoUpdate[promoKey] = firebase.firestore.FieldValue.increment(promoAmt);
+    } else {
+      var cur = (_balanceData.promoBalance || {})[promoType] || 0;
+      if (promoAmt > cur) { showToast('Недостатньо (є ' + cur + ')', 'error'); return; }
+      promoUpdate[promoKey] = firebase.firestore.FieldValue.increment(-promoAmt);
+    }
+
+    _db.collection('users').doc(_balanceUid).update(promoUpdate).then(function() {
+      _logAdminAction('balance_promo', {
+        uid: _balanceUid, name: _balanceUserName,
+        action: action, promoType: promoType, amount: promoAmt,
+        days: promoDays, comment: comment
+      });
+      var promoNames = { top: 'TOP', highlight: 'Підсвічування', urgent: 'Термінових', banner: 'Банерів' };
+      showToast((action === 'add' ? '+' : '-') + promoAmt + ' ' + promoNames[promoType] + ' → ' + _balanceUserName, 'success');
+      closeModal('balance-modal');
+    }).catch(function(e) { showToast('Помилка: ' + e.message, 'error'); });
+  }
+}
+
+function switchBalanceTab(tab, el) {
+  document.querySelectorAll('.balance-tab').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  el.dataset.tab = tab;
+  document.getElementById('balance-tab-active').dataset.tab = tab;
+  document.getElementById('balance-slots-row').style.display = tab === 'slots' ? '' : 'none';
+  document.getElementById('balance-promo-row').style.display = tab === 'promo' ? '' : 'none';
+  var label = document.getElementById('balance-amount-label');
+  if (label) label.textContent = tab === 'slots' ? 'Кількість слотів' : 'Кількість промо';
+}
+
+function _logAdminAction(type, data) {
+  _db.collection('adminLogs').add(Object.assign({
+    type: type,
+    adminEmail: _auth.currentUser ? _auth.currentUser.email : 'unknown',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, data)).catch(function(){});
+}
+
 </script>
+
+<!-- MODAL: BALANCE MANAGEMENT -->
+<div id="balance-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('balance-modal')">
+<div class="modal" style="max-width:560px">
+  <div class="modal-header">
+    <div class="modal-title" id="balance-modal-title">Баланс юзера</div>
+    <button class="modal-close" onclick="closeModal('balance-modal')">×</button>
+  </div>
+  <div class="modal-body">
+
+    <!-- UID -->
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;font-family:'JetBrains Mono',monospace">
+      UID: <span id="balance-uid"></span>
+    </div>
+
+    <!-- Поточний баланс -->
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Поточний баланс</div>
+    <div id="balance-current" style="margin-bottom:20px"></div>
+
+    <!-- Таби: слоти / промо -->
+    <div style="display:flex;gap:8px;margin-bottom:16px" id="balance-tab-active" data-tab="slots">
+      <button class="balance-tab active" onclick="switchBalanceTab('slots',this)" data-tab="slots"
+        style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border-brand);background:var(--brand-dim);color:var(--brand);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px">
+        <i class="fa-solid fa-ticket" style="margin-right:6px"></i>Слоти
+      </button>
+      <button class="balance-tab" onclick="switchBalanceTab('promo',this)" data-tab="promo"
+        style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--dark4);color:var(--text-muted);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px">
+        <i class="fa-solid fa-rocket" style="margin-right:6px"></i>Промо
+      </button>
+    </div>
+
+    <!-- Дія: додати / забрати -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Дія</label>
+      <select id="balance-action" style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
+        <option value="add">➕ Нарахувати</option>
+        <option value="remove">➖ Забрати</option>
+      </select>
+    </div>
+
+    <!-- Кількість -->
+    <div style="margin-bottom:14px">
+      <label id="balance-amount-label" style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Кількість слотів</label>
+      <input type="number" id="balance-slots-input" min="1" max="9999" placeholder="Наприклад: 10"
+        style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
+    </div>
+
+    <!-- Тип промо (видно тільки при tab=promo) -->
+    <div id="balance-promo-row" style="display:none;margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Тип промо</label>
+      <select id="balance-promo-type" style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
+        <option value="top">⬆️ TOP оголошення</option>
+        <option value="highlight">⭐ Підсвічування</option>
+        <option value="urgent">🔥 Термінова продажа</option>
+        <option value="banner">📣 Банер магазину</option>
+      </select>
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin:10px 0 6px">Тривалість (днів)</label>
+      <select id="balance-promo-days" style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
+        <option value="7">7 днів</option>
+        <option value="14">14 днів</option>
+        <option value="30">30 днів</option>
+      </select>
+    </div>
+    <div id="balance-slots-row" style="margin-bottom:14px">
+      <!-- placeholder to keep symmetry, empty for slots tab -->
+    </div>
+
+    <!-- Коментар -->
+    <div style="margin-bottom:20px">
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Коментар (логується)</label>
+      <input type="text" id="balance-comment" placeholder="Наприклад: бонус за баг-репорт"
+        style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="closeModal('balance-modal')"
+        style="flex:1;padding:12px;border-radius:10px;background:var(--dark4);border:1px solid var(--border);color:var(--text-muted);font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">
+        Скасувати
+      </button>
+      <button onclick="applyBalance()"
+        style="flex:2;padding:12px;border-radius:10px;background:var(--brand);border:none;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <i class="fa-solid fa-check" style="margin-right:6px"></i>Застосувати
+      </button>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<style>
+.balance-tab.active {
+  background: var(--brand-dim) !important;
+  color: var(--brand) !important;
+  border-color: var(--border-brand) !important;
+}
+</style>
+
 </body>
 </html>
