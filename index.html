@@ -45,8 +45,10 @@
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/main.css">
 </head>
 
   <!-- Firebase Compat SDK -->
@@ -118,7 +120,14 @@
             window._db.collection('users').doc(user.uid).set({
               name: user.displayName, email: user.email, uid: user.uid,
               type: 'personal', listings: 0, status: 'active',
+              slots: 0, slotsWelcome: 10,
+              slotsWelcomeExpiry: new Date(Date.now()+30*86400000),
+              lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp(),
+              totalListingsPublished: 0,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(function(){
+              if(typeof _userSlots!=='undefined'){_userSlots.slots=0;_userSlots.slotsWelcome=10;_userSlots.loaded=true;if(typeof _renderSlotsUI==='function')_renderSlotsUI();}
+              showToast('🎁 Вітаємо! 10 безкоштовних слотів на перший місяць!');
             }).catch(function(e){ console.log('Firestore set:', e.message); });
           }
           if (typeof renderProfile === 'function') renderProfile();
@@ -135,9 +144,8 @@
             }
             // якщо hash порожній або #home — залишитись на головній (не переходити на профіль)
           }
-          // Завантажити чати юзера (real-time listener)
-          if (typeof _subscribeChats === 'function') _subscribeChats();
-          else loadUserChats();
+          if (typeof _subscribeChats === 'function') _subscribeChats(); else loadUserChats();
+          if (typeof loadUserSlots === 'function') loadUserSlots();
           // Завантажити сервіси юзера
           _loadUserServices(_cu.uid);
           // Завантажуємо оголошення юзера
@@ -158,11 +166,6 @@
       }
       _authInitialized = true;
       window._authInitialized = true;
-      // Якщо юзер відкрив /messages напряму — оновити список після auth
-      if (typeof renderChats === 'function') {
-        var _msgsPage = document.getElementById('page-messages');
-        if (_msgsPage && _msgsPage.classList.contains('active')) renderChats();
-      }
     });
 
     console.log('✅ RideGO Firebase підключено!');
@@ -195,7 +198,7 @@
     <a class="logo" onclick="showPage('home')">Ride<span>GO</span></a>
     <div class="search-wrap">
       <i class="fa-solid fa-search"></i>
-      <input type="search" id="headerSearch" name="ridego-search" placeholder="Самокат, велосипед, скутер..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
+      <input type="search" id="headerSearch" name="ridego-search" placeholder="Самокат, велосипед, скутер..." autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
     </div>
     <nav>
       <a onclick="showPage('catalog')">Каталог</a>
@@ -211,7 +214,6 @@
       <span>Повідомлення</span>
       <span class="header-msg-badge" id="header-msg-badge" style="display:none">0</span>
     </button>
-    <!-- Тільки мобільний: іконки пошуку і повідомлень -->
     <button class="mobile-search-btn" onclick="toggleMobileSearch()" aria-label="Пошук">
       <i class="fa-solid fa-search"></i>
     </button>
@@ -220,13 +222,12 @@
       <span class="header-msg-badge" id="mobile-msg-badge" style="display:none">0</span>
     </button>
   </div>
-  <!-- Мобільний рядок пошуку (розгортається по кліку) -->
   <div class="mobile-search-bar" id="mobileSearchBar" style="display:none">
     <div class="search-wrap" style="flex:1;max-width:none;margin:0">
       <i class="fa-solid fa-search"></i>
-      <input type="search" id="headerSearchMobile" name="ridego-search-m" placeholder="Пошук транспорту..." autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter'){handleSearch(this.value,true);toggleMobileSearch()}">
+      <input type="search" id="headerSearchMobile" name="ridego-search-m" placeholder="Пошук..." autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" oninput="handleSearch(this.value)">
     </div>
-    <button onclick="toggleMobileSearch()" style="background:none;border:none;color:var(--text-muted);font-size:20px;padding:0 8px;cursor:pointer;flex-shrink:0">✕</button>
+    <button onclick="toggleMobileSearch()" style="background:none;border:none;color:var(--text-muted);font-size:20px;padding:0 8px;cursor:pointer">&#x2715;</button>
   </div>
 </header>
 
@@ -888,7 +889,7 @@
     <h1>Ремонт та <span>обслуговування</span></h1>
     <p>Знайдіть перевірений сервіс для вашого електротранспорту</p>
     <div class="services-search-bar">
-      <input type="search" id="svc-search-input" name="ridego-svc-search" placeholder="Ремонт самокатів, заміна шин, діагностика..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="filterServices()">
+      <input type="search" id="svc-search-input" name="ridego-svc-search" placeholder="Ремонт самокатів, заміна шин, діагностика..." autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" oninput="filterServices()">
       <select id="svc-city-select" onchange="filterServices()" style="padding:13px 14px;border-radius:50px;border:1.5px solid var(--border);background:var(--dark3);color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none;cursor:pointer;min-width:150px;transition:border-color .2s">
         <option value="">📍 Всі міста</option>
       </select>
@@ -1294,16 +1295,13 @@
 <!-- PAGE: PROFILE                                                 -->
 <!-- ============================================================ -->
 <div id="page-profile" class="page">
-
-  <!-- ── AUTH LOADING (показується поки Firebase перевіряє сесію) ── -->
-  <div id="auth-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px">
+  <div id="auth-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh">
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:360px;padding:0 24px">
       <div class="skeleton" style="width:80px;height:80px;border-radius:50%"></div>
       <div class="skeleton" style="width:160px;height:18px;border-radius:6px"></div>
       <div class="skeleton" style="width:220px;height:14px;border-radius:6px"></div>
     </div>
   </div>
-
   <!-- ── AUTH WALL ── -->
   <div id="auth-wall" style="display:none">
     <div class="auth-wrap">
@@ -1378,6 +1376,10 @@
               <div class="pstat-num" id="pstat-favs">0</div>
               <div class="pstat-l">Обраних</div>
             </div>
+            <div class="pstat" onclick="switchPTab('my',document.querySelectorAll('.ptab')[0])" style="cursor:pointer">
+              <div class="pstat-num" id="profile-slots-badge" style="color:var(--brand)">—</div>
+              <div class="pstat-l">Слотів</div>
+            </div>
           </div>
           <!-- Actions — inline on desktop, full-width on mobile -->
           <div class="profile-actions">
@@ -1413,6 +1415,9 @@
 
       <!-- TAB: My listings -->
       <div id="ptab-my">
+        <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:20px" id="slots-panel">
+          <div style="font-size:13px;color:var(--text-muted)">Завантаження балансу...</div>
+        </div>
         <div id="my-listings-grid" class="listing-grid"></div>
         <div id="my-listings-empty" class="empty-state" style="display:none">
           <i class="fa-solid fa-box-open"></i>
@@ -1832,15 +1837,7 @@
   </div>
 </div>
 
-
-
-
-
-
-
-<!-- ============================================================ -->
-<!-- PAGE: FAQ                                                     -->
-<!-- ============================================================ -->
+<!-- PAGE: FAQ -->
 <div id="page-faq" class="page">
   <div style="max-width:800px;margin:0 auto;padding:48px 24px 100px">
     <div class="breadcrumb" style="margin-bottom:28px">
@@ -1850,197 +1847,73 @@
     </div>
     <h1 style="font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:8px">Часті запитання</h1>
     <p style="color:var(--text-muted);margin-bottom:36px">Відповіді на найпоширеніші питання про RideGO</p>
-
-    <div style="display:flex;flex-direction:column;gap:12px" id="faq-list">
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Як подати оголошення?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">Натисніть кнопку «+» внизу екрану або «Подати оголошення» на головній. Оберіть категорію, заповніть опис, ціну, додайте фото та вкажіть місто. Безкоштовно — до 3 активних оголошень одночасно.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Скільки коштує розміщення?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">Базове розміщення — безкоштовне. Платні опції: TOP (від 150 грн/7 днів) піднімає оголошення вгору каталогу, Підсвічування (від 80 грн) виділяє кольором, Термінова продажа (від 100 грн) додає значок терміновості.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Як зв'язатися з продавцем?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">На сторінці оголошення натисніть «Написати» — відкриється вбудований чат. Або натисніть «Показати номер» щоб зателефонувати напряму. Для надсилання повідомлень потрібна реєстрація.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Як видалити оголошення?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">Перейдіть в Профіль → «Мої оголошення» → натисніть на оголошення → «Видалити». Вас попросять вказати причину: продано через RideGO, продано в іншому місці тощо.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Чи безпечно купувати через RideGO?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">RideGO — це майданчик для оголошень, тому рекомендуємо: зустрічатись особисто, перевіряти товар перед оплатою, не переводити передоплату незнайомим людям, перевіряти рейтинг продавця і відгуки. Перевірені продавці мають значок ✓.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Як додати сервісний центр?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">Перейдіть на сторінку «Сервіси» → натисніть «+ Додати свій сервіс». Заповніть дані: назва, місто, категорії обслуговування, прайс-лист. Після модерації сервіс з'явиться в каталозі.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Як увійти або зареєструватись?</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">Натисніть «Профіль» у навігації. Підтримується вхід через Google — найшвидший спосіб. Або класична реєстрація через email і пароль.</div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q" onclick="toggleFaq(this)">
-          <span>Не можу знайти своє місто в фільтрах</span><i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div class="faq-a">Спершу оберіть область, потім місто. Якщо вашого міста немає — напишіть нам в підтримку, ми додамо. Також можна шукати по всій області без вибору конкретного міста.</div>
-      </div>
-
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Як подати оголошення?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">Натисніть «+» внизу або «Подати оголошення» на головній. Оберіть категорію, заповніть опис, ціну, додайте фото та вкажіть місто. При реєстрації вам нараховується 10 безкоштовних слотів на перший місяць.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Що таке слоти?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">1 слот = право розмістити 1 оголошення на 30 днів. При реєстрації — 10 слотів безкоштовно (дійсні 30 днів). Після — 1 безкоштовний слот щомісяця. Якщо слотів немає — потрібно купити пакет (від 15 грн).</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Що відбувається з оголошенням через місяць?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">Оголошення стає неактивним — воно пропадає з каталогу, але не видаляється. Щоб поновити — витратьте 1 слот з балансу. Якщо слотів немає — потрібно купити.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Куплені слоти згорають?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">Ні. Куплені слоти не мають терміну дії — використовуйте коли зручно. Згорають тільки 10 стартових слотів (якщо не використати за перший місяць) і 1 щомісячний безкоштовний слот.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Як зв'язатися з продавцем?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">На сторінці оголошення натисніть «Написати» — відкриється вбудований чат. Або «Показати номер» щоб зателефонувати. Для повідомлень потрібна реєстрація.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Як видалити оголошення?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">Профіль → «Мої оголошення» → кнопка «Видалити» на картці. Витрачений слот не повертається.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Чи безпечно купувати через RideGO?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">RideGO — майданчик для оголошень. Рекомендуємо зустрічатись особисто, перевіряти товар перед оплатою, не переводити передоплату незнайомим. Перевірені продавці мають значок ✓.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)"><span>Як додати сервісний центр?</span><i class="fa-solid fa-chevron-down"></i></div><div class="faq-a">Сторінка «Сервіси» → «+ Додати свій сервіс». Заповніть назву, місто, категорії, прайс-лист. Після модерації сервіс з'явиться в каталозі.</div></div>
     </div>
-
     <div style="margin-top:40px;padding:24px;background:var(--brand-dim);border:1px solid rgba(0,200,83,.2);border-radius:16px;text-align:center">
       <div style="font-size:15px;font-weight:700;margin-bottom:8px">Не знайшли відповідь?</div>
       <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Напишіть нам — відповімо протягом доби</p>
-      <a href="https://t.me/ridego_support" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:12px 28px">
-        <i class="fa-brands fa-telegram"></i> Написати в підтримку
-      </a>
+      <a href="https://t.me/ridego_support" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:12px 28px"><i class="fa-brands fa-telegram"></i> Написати в підтримку</a>
     </div>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- PAGE: TERMS                                                   -->
-<!-- ============================================================ -->
+<!-- PAGE: TERMS -->
 <div id="page-terms" class="page">
   <div style="max-width:800px;margin:0 auto;padding:48px 24px 100px">
-    <div class="breadcrumb" style="margin-bottom:28px">
-      <span onclick="showPage('home')">Головна</span>
-      <i class="fa-solid fa-chevron-right"></i>
-      <span style="color:var(--text)">Правила</span>
-    </div>
+    <div class="breadcrumb" style="margin-bottom:28px"><span onclick="showPage('home')">Головна</span><i class="fa-solid fa-chevron-right"></i><span style="color:var(--text)">Правила</span></div>
     <h1 style="font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:8px">Правила користування</h1>
     <p style="color:var(--text-muted);margin-bottom:36px">Останнє оновлення: березень 2025</p>
-
     <div class="static-page-content">
-      <h2>1. Загальні положення</h2>
-      <p>RideGO — онлайн-майданчик для розміщення оголошень про купівлю та продаж електротранспорту в Україні. Використовуючи сервіс, ви погоджуєтесь з цими правилами.</p>
-
-      <h2>2. Реєстрація та акаунт</h2>
-      <p>Для розміщення оголошень необхідна реєстрація. Ви несете відповідальність за збереження даних свого акаунту. Забороняється реєструвати кілька акаунтів одній особі.</p>
-
-      <h2>3. Правила розміщення оголошень</h2>
-      <p>Забороняється:</p>
-      <ul>
-        <li>Розміщувати одне і те саме оголошення кілька разів</li>
-        <li>Вказувати неправдиву інформацію про товар</li>
-        <li>Розміщувати товари, заборонені законодавством України</li>
-        <li>Використовувати чужі фотографії без дозволу</li>
-        <li>Вказувати ціну в іноземній валюті без еквіваленту в гривнях</li>
-      </ul>
-
-      <h2>4. Безпека угод</h2>
-      <p>RideGO не є стороною угод між користувачами і не несе відповідальності за якість товарів та виконання зобов'язань. Рекомендуємо зустрічатись особисто та перевіряти товар перед оплатою.</p>
-
-      <h2>5. Платні послуги</h2>
-      <p>Базове розміщення безкоштовне. Платні опції просування (TOP, підсвічування тощо) активуються після оплати і не підлягають поверненню після активації.</p>
-
-      <h2>6. Блокування акаунтів</h2>
-      <p>Адміністрація залишає за собою право заблокувати акаунт без попередження у разі порушення правил, спаму або скарг від інших користувачів.</p>
-
-      <h2>7. Зміни правил</h2>
-      <p>Ми можемо оновлювати ці правила. Про суттєві зміни будемо повідомляти через сервіс. Продовження використання RideGO після змін означає прийняття нових умов.</p>
-
-      <h2>8. Контакти</h2>
-      <p>Питання щодо правил: <a href="mailto:hello@ridego.ua">hello@ridego.ua</a></p>
+      <h2>1. Загальні положення</h2><p>RideGO — онлайн-майданчик для оголошень з купівлі та продажу електротранспорту в Україні. Використовуючи сервіс, ви погоджуєтесь з цими правилами.</p>
+      <h2>2. Реєстрація та акаунт</h2><p>Для розміщення оголошень необхідна реєстрація. Ви несете відповідальність за збереження даних акаунту. Забороняється реєструвати кілька акаунтів одній особі.</p>
+      <h2>3. Система слотів</h2><p>Публікація оголошення витрачає 1 слот. При реєстрації нараховується 10 безкоштовних слотів на 30 днів. Щомісяця — 1 безкоштовний слот. Куплені слоти не мають терміну дії. Поновлення неактивного оголошення також витрачає 1 слот.</p>
+      <h2>4. Правила оголошень</h2><p>Забороняється: розміщувати дублікати, вказувати неправдиву інформацію, публікувати заборонені законом товари, використовувати чужі фото без дозволу.</p>
+      <h2>5. Безпека угод</h2><p>RideGO не є стороною угод між користувачами і не несе відповідальності за якість товарів. Рекомендуємо зустрічатись особисто та перевіряти товар перед оплатою.</p>
+      <h2>6. Платні послуги</h2><p>Куплені слоти активуються після оплати і не підлягають поверненню. Промо-опції (TOP, підсвічування) не повертаються після активації.</p>
+      <h2>7. Контакти</h2><p>Питання: hello@ridego.ua</p>
     </div>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- PAGE: PRIVACY                                                 -->
-<!-- ============================================================ -->
+<!-- PAGE: PRIVACY -->
 <div id="page-privacy" class="page">
   <div style="max-width:800px;margin:0 auto;padding:48px 24px 100px">
-    <div class="breadcrumb" style="margin-bottom:28px">
-      <span onclick="showPage('home')">Головна</span>
-      <i class="fa-solid fa-chevron-right"></i>
-      <span style="color:var(--text)">Конфіденційність</span>
-    </div>
+    <div class="breadcrumb" style="margin-bottom:28px"><span onclick="showPage('home')">Головна</span><i class="fa-solid fa-chevron-right"></i><span style="color:var(--text)">Конфіденційність</span></div>
     <h1 style="font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:8px">Політика конфіденційності</h1>
     <p style="color:var(--text-muted);margin-bottom:36px">Останнє оновлення: березень 2025</p>
-
     <div class="static-page-content">
-      <h2>1. Які дані ми збираємо</h2>
-      <p>При реєстрації: ім'я, email, фото профілю (якщо вхід через Google). При розміщенні оголошень: текст, фото, номер телефону (за бажанням), місто. Автоматично: дата відвідування, сторінки перегляду (анонімно).</p>
-
-      <h2>2. Як ми використовуємо дані</h2>
-      <ul>
-        <li>Для роботи сервісу: авторизація, публікація оголошень, чат</li>
-        <li>Для покращення сервісу: аналітика популярних категорій та міст</li>
-        <li>Для зв'язку: відповіді на ваші запити до підтримки</li>
-      </ul>
-
-      <h2>3. Зберігання даних</h2>
-      <p>Дані зберігаються на серверах Firebase (Google Cloud, Європа). Google має сертифікати безпеки ISO 27001 та SOC 2/3. Фото зберігаються в Cloudinary (США/ЄС) з шифруванням.</p>
-
-      <h2>4. Передача третім особам</h2>
-      <p>Ми не продаємо та не передаємо ваші дані третім особам. Виключення: якщо це вимагається законодавством України або судовим рішенням.</p>
-
-      <h2>5. Ваші права</h2>
-      <p>Ви маєте право: переглядати свої дані в профілі, редагувати або видаляти їх, видалити акаунт. Для видалення акаунту напишіть на <a href="mailto:hello@ridego.ua">hello@ridego.ua</a>.</p>
-
-      <h2>6. Cookies</h2>
-      <p>Ми використовуємо localStorage для збереження теми оформлення та сесії входу. Аналітичні дані — анонімні лічильники відвідувань без персональної прив'язки.</p>
-
-      <h2>7. Контакти</h2>
-      <p>Питання щодо конфіденційності: <a href="mailto:hello@ridego.ua">hello@ridego.ua</a></p>
+      <h2>1. Які дані ми збираємо</h2><p>При реєстрації: ім'я, email, фото профілю. При розміщенні оголошень: текст, фото, номер телефону (за бажанням), місто. Автоматично: анонімна статистика відвідувань.</p>
+      <h2>2. Як ми використовуємо дані</h2><ul><li>Для роботи сервісу: авторизація, публікація оголошень, чат</li><li>Для покращення сервісу: аналітика</li><li>Для зв'язку: відповіді на запити до підтримки</li></ul>
+      <h2>3. Зберігання даних</h2><p>Дані зберігаються на Firebase (Google Cloud, Європа). Фото — на Cloudinary з шифруванням.</p>
+      <h2>4. Передача третім особам</h2><p>Ми не продаємо та не передаємо ваші дані третім особам, крім випадків передбачених законодавством України.</p>
+      <h2>5. Ваші права</h2><p>Ви можете переглядати, редагувати або видаляти свої дані. Для видалення акаунту: hello@ridego.ua</p>
+      <h2>6. Контакти</h2><p>hello@ridego.ua</p>
     </div>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- FOOTER                                                        -->
-<!-- ============================================================ -->
+<!-- FOOTER -->
 <footer class="site-footer">
   <div class="footer-inner">
-
-    <!-- Лого і опис -->
     <div class="footer-brand">
       <div class="footer-logo" onclick="showPage('home')">Ride<span>GO</span></div>
       <p class="footer-desc">Найбільший маркетплейс електротранспорту України. Купуй та продавай електросамокати, велосипеди та скутери.</p>
       <div class="footer-socials">
-        <a href="https://t.me/ridego_ua" target="_blank" class="footer-social-btn" title="Telegram">
-          <i class="fa-brands fa-telegram"></i>
-        </a>
-        <a href="https://instagram.com/ridego.ua" target="_blank" class="footer-social-btn" title="Instagram">
-          <i class="fa-brands fa-instagram"></i>
-        </a>
-        <a href="https://facebook.com/ridego.ua" target="_blank" class="footer-social-btn" title="Facebook">
-          <i class="fa-brands fa-facebook"></i>
-        </a>
-        <a href="https://tiktok.com/@ridego.ua" target="_blank" class="footer-social-btn" title="TikTok">
-          <i class="fa-brands fa-tiktok"></i>
-        </a>
-        <a href="https://youtube.com/@ridego_ua" target="_blank" class="footer-social-btn" title="YouTube">
-          <i class="fa-brands fa-youtube"></i>
-        </a>
+        <a href="https://t.me/ridego_ua" target="_blank" class="footer-social-btn" title="Telegram"><i class="fa-brands fa-telegram"></i></a>
+        <a href="https://instagram.com/ridego.ua" target="_blank" class="footer-social-btn" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="https://facebook.com/ridego.ua" target="_blank" class="footer-social-btn" title="Facebook"><i class="fa-brands fa-facebook"></i></a>
+        <a href="https://tiktok.com/@ridego.ua" target="_blank" class="footer-social-btn" title="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+        <a href="https://youtube.com/@ridego_ua" target="_blank" class="footer-social-btn" title="YouTube"><i class="fa-brands fa-youtube"></i></a>
       </div>
     </div>
-
-    <!-- Каталог -->
     <div class="footer-col">
       <div class="footer-col-title">Каталог</div>
       <a onclick="filterCatalog('Електросамокати')">Електросамокати</a>
@@ -2049,8 +1922,6 @@
       <a onclick="filterCatalog('Електроскутери')">Електроскутери</a>
       <a onclick="filterCatalog('Електромотоцикли')">Електромотоцикли</a>
     </div>
-
-    <!-- Сервіс -->
     <div class="footer-col">
       <div class="footer-col-title">Сервіс</div>
       <a onclick="showPage('add')">Подати оголошення</a>
@@ -2059,8 +1930,6 @@
       <a onclick="showPage('profile')">Мій профіль</a>
       <a href="https://t.me/ridego_support" target="_blank">Підтримка</a>
     </div>
-
-    <!-- Інформація -->
     <div class="footer-col">
       <div class="footer-col-title">Інформація</div>
       <a onclick="showPage('faq')">FAQ</a>
@@ -2069,17 +1938,38 @@
       <a href="mailto:hello@ridego.ua">hello@ridego.ua</a>
       <a href="https://t.me/ridego_support" target="_blank">Зв'язок з нами</a>
     </div>
-
   </div>
-
   <div class="footer-bottom">
-    <span>© 2024–2025 RideGO. Всі права захищено.</span>
+    <span>&#169; 2024&#8211;2025 RideGO. Всі права захищено.</span>
     <span class="footer-bottom-links">
       <a onclick="showPage('terms')">Правила</a>
       <a onclick="showPage('privacy')">Конфіденційність</a>
     </span>
   </div>
 </footer>
+
+<!-- MODAL: КУПИТИ СЛОТИ -->
+<div id="buy-slots-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeBuySlots()">
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:24px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div><div style="font-size:18px;font-weight:800">Купити слоти</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px">1 слот = 1 оголошення на 30 днів</div></div>
+      <button onclick="closeBuySlots()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:0">&#215;</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="slot-pkg-card" onclick="buySlotPackage(1,15)"><div class="slot-pkg-left"><div class="slot-pkg-count">1 слот</div><div class="slot-pkg-note">Для разової публікації</div></div><div class="slot-pkg-right"><div class="slot-pkg-price">15 грн</div></div></div>
+      <div class="slot-pkg-card" onclick="buySlotPackage(3,43)"><div class="slot-pkg-left"><div class="slot-pkg-count">3 слоти</div><div class="slot-pkg-note">14.3 грн/шт</div></div><div class="slot-pkg-right"><div class="slot-pkg-price">43 грн</div><div class="slot-pkg-badge">-5%</div></div></div>
+      <div class="slot-pkg-card" onclick="buySlotPackage(5,68)"><div class="slot-pkg-left"><div class="slot-pkg-count">5 слотів</div><div class="slot-pkg-note">13.5 грн/шт</div></div><div class="slot-pkg-right"><div class="slot-pkg-price">68 грн</div><div class="slot-pkg-badge">-10%</div></div></div>
+      <div class="slot-pkg-card popular" onclick="buySlotPackage(10,128)"><div class="slot-pkg-left"><div class="slot-pkg-count">10 слотів <span class="slot-popular-tag">&#x2B50; Популярне</span></div><div class="slot-pkg-note">12.8 грн/шт</div></div><div class="slot-pkg-right"><div class="slot-pkg-price">128 грн</div><div class="slot-pkg-badge">-15%</div></div></div>
+      <div class="slot-pkg-card" onclick="buySlotPackage(20,225)"><div class="slot-pkg-left"><div class="slot-pkg-count">20 слотів</div><div class="slot-pkg-note">11.25 грн/шт</div></div><div class="slot-pkg-right"><div class="slot-pkg-price">225 грн</div><div class="slot-pkg-badge">-25%</div></div></div>
+      <div class="slot-pkg-card" onclick="buySlotPackage(50,525)"><div class="slot-pkg-left"><div class="slot-pkg-count">50 слотів</div><div class="slot-pkg-note">10.5 грн/шт &#183; Для магазинів</div></div><div class="slot-pkg-right"><div class="slot-pkg-price">525 грн</div><div class="slot-pkg-badge best">-30%</div></div></div>
+    </div>
+    <div style="margin-top:16px;padding:12px 16px;background:var(--brand-dim);border-radius:12px;font-size:13px;color:var(--text-muted);line-height:1.6">
+      &#x1F4A1; <strong>Куплені слоти не згорають</strong> &#8212; використовуйте коли зручно.<br>
+      &#x1F381; Щомісяця +1 безкоштовний слот автоматично.
+    </div>
+    <button class="btn-outline" style="width:100%;margin-top:14px;padding:12px" onclick="closeBuySlots()">Скасувати</button>
+  </div>
+</div>
 
   <script src="/js/main.js"></script>
   <script src="/js/extra.js"></script>
