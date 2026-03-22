@@ -840,6 +840,12 @@ function loadFirebaseData(force) {
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
+
+      // Видалити з myListings все що вже є в _fbListings — головна причина дублів
+      var fbIds = {};
+      _fbListings.forEach(function(l){ if (l.id) fbIds[l.id] = true; });
+      myListings = myListings.filter(function(l){ return l && l.id && !fbIds[l.id]; });
+
       renderHomeListings();
       renderCatalog();
       // Якщо поточний URL — /listing/ID, показати після завантаження
