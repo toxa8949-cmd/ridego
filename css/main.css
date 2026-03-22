@@ -2571,3 +2571,29 @@
   .service-detail-wrap { padding: 12px 10px 80px; }
   .service-detail-name { font-size: 18px; }
 }
+
+/* ── SKELETON LOADERS ────────────────────────────────────── */
+@keyframes skeleton-shine {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--dark3,#1e2a1e) 25%, var(--dark2,#162216) 50%, var(--dark3,#1e2a1e) 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shine 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+.skel-card {
+  background: var(--card-bg, #141e14);
+  border: 1px solid var(--border, #1e2e1e);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.skel-img  { height: 180px; }
+.skel-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.skel-line { height: 14px; }
+.skel-line.short { width: 55%; }
+.skel-line.price { height: 20px; width: 40%; }
+.skel-line.full  { width: 100%; }
