@@ -810,11 +810,13 @@ function createCard(l, backPage) {
 
   const yearHtml = l.year ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${l.year} р.</span>` : '';
   const condHtml = `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition || 'Хороший'}</span>`;
-  const sellerBtn = `<button onclick="event.stopPropagation();showSeller('${(l.seller||'').replace(/'/g,"\\'")}');"
+  // Якщо є uid — переходимо по uid (надійно), інакше по імені (fallback)
+  const _sellerUid = l.uid || '';
+  const sellerBtn = `<button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
     style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);
            display:inline-flex;align-items:center;gap:5px;padding:0;transition:color .15s;font-family:inherit"
     onmouseover="this.style.color='var(--brand)'" onmouseout="this.style.color='var(--text-muted)'">
-    <i class="fa-solid fa-user-circle" style="color:var(--brand)"></i>${l.seller}
+    <i class="fa-solid fa-user-circle" style="color:var(--brand)"></i>${l.sellerName || l.seller || 'Продавець'}
   </button>`;
 
   return `
@@ -1953,33 +1955,75 @@ function _renderSellerByUid(uid) {
     document.getElementById('seller-page-desc').textContent = '';
     document.getElementById('seller-page-city').innerHTML = '';
 
-    // Завантажити профіль юзера
+    // Завантажити повний профіль з Firestore — ім'я, about, контакти, категорії
     window._db.collection('users').doc(uid).get().then(function(snap) {
-      if (snap.exists) {
-        var d = snap.data();
-        var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
-        document.getElementById('seller-page-name').textContent = d.name || sellerName;
-        if (year) document.getElementById('seller-page-since').innerHTML =
-          '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
-        if (d.city) document.getElementById('seller-page-city').innerHTML =
-          '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + d.city;
+      if (!snap.exists) return;
+      var d = snap.data();
+      var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
+
+      // Ім'я, рік, місто
+      document.getElementById('seller-page-name').textContent = d.name || sellerName;
+      if (year) document.getElementById('seller-page-since').innerHTML =
+        '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
+      if (d.city) document.getElementById('seller-page-city').innerHTML =
+        '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + d.city;
+
+      // Тип бейдж
+      var typeBadgeEl = document.getElementById('seller-page-type-badge');
+      if (typeBadgeEl) {
+        typeBadgeEl.innerHTML = d.type === 'business'
+          ? '<span class="seller-shop-badge"><i class="fa-solid fa-store" style="margin-right:4px"></i>Офіційний магазин</span>'
+          : '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
       }
+
+      // Про нас
+      var aboutEl = document.getElementById('seller-about-text');
+      if (aboutEl) aboutEl.textContent = d.about || d.desc || '';
+
+      // Категорії
+      var catsEl = document.getElementById('seller-cats-list');
+      if (catsEl) {
+        var cats = d.cats || [];
+        catsEl.innerHTML = cats.map(function(c) {
+          return '<span class="tag tag-blue" style="padding:6px 14px;font-size:13px">' + c + '</span>';
+        }).join('');
+      }
+
+      // Контакти
+      var contactsEl = document.getElementById('seller-contacts');
+      if (contactsEl) {
+        var lines = [];
+        if (d.phone) lines.push('<a href="tel:' + d.phone + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:500"><i class="fa-solid fa-phone" style="color:var(--brand);width:16px"></i>' + d.phone + '</a>');
+        if (d.email) lines.push('<a href="mailto:' + d.email + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><i class="fa-solid fa-envelope" style="color:var(--brand);width:16px"></i>' + d.email + '</a>');
+        if (d.website) lines.push('<a href="' + d.website + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--brand);text-decoration:none;font-size:14px"><i class="fa-solid fa-globe" style="width:16px"></i>' + d.website.replace(/^https?:\/\//, '') + '</a>');
+        contactsEl.innerHTML = lines.join('') || '<span style="font-size:13px;color:var(--text-muted)">Контакти не вказані</span>';
+      }
+
+      // Соцмережі
+      var socialsEl = document.getElementById('seller-socials');
+      if (socialsEl) {
+        var soc = [];
+        if (d.telegram) soc.push('<a href="https://t.me/' + d.telegram.replace('@','') + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><div style="width:32px;height:32px;border-radius:8px;background:#2ca5e020;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-telegram" style="color:#2ca5e0"></i></div>' + d.telegram + '</a>');
+        if (d.instagram) soc.push('<a href="https://instagram.com/' + d.instagram.replace('@','') + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><div style="width:32px;height:32px;border-radius:8px;background:#e1306c20;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-instagram" style="color:#e1306c"></i></div>' + d.instagram + '</a>');
+        if (d.youtube) soc.push('<a href="' + d.youtube + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><div style="width:32px;height:32px;border-radius:8px;background:#ff000020;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-youtube" style="color:#ff0000"></i></div>YouTube</a>');
+        if (d.tiktok) soc.push('<a href="https://tiktok.com/@' + d.tiktok.replace('@','') + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><div style="width:32px;height:32px;border-radius:8px;background:#00000020;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-tiktok"></i></div>' + d.tiktok + '</a>');
+        socialsEl.innerHTML = soc.join('') || '<span style="font-size:13px;color:var(--text-muted)">Соцмережі не вказані</span>';
+      }
+
+      // Опис в header
+      var descEl = document.getElementById('seller-page-desc');
+      if (descEl) descEl.textContent = d.desc || d.about || '';
+
     }).catch(function(){});
 
+    // Статистика і оголошення (не чекаємо профілю)
     var adsEl = document.getElementById('sp-stat-ads');
     if (adsEl) adsEl.textContent = listings.length;
     ['sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid){
       var el = document.getElementById(sid); if(el) el.textContent = '—';
     });
     renderSellerListings(listings, {name: sellerName, id: 'uid:' + uid});
-    var catsEl = document.getElementById('seller-cats-list');
-    if (catsEl) catsEl.innerHTML = '';
-    var aboutEl = document.getElementById('seller-about-text');
-    if (aboutEl) aboutEl.textContent = '';
-    var contactsEl = document.getElementById('seller-contacts');
-    if (contactsEl) contactsEl.innerHTML = '';
-    var socialsEl = document.getElementById('seller-socials');
-    if (socialsEl) socialsEl.innerHTML = '';
+
     var urlEl = document.getElementById('seller-page-url');
     if (urlEl) urlEl.textContent = 'https://ridego-sigma.vercel.app/seller/' + uid;
     _loadSellerReviews(uid);
