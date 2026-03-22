@@ -1838,6 +1838,249 @@
 
 
 
+<!-- ============================================================ -->
+<!-- PAGE: FAQ                                                     -->
+<!-- ============================================================ -->
+<div id="page-faq" class="page">
+  <div style="max-width:800px;margin:0 auto;padding:48px 24px 100px">
+    <div class="breadcrumb" style="margin-bottom:28px">
+      <span onclick="showPage('home')">Головна</span>
+      <i class="fa-solid fa-chevron-right"></i>
+      <span style="color:var(--text)">FAQ</span>
+    </div>
+    <h1 style="font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:8px">Часті запитання</h1>
+    <p style="color:var(--text-muted);margin-bottom:36px">Відповіді на найпоширеніші питання про RideGO</p>
+
+    <div style="display:flex;flex-direction:column;gap:12px" id="faq-list">
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Як подати оголошення?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">Натисніть кнопку «+» внизу екрану або «Подати оголошення» на головній. Оберіть категорію, заповніть опис, ціну, додайте фото та вкажіть місто. Безкоштовно — до 3 активних оголошень одночасно.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Скільки коштує розміщення?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">Базове розміщення — безкоштовне. Платні опції: TOP (від 150 грн/7 днів) піднімає оголошення вгору каталогу, Підсвічування (від 80 грн) виділяє кольором, Термінова продажа (від 100 грн) додає значок терміновості.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Як зв'язатися з продавцем?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">На сторінці оголошення натисніть «Написати» — відкриється вбудований чат. Або натисніть «Показати номер» щоб зателефонувати напряму. Для надсилання повідомлень потрібна реєстрація.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Як видалити оголошення?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">Перейдіть в Профіль → «Мої оголошення» → натисніть на оголошення → «Видалити». Вас попросять вказати причину: продано через RideGO, продано в іншому місці тощо.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Чи безпечно купувати через RideGO?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">RideGO — це майданчик для оголошень, тому рекомендуємо: зустрічатись особисто, перевіряти товар перед оплатою, не переводити передоплату незнайомим людям, перевіряти рейтинг продавця і відгуки. Перевірені продавці мають значок ✓.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Як додати сервісний центр?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">Перейдіть на сторінку «Сервіси» → натисніть «+ Додати свій сервіс». Заповніть дані: назва, місто, категорії обслуговування, прайс-лист. Після модерації сервіс з'явиться в каталозі.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Як увійти або зареєструватись?</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">Натисніть «Профіль» у навігації. Підтримується вхід через Google — найшвидший спосіб. Або класична реєстрація через email і пароль.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          <span>Не можу знайти своє місто в фільтрах</span><i class="fa-solid fa-chevron-down"></i>
+        </div>
+        <div class="faq-a">Спершу оберіть область, потім місто. Якщо вашого міста немає — напишіть нам в підтримку, ми додамо. Також можна шукати по всій області без вибору конкретного міста.</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:40px;padding:24px;background:var(--brand-dim);border:1px solid rgba(0,200,83,.2);border-radius:16px;text-align:center">
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px">Не знайшли відповідь?</div>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Напишіть нам — відповімо протягом доби</p>
+      <a href="https://t.me/ridego_support" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:12px 28px">
+        <i class="fa-brands fa-telegram"></i> Написати в підтримку
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: TERMS                                                   -->
+<!-- ============================================================ -->
+<div id="page-terms" class="page">
+  <div style="max-width:800px;margin:0 auto;padding:48px 24px 100px">
+    <div class="breadcrumb" style="margin-bottom:28px">
+      <span onclick="showPage('home')">Головна</span>
+      <i class="fa-solid fa-chevron-right"></i>
+      <span style="color:var(--text)">Правила</span>
+    </div>
+    <h1 style="font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:8px">Правила користування</h1>
+    <p style="color:var(--text-muted);margin-bottom:36px">Останнє оновлення: березень 2025</p>
+
+    <div class="static-page-content">
+      <h2>1. Загальні положення</h2>
+      <p>RideGO — онлайн-майданчик для розміщення оголошень про купівлю та продаж електротранспорту в Україні. Використовуючи сервіс, ви погоджуєтесь з цими правилами.</p>
+
+      <h2>2. Реєстрація та акаунт</h2>
+      <p>Для розміщення оголошень необхідна реєстрація. Ви несете відповідальність за збереження даних свого акаунту. Забороняється реєструвати кілька акаунтів одній особі.</p>
+
+      <h2>3. Правила розміщення оголошень</h2>
+      <p>Забороняється:</p>
+      <ul>
+        <li>Розміщувати одне і те саме оголошення кілька разів</li>
+        <li>Вказувати неправдиву інформацію про товар</li>
+        <li>Розміщувати товари, заборонені законодавством України</li>
+        <li>Використовувати чужі фотографії без дозволу</li>
+        <li>Вказувати ціну в іноземній валюті без еквіваленту в гривнях</li>
+      </ul>
+
+      <h2>4. Безпека угод</h2>
+      <p>RideGO не є стороною угод між користувачами і не несе відповідальності за якість товарів та виконання зобов'язань. Рекомендуємо зустрічатись особисто та перевіряти товар перед оплатою.</p>
+
+      <h2>5. Платні послуги</h2>
+      <p>Базове розміщення безкоштовне. Платні опції просування (TOP, підсвічування тощо) активуються після оплати і не підлягають поверненню після активації.</p>
+
+      <h2>6. Блокування акаунтів</h2>
+      <p>Адміністрація залишає за собою право заблокувати акаунт без попередження у разі порушення правил, спаму або скарг від інших користувачів.</p>
+
+      <h2>7. Зміни правил</h2>
+      <p>Ми можемо оновлювати ці правила. Про суттєві зміни будемо повідомляти через сервіс. Продовження використання RideGO після змін означає прийняття нових умов.</p>
+
+      <h2>8. Контакти</h2>
+      <p>Питання щодо правил: <a href="mailto:hello@ridego.ua">hello@ridego.ua</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PAGE: PRIVACY                                                 -->
+<!-- ============================================================ -->
+<div id="page-privacy" class="page">
+  <div style="max-width:800px;margin:0 auto;padding:48px 24px 100px">
+    <div class="breadcrumb" style="margin-bottom:28px">
+      <span onclick="showPage('home')">Головна</span>
+      <i class="fa-solid fa-chevron-right"></i>
+      <span style="color:var(--text)">Конфіденційність</span>
+    </div>
+    <h1 style="font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:8px">Політика конфіденційності</h1>
+    <p style="color:var(--text-muted);margin-bottom:36px">Останнє оновлення: березень 2025</p>
+
+    <div class="static-page-content">
+      <h2>1. Які дані ми збираємо</h2>
+      <p>При реєстрації: ім'я, email, фото профілю (якщо вхід через Google). При розміщенні оголошень: текст, фото, номер телефону (за бажанням), місто. Автоматично: дата відвідування, сторінки перегляду (анонімно).</p>
+
+      <h2>2. Як ми використовуємо дані</h2>
+      <ul>
+        <li>Для роботи сервісу: авторизація, публікація оголошень, чат</li>
+        <li>Для покращення сервісу: аналітика популярних категорій та міст</li>
+        <li>Для зв'язку: відповіді на ваші запити до підтримки</li>
+      </ul>
+
+      <h2>3. Зберігання даних</h2>
+      <p>Дані зберігаються на серверах Firebase (Google Cloud, Європа). Google має сертифікати безпеки ISO 27001 та SOC 2/3. Фото зберігаються в Cloudinary (США/ЄС) з шифруванням.</p>
+
+      <h2>4. Передача третім особам</h2>
+      <p>Ми не продаємо та не передаємо ваші дані третім особам. Виключення: якщо це вимагається законодавством України або судовим рішенням.</p>
+
+      <h2>5. Ваші права</h2>
+      <p>Ви маєте право: переглядати свої дані в профілі, редагувати або видаляти їх, видалити акаунт. Для видалення акаунту напишіть на <a href="mailto:hello@ridego.ua">hello@ridego.ua</a>.</p>
+
+      <h2>6. Cookies</h2>
+      <p>Ми використовуємо localStorage для збереження теми оформлення та сесії входу. Аналітичні дані — анонімні лічильники відвідувань без персональної прив'язки.</p>
+
+      <h2>7. Контакти</h2>
+      <p>Питання щодо конфіденційності: <a href="mailto:hello@ridego.ua">hello@ridego.ua</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- FOOTER                                                        -->
+<!-- ============================================================ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+
+    <!-- Лого і опис -->
+    <div class="footer-brand">
+      <div class="footer-logo" onclick="showPage('home')">Ride<span>GO</span></div>
+      <p class="footer-desc">Найбільший маркетплейс електротранспорту України. Купуй та продавай електросамокати, велосипеди та скутери.</p>
+      <div class="footer-socials">
+        <a href="https://t.me/ridego_ua" target="_blank" class="footer-social-btn" title="Telegram">
+          <i class="fa-brands fa-telegram"></i>
+        </a>
+        <a href="https://instagram.com/ridego.ua" target="_blank" class="footer-social-btn" title="Instagram">
+          <i class="fa-brands fa-instagram"></i>
+        </a>
+        <a href="https://facebook.com/ridego.ua" target="_blank" class="footer-social-btn" title="Facebook">
+          <i class="fa-brands fa-facebook"></i>
+        </a>
+        <a href="https://tiktok.com/@ridego.ua" target="_blank" class="footer-social-btn" title="TikTok">
+          <i class="fa-brands fa-tiktok"></i>
+        </a>
+        <a href="https://youtube.com/@ridego_ua" target="_blank" class="footer-social-btn" title="YouTube">
+          <i class="fa-brands fa-youtube"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Каталог -->
+    <div class="footer-col">
+      <div class="footer-col-title">Каталог</div>
+      <a onclick="filterCatalog('Електросамокати')">Електросамокати</a>
+      <a onclick="filterCatalog('Велосипеди')">Велосипеди</a>
+      <a onclick="filterCatalog('Електровелосипеди')">Електровелосипеди</a>
+      <a onclick="filterCatalog('Електроскутери')">Електроскутери</a>
+      <a onclick="filterCatalog('Електромотоцикли')">Електромотоцикли</a>
+    </div>
+
+    <!-- Сервіс -->
+    <div class="footer-col">
+      <div class="footer-col-title">Сервіс</div>
+      <a onclick="showPage('add')">Подати оголошення</a>
+      <a onclick="showPage('news')">Новини та огляди</a>
+      <a onclick="showPage('services')">Сервісні центри</a>
+      <a onclick="showPage('profile')">Мій профіль</a>
+      <a href="https://t.me/ridego_support" target="_blank">Підтримка</a>
+    </div>
+
+    <!-- Інформація -->
+    <div class="footer-col">
+      <div class="footer-col-title">Інформація</div>
+      <a onclick="showPage('faq')">FAQ</a>
+      <a onclick="showPage('terms')">Правила користування</a>
+      <a onclick="showPage('privacy')">Конфіденційність</a>
+      <a href="mailto:hello@ridego.ua">hello@ridego.ua</a>
+      <a href="https://t.me/ridego_support" target="_blank">Зв'язок з нами</a>
+    </div>
+
+  </div>
+
+  <div class="footer-bottom">
+    <span>© 2024–2025 RideGO. Всі права захищено.</span>
+    <span class="footer-bottom-links">
+      <a onclick="showPage('terms')">Правила</a>
+      <a onclick="showPage('privacy')">Конфіденційність</a>
+    </span>
+  </div>
+</footer>
+
   <script src="/js/main.js"></script>
   <script src="/js/extra.js"></script>
 </body>
