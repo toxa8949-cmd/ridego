@@ -828,13 +828,13 @@
   ::-webkit-scrollbar-thumb:hover { background:#30363d; }
 
   /* ===== MOBILE NAV ===== */
-  .mobile-nav { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--dark2); border-top:1px solid var(--border); z-index:1000; padding-bottom:env(safe-area-inset-bottom); }
-  .mobile-nav-inner { display:flex; align-items:center; height:60px; }
+  .mobile-nav { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--dark2); border-top:1px solid var(--border); z-index:1000; padding-bottom:env(safe-area-inset-bottom); overflow:visible; }
+  .mobile-nav-inner { display:flex; align-items:center; height:60px; overflow:visible; }
   .mnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; color:var(--text-muted); font-size:10px; font-weight:600; transition:color .2s; border:none; background:none; font-family:'Inter',sans-serif; padding:0; height:100%; }
   .mnav-item:hover,.mnav-item.active { color:var(--brand); }
   .mnav-item i { font-size:20px; }
-  .mnav-fab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:none; background:none; padding:0; gap:2px; height:100%; }
-  .mnav-fab-circle { width:48px; height:48px; border-radius:50%; background:var(--brand); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(0,200,83,.5); transition:transform .15s; margin-top:-14px; }
+  .mnav-fab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:none; background:none; padding:0; gap:2px; height:100%; overflow:visible; }
+  .mnav-fab-circle { width:52px; height:52px; border-radius:50%; background:var(--brand); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(0,200,83,.5); transition:transform .15s; margin-top:-18px; }
   .mnav-fab-circle i { font-size:22px; color:#000; }
   .mnav-fab:active .mnav-fab-circle { transform:scale(0.92); }
   .mnav-fab-label { font-size:10px; font-weight:700; color:var(--brand); font-family:'Inter',sans-serif; }
@@ -845,6 +845,7 @@
   @media(max-width:768px) { .mobile-nav { display:block; } nav, .search-wrap { display:none !important; } body { padding-bottom:60px; } .messages-layout { height:calc(100vh - 130px); } }
   /* Мобільні кнопки — ховати на десктопі */
   .mobile-search-btn { display: none; }
+  .mobile-msg-btn { display: none; }
   .mobile-search-bar { display: none; }
 
   /* ===== DETAIL v2 ===== */
@@ -2435,7 +2436,13 @@
     color: var(--text-muted); cursor: pointer; font-size: 15px;
     flex-shrink: 0;
   }
-  .mobile-profile-btn { display: none; } /* профіль вже є в bottom nav */
+  .mobile-msg-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--brand); border: none;
+    color: #000; cursor: pointer; font-size: 16px;
+    flex-shrink: 0;
+  }
   /* Мобільний рядок пошуку що розгортається */
   .mobile-search-bar {
     display: none; align-items: center; gap: 8px;
