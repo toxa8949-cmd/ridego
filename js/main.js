@@ -38,6 +38,18 @@ function getSellerById(name) {
   return _fbSellers.find(s => s.id === (map[name] || ''));
 }
 
+// ── MOBILE SEARCH TOGGLE ─────────────────────────────────────
+function toggleMobileSearch() {
+  var bar = document.getElementById('mobileSearchBar');
+  if (!bar) return;
+  var isOpen = bar.style.display !== 'none';
+  bar.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) {
+    var inp = document.getElementById('headerSearchMobile');
+    if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 50); }
+  }
+}
+
 // ============================================================
 // NAVIGATION
 // ============================================================
@@ -497,15 +509,18 @@ function loadFirebaseData(force) {
 // Завантажити чати для поточного юзера
 
 function _updateChatBadge() {
-  var badge = document.getElementById('header-msg-badge');
-  if (!badge) return;
   var unread = _fbChats.filter(function(c){ return c.unread && c.unread > 0; }).length;
-  if (unread > 0) {
-    badge.textContent = unread;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
-  }
+  // Оновити всі badge-елементи (десктоп хедер + мобільна навігація)
+  ['header-msg-badge', 'mobile-msg-badge'].forEach(function(id) {
+    var badge = document.getElementById(id);
+    if (!badge) return;
+    if (unread > 0) {
+      badge.textContent = unread;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  });
 }
 
 function loadUserChats() {
