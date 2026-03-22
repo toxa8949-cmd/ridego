@@ -38,6 +38,23 @@ function getSellerById(name) {
   return _fbSellers.find(s => s.id === (map[name] || ''));
 }
 
+// ── FAQ TOGGLE ───────────────────────────────────────────────
+function toggleFaq(el) {
+  var isOpen = el.classList.contains('open');
+  // Закрити всі
+  document.querySelectorAll('.faq-q').forEach(function(q) {
+    q.classList.remove('open');
+    var a = q.nextElementSibling;
+    if (a) a.classList.remove('open');
+  });
+  // Відкрити поточний якщо був закритий
+  if (!isOpen) {
+    el.classList.add('open');
+    var answer = el.nextElementSibling;
+    if (answer) answer.classList.add('open');
+  }
+}
+
 // ── MOBILE SEARCH TOGGLE ─────────────────────────────────────
 function toggleMobileSearch() {
   var bar = document.getElementById('mobileSearchBar');
@@ -85,6 +102,9 @@ function _parsePath(path) {
   if (p === '/messages')  return { page: 'messages' };
   if (p === '/profile')   return { page: 'profile' };
   if (p === '/news')      return { page: 'news' };
+  if (p === '/faq')       return { page: 'faq' };
+  if (p === '/terms')     return { page: 'terms' };
+  if (p === '/privacy')   return { page: 'privacy' };
   // /listing/ID
   var listingMatch = p.match(/^\/listing\/(.+)$/);
   if (listingMatch) return { page: 'detail', id: listingMatch[1] };
@@ -200,6 +220,9 @@ function _pageTitle(page, id) {
   if (page === 'services') return base + ' — Сервіси';
   if (page === 'messages') return base + ' — Повідомлення';
   if (page === 'profile')  return base + ' — Профіль';
+  if (page === 'faq')      return base + ' — FAQ';
+  if (page === 'terms')    return base + ' — Правила';
+  if (page === 'privacy')  return base + ' — Конфіденційність';
   if (page === 'seller') {
     const s = _fbSellers.find(x => x.id === id);
     return s ? base + ' — ' + s.name : base + ' — Продавець';
@@ -225,6 +248,9 @@ function showPage(page, sellerId) {
     services:{ title: 'Сервісні центри', desc: 'Ремонт та обслуговування електротранспорту по всій Україні.' },
     news:    { title: 'Новини та огляди', desc: 'Останні новини, огляди та поради про електротранспорт.' },
     add:     { title: 'Подати оголошення', desc: 'Продайте свій електротранспорт на RideGO.' },
+    faq:     { title: 'FAQ — Часті запитання', desc: 'Відповіді на найпоширеніші питання про RideGO.' },
+    terms:   { title: 'Правила користування', desc: 'Правила використання маркетплейсу RideGO.' },
+    privacy: { title: 'Політика конфіденційності', desc: 'Як RideGO зберігає та використовує ваші дані.' },
   };
   if (pageSEO[page]) {
     var _pageUrl = 'https://ridego-sigma.vercel.app' + (page === 'home' ? '/' : '/' + page);
