@@ -997,7 +997,7 @@ function loadUserChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
   window._db.collection('chats')
     .where('participants','array-contains', currentUser.uid)
-    .orderBy('lastMessageAt','desc').limit(20).get()
+    .limit(20).get()
     .then(function(snap) {
       _fbChats = snap.docs.map(function(d){
         var data = Object.assign({id:d.id}, d.data());
@@ -1005,6 +1005,12 @@ function loadUserChats() {
         var otherId = data.participants ? data.participants.find(function(p){ return p !== currentUser.uid; }) : null;
         if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
         return data;
+      });
+      // Сортуємо на клієнті
+      _fbChats.sort(function(a,b){
+        var ta=a.lastMessageAt&&a.lastMessageAt.seconds?a.lastMessageAt.seconds:0;
+        var tb=b.lastMessageAt&&b.lastMessageAt.seconds?b.lastMessageAt.seconds:0;
+        return tb-ta;
       });
       renderChats();
       if (typeof _updateChatBadge === "function") _updateChatBadge();
@@ -2047,12 +2053,17 @@ function _renderSellerByUid(uid) {
     // Прямий перехід — завантажити оголошення цього продавця напряму
     window._db.collection('listings')
       .where('uid', '==', uid)
-      .orderBy('createdAt', 'desc')
       .get()
       .then(function(snap) {
         var listings = snap.docs
           .map(function(d){ return Object.assign({id: d.id}, d.data()); })
           .filter(function(l){ return l.status !== 'inactive' && l.status !== 'deleted'; });
+        // Сортуємо на клієнті
+        listings.sort(function(a,b){
+          var ta=a.createdAt&&a.createdAt.seconds?a.createdAt.seconds:0;
+          var tb=b.createdAt&&b.createdAt.seconds?b.createdAt.seconds:0;
+          return tb-ta;
+        });
         // Додати в кеш
         listings.forEach(function(l) {
           if (!_fbListings.find(function(x){ return x.id === l.id; })) {

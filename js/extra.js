@@ -333,7 +333,7 @@ function loadSiteNews() {
         + '</div></div>';
     }).join('');
   }
-  window._db.collection('news').where('published','==',true).orderBy('createdAt','desc').get()
+  window._db.collection('news').where('published','==',true).get()
     .then(function(snap) {
       _allNews = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       renderHomeNews();
@@ -458,7 +458,6 @@ function _subscribeChats() {
 
   _chatsUnsubscribe = window._db.collection('chats')
     .where('participants', 'array-contains', currentUser.uid)
-    .orderBy('lastMessageAt', 'desc')
     .limit(20)
     .onSnapshot(function(snap) {
       _fbChats = snap.docs.map(function(d) {
@@ -468,6 +467,12 @@ function _subscribeChats() {
           : null;
         if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
         return data;
+      });
+      // Сортуємо на клієнті — новіші першими
+      _fbChats.sort(function(a, b) {
+        var ta = a.lastMessageAt && a.lastMessageAt.seconds ? a.lastMessageAt.seconds : 0;
+        var tb = b.lastMessageAt && b.lastMessageAt.seconds ? b.lastMessageAt.seconds : 0;
+        return tb - ta;
       });
       renderChats();
       if (typeof _updateChatBadge === 'function') _updateChatBadge();
