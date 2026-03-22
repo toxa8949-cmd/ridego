@@ -329,7 +329,7 @@ function showNewsDetail(id) {
     title: n.title,
     desc: n.excerpt || '',
     img: n.img || '',
-    url: 'https://ridego-sigma.vercel.app/#news/' + id
+    url: 'https://ridego-sigma.vercel.app/news/' + id
   });
   _setNewsSchema(n);
   var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA',{day:'numeric',month:'long',year:'numeric'}) : '';
@@ -353,6 +353,37 @@ function filterNewsCat(cat, btn) {
   if (btn) btn.classList.add('active');
   var filtered = cat ? _allNews.filter(function(n){ return n.cat === cat; }) : _allNews;
   renderNewsGrid(filtered);
+}
+
+// ── REAL-TIME CHAT LIST LISTENER ─────────────────────────────────────
+var _chatsUnsubscribe = null;
+
+function _subscribeChats() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+
+  // Відписатись від попереднього listener якщо є
+  if (_chatsUnsubscribe) { _chatsUnsubscribe(); _chatsUnsubscribe = null; }
+
+  _chatsUnsubscribe = window._db.collection('chats')
+    .where('participants', 'array-contains', currentUser.uid)
+    .orderBy('lastMessageAt', 'desc')
+    .limit(20)
+    .onSnapshot(function(snap) {
+      _fbChats = snap.docs.map(function(d) {
+        var data = Object.assign({ id: d.id }, d.data());
+        var otherId = data.participants
+          ? data.participants.find(function(p) { return p !== currentUser.uid; })
+          : null;
+        if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
+        return data;
+      });
+      renderChats();
+      if (typeof _updateChatBadge === 'function') _updateChatBadge();
+    }, function(e) {
+      console.log('chats listener:', e.message);
+      // Fallback — одноразовий запит
+      loadUserChats();
+    });
 }
 
 // ── SEO: динамічні meta теги ─────────────────────

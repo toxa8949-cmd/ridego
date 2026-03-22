@@ -224,8 +224,8 @@ function _initRouter() {
 function createCard(l, backPage) {
   const isFav    = favorites.includes(l.id);
   const imgHtml  = l.img
-    ? `<img class="listing-img" src="${l.img}" alt="${l.title}" loading="lazy">`
-    : `<div class="listing-img-placeholder">${l.icon}</div>`;
+    ? `<img class="listing-img" src="${l.img}" alt="${l.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex')">`
+    : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
   const badgeHtml = l.badge
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
     : '';
@@ -1526,9 +1526,31 @@ function showDetail(id, _skipPush) {
   document.getElementById('detail-title').textContent = l.title;
 
   // price
-  const usd = Math.round(l.price / 41);
   document.getElementById('detail-price').textContent = l.price.toLocaleString('uk') + ' грн';
-  document.getElementById('detail-price-usd').textContent = '≈ $' + usd.toLocaleString('uk');
+  var _usdEl = document.getElementById('detail-price-usd');
+  if (_usdEl) {
+    var _rate = window._usdRate || 41;
+    _usdEl.textContent = '≈ $' + Math.round(l.price / _rate).toLocaleString('uk');
+    // Оновити курс якщо ще не завантажено (один раз на сесію)
+    if (!window._usdRateFetched) {
+      window._usdRateFetched = true;
+      fetch('https://api.exchangerate-api.com/v4/latest/USD')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.rates && d.rates.UAH) {
+            window._usdRate = d.rates.UAH;
+            // Оновити відображення якщо ще на цій сторінці
+            var el = document.getElementById('detail-price-usd');
+            var pEl = document.getElementById('detail-price');
+            if (el && pEl) {
+              var priceNum = parseInt((pEl.textContent || '').replace(/\D/g, ''));
+              if (priceNum) el.textContent = '≈ $' + Math.round(priceNum / window._usdRate).toLocaleString('uk');
+            }
+          }
+        })
+        .catch(function(){});
+    }
+  }
 
   // meta row
   const condColor = { 'Новий':'#00e676','Чудовий':'#69f0ae','Хороший':'#ffa726','Задовільний':'#ff5252' }[l.condition] || '#8b949e';
@@ -3917,6 +3939,40 @@ function onCityChange() {
 }
 
 // ============================================================
+// LAZY LEAFLET LOADER
+// ============================================================
+var _leafletLoaded = false;
+var _leafletLoading = false;
+var _leafletQueue = [];
+
+function _loadLeaflet(cb) {
+  if (_leafletLoaded) { cb(); return; }
+  _leafletQueue.push(cb);
+  if (_leafletLoading) return;
+  _leafletLoading = true;
+
+  var css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(css);
+
+  var script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  script.onload = function() {
+    _leafletLoaded = true;
+    _leafletLoading = false;
+    _leafletQueue.forEach(function(fn) { fn(); });
+    _leafletQueue = [];
+  };
+  script.onerror = function() {
+    _leafletLoading = false;
+    _leafletQueue = [];
+    console.error('Leaflet не завантажився');
+  };
+  document.head.appendChild(script);
+}
+
+// ============================================================
 // ADD FORM MAP
 // ============================================================
 function showAddMap(lat, lng, label, zoom) {
@@ -3924,6 +3980,7 @@ function showAddMap(lat, lng, label, zoom) {
   if (!wrap) return;
   wrap.style.display = '';
 
+  _loadLeaflet(function() {
   if (!addMapInstance) {
     addMapInstance = L.map('add-map', { zoomControl: true, scrollWheelZoom: false })
       .setView([lat, lng], zoom);
@@ -3942,6 +3999,7 @@ function showAddMap(lat, lng, label, zoom) {
     }).bindPopup(`<b>${label}</b>`).addTo(addMapInstance).openPopup();
   }
   setTimeout(() => addMapInstance.invalidateSize(), 60);
+  }); // end _loadLeaflet
 }
 
 // ============================================================
@@ -3964,32 +4022,32 @@ function renderDetailMap(city, fullLocation) {
     detailMapMarker   = null;
   }
 
-  // Use cached coords, or geocode via Nominatim
-  const known = CITY_COORDS[city];
-  if (known) {
-    _initDetailMap(known.lat, known.lng, city, 12);
-  } else {
-    // Show ukraine-level map first, then geocode
-    _initDetailMap(49.0, 32.0, city, 6);
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', Україна')}&format=json&limit=1&countrycodes=ua`, {
-      headers: { 'Accept-Language': 'uk' }
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data[0]) {
-        const lat = +data[0].lat, lng = +data[0].lon;
-        CITY_COORDS[city] = { lat, lng };
-        if (detailMapInstance) {
-          detailMapInstance.setView([lat, lng], 13);
-          if (detailMapMarker) detailMapMarker.remove();
-          detailMapMarker = L.circleMarker([lat, lng], {
-            radius:12, fillColor:'#00c853', color:'#fff', weight:3, opacity:1, fillOpacity:.9
-          }).bindPopup(`<b>${city}</b>`).addTo(detailMapInstance).openPopup();
+  _loadLeaflet(function() {
+    const known = CITY_COORDS[city];
+    if (known) {
+      _initDetailMap(known.lat, known.lng, city, 12);
+    } else {
+      _initDetailMap(49.0, 32.0, city, 6);
+      fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', Україна')}&format=json&limit=1&countrycodes=ua`, {
+        headers: { 'Accept-Language': 'uk' }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data[0]) {
+          const lat = +data[0].lat, lng = +data[0].lon;
+          CITY_COORDS[city] = { lat, lng };
+          if (detailMapInstance) {
+            detailMapInstance.setView([lat, lng], 13);
+            if (detailMapMarker) detailMapMarker.remove();
+            detailMapMarker = L.circleMarker([lat, lng], {
+              radius:12, fillColor:'#00c853', color:'#fff', weight:3, opacity:1, fillOpacity:.9
+            }).bindPopup(`<b>${city}</b>`).addTo(detailMapInstance).openPopup();
+          }
         }
-      }
-    })
-    .catch(() => {});
-  }
+      })
+      .catch(() => {});
+    }
+  }); // end _loadLeaflet
 }
 
 function _initDetailMap(lat, lng, label, zoom) {
