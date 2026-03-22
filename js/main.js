@@ -3648,13 +3648,18 @@ function openChatById(chatId) {
   // Слухати повідомлення в реальному часі через RTDB
   if (window._rtdb) {
     var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
-    _chatUnsubscribe = msgsRef.on('value', function(snap) {
+    var _rtdbCallback = msgsRef.on('value', function(snap) {
       var msgs = [];
-      snap.forEach(function(child) {
-        msgs.push(child.val());
-      });
+      // snap може бути null якщо чат порожній або немає прав
+      if (snap && snap.forEach) {
+        snap.forEach(function(child) {
+          msgs.push(child.val());
+        });
+      }
       _renderMessages(msgs);
     });
+    // RTDB відписка — треба зберегти і ref, і callback
+    _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
   } else if (window._db) {
     // Fallback — Firestore
     _chatUnsubscribe = window._db.collection('chats').doc(chatId)
