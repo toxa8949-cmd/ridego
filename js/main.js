@@ -376,7 +376,7 @@ function _sortWithPromo(data, sortType) {
 // Дедублікація — прибрати повтори по id (myListings може перетинатись з _fbListings)
 function _allListings() {
   var seen = {};
-  return _allListings().filter(function(l) {
+  return _fbListings.concat(myListings).filter(function(l) {
     if (!l || !l.id) return false;
     if (seen[l.id]) return false;
     seen[l.id] = true;
@@ -4848,25 +4848,29 @@ function selectPromoDuration(days, el) {
 function _updatePromoUI() {
   const days  = _selectedPromoDays;
   const type  = _selectedPromoType;
-  const price = PROMO_PRICES[type][days];
+  const price = PROMO_PRICES[type] ? PROMO_PRICES[type][days] : 0;
 
   // Оновити ціни на картках
   Object.keys(PROMO_PRICES).forEach(t => {
     const el = document.getElementById('price-' + t);
     if (el) {
       el.textContent = PROMO_PRICES[t][days] + ' грн';
-      el.nextElementSibling.textContent = 'за ' + days + ' днів';
+      if (el.nextElementSibling) el.nextElementSibling.textContent = 'за ' + days + ' днів';
     }
   });
 
-  // Summary
-  document.getElementById('promo-total-price').textContent = price + ' грн';
+  // Summary — з null-перевірками
+  const totalEl = document.getElementById('promo-total-price');
+  const untilEl = document.getElementById('promo-until-date');
+  const descEl  = document.getElementById('promo-summary-desc');
+  if (!totalEl || !untilEl || !descEl) return;
+
   const until = new Date();
   until.setDate(until.getDate() + days);
   const formatted = until.toLocaleDateString('uk-UA', { day:'numeric', month:'long' });
-  document.getElementById('promo-until-date').textContent = formatted;
-  document.getElementById('promo-summary-desc').innerHTML =
-    `${PROMO_NAMES[type]} · ${days} днів · активно до <b>${formatted}</b>`;
+  totalEl.textContent = (price || 0) + ' грн';
+  untilEl.textContent = formatted;
+  descEl.innerHTML = `${PROMO_NAMES[type]} · ${days} днів · активно до <b>${formatted}</b>`;
 }
 
 function applyPromo() {
