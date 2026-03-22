@@ -383,6 +383,84 @@ function _allListings() {
     return true;
   });
 }
+
+// ── CITY AUTOCOMPLETE (Nominatim / OpenStreetMap) ────────────
+var _citySearchTimer = null;
+var _citySearchCache = {};
+
+function onCityInput(val) {
+  var sugEl = document.getElementById('city-suggestions');
+  if (!sugEl) return;
+  val = (val || '').trim();
+  if (val.length < 2) { sugEl.style.display = 'none'; return; }
+  clearTimeout(_citySearchTimer);
+  _citySearchTimer = setTimeout(function() { _searchCityNominatim(val); }, 350);
+}
+
+function _searchCityNominatim(q) {
+  var sugEl = document.getElementById('city-suggestions');
+  if (!sugEl) return;
+  if (_citySearchCache[q]) { _renderCitySuggestions(_citySearchCache[q]); return; }
+  sugEl.style.display = '';
+  sugEl.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">Пошук...</div>';
+
+  var url = 'https://nominatim.openstreetmap.org/search'
+    + '?q=' + encodeURIComponent(q)
+    + '&countrycodes=ua&addressdetails=1&limit=8&format=json&accept-language=uk';
+
+  fetch(url, { headers: { 'Accept-Language': 'uk,en' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var results = [];
+      var seen = {};
+      data.forEach(function(p) {
+        if (p.class !== 'place' && p.class !== 'boundary') return;
+        var addr = p.address || {};
+        var name = addr.city || addr.town || addr.village || addr.hamlet
+                || addr.suburb || addr.municipality || p.display_name.split(',')[0];
+        if (!name) return;
+        var oblast = (addr.state || '').replace(' область', ' обл.');
+        var key = name + '|' + oblast;
+        if (seen[key]) return;
+        seen[key] = true;
+        results.push({ name: name, sub: oblast });
+      });
+      _citySearchCache[q] = results;
+      _renderCitySuggestions(results);
+    })
+    .catch(function() { sugEl.style.display = 'none'; });
+}
+
+function _renderCitySuggestions(results) {
+  var sugEl = document.getElementById('city-suggestions');
+  if (!sugEl) return;
+  if (!results.length) {
+    sugEl.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">Не знайдено — введіть назву вручну</div>';
+    sugEl.style.display = '';
+    return;
+  }
+  sugEl.innerHTML = results.map(function(r) {
+    var safe = r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div class="city-sug-item" onclick="selectCitySuggestion(\'' + safe + '\')">'
+      + '<div style="font-size:14px;font-weight:600">' + r.name + '</div>'
+      + (r.sub ? '<div style="font-size:12px;color:var(--text-muted)">' + r.sub + '</div>' : '')
+      + '</div>';
+  }).join('');
+  sugEl.style.display = '';
+}
+
+function selectCitySuggestion(name) {
+  var inp = document.getElementById('new-city');
+  if (inp) inp.value = name;
+  closeCitySuggestions();
+}
+
+function closeCitySuggestions() {
+  var s = document.getElementById('city-suggestions');
+  if (s) s.style.display = 'none';
+}
+// ── CITY AUTOCOMPLETE END ─────────────────────────────────────
+
 function toggleMobileSearch() {
   var bar = document.getElementById('mobileSearchBar');
   if (!bar) return;
@@ -4523,12 +4601,13 @@ function initOblastSelect() {
 function onOblastChange() {
   const oblast = document.getElementById('new-oblast').value;
   const raionSel = document.getElementById('new-raion');
-  const citySel  = document.getElementById('new-city');
 
   raionSel.innerHTML = '<option value="">Оберіть район...</option>';
-  citySel.innerHTML  = '<option value="">Спочатку район</option>';
   raionSel.disabled = !oblast;
-  citySel.disabled  = true;
+
+  // City input — просто очищаємо, не блокуємо (тепер text autocomplete)
+  var cityInp = document.getElementById('new-city');
+  if (cityInp) cityInp.value = '';
 
   const hint = document.getElementById('add-location-hint');
   if (hint) hint.style.display = 'none';
@@ -4547,26 +4626,14 @@ function onOblastChange() {
 }
 
 function onRaionChange() {
-  const oblast  = document.getElementById('new-oblast').value;
   const raion   = document.getElementById('new-raion').value;
-  const citySel = document.getElementById('new-city');
-
-  citySel.innerHTML = '<option value="">Оберіть місто / село...</option>';
-  citySel.disabled = !raion;
   if (!raion) return;
 
   const raionOpt = document.querySelector('#new-raion option:checked');
   if (raionOpt?.dataset.lat) {
     showAddMap(+raionOpt.dataset.lat, +raionOpt.dataset.lng, raion, 10);
   }
-
-  const cities = UA_GEO[oblast]?.raions[raion]?.cities || [];
-  cities.slice().sort((a,b) => a.localeCompare(b,'uk')).forEach(c => {
-    const o = document.createElement('option');
-    o.value = c; o.textContent = c;
-    citySel.appendChild(o);
-  });
-  citySel.disabled = false;
+  // City input — не заповнюємо з UA_GEO, юзер сам введе через Nominatim
 }
 
 function onCityChange() {
