@@ -210,14 +210,6 @@ function showSellerByUid(uid) {
   _renderRoute({ page: 'seller', id: 'uid:' + uid });
 }
 
-// ── Copy seller link  (full URL with hash) ────────────────────────────
-function copySellerLink() {
-  var uid = currentSellerId ? currentSellerId.replace('uid:', '') : '';
-  var url = location.origin + (uid ? '/seller/' + uid : '/');
-  navigator.clipboard && navigator.clipboard.writeText(url).catch(function(){});
-  showToast('🔗 Посилання скопійовано!');
-}
-
 // ── Init: read hash on first load ─────────────────────────────────────
 function _initRouter() {
   var route = _parsePath();
@@ -305,7 +297,7 @@ function createCard(l, backPage) {
       <!-- GRID MODE footer -->
       <div class="listing-footer">
         <span class="loc"><i class="fa-solid fa-location-dot"></i>${l.city}</span>
-        <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav(${l.id},this)">
+        <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)">
           <i class="fa-${isFav?'solid':'regular'} fa-heart"></i>
         </button>
       </div>
@@ -322,10 +314,10 @@ function createCard(l, backPage) {
           </span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-          <button class="lv-btn" onclick="event.stopPropagation();showDetail(${l.id})">
+          <button class="lv-btn" onclick="event.stopPropagation();showDetail('${l.id}')">
             <i class="fa-solid fa-arrow-right" style="font-size:11px"></i> Переглянути
           </button>
-          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav(${l.id},this)" style="font-size:18px">
+          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)" style="font-size:18px">
             <i class="fa-${isFav?'solid':'regular'} fa-heart"></i>
           </button>
         </div>
@@ -1305,6 +1297,7 @@ function renderSellerPage(id) {
   document.getElementById('seller-page-since').innerHTML =
     `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since || ''}`;
   const listings = [..._fbListings, ...myListings].filter(l => l && l.seller === s.name);
+  const sellerSvc = _fbServices.concat(myServices).find(function(sv){ return sv.uid === s.uid; }) || null;
   ['sp-stat-ads','sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid) {
     var el = document.getElementById(sid);
     if (el) el.textContent = sid==='sp-stat-ads' ? listings.length : (s[sid.replace('sp-stat-','')] || '—');
@@ -1446,10 +1439,14 @@ function switchSellerTab(tab, el) {
 }
 
 function copySellerLink() {
-  const s = _fbSellers.find(x => x.id === currentSellerId);
-  const url = s ? `https://ridego.ua/seller/${s.id}` : 'https://ridego.ua';
-  navigator.clipboard?.writeText(url).catch(()=>{});
-  showToast('🔗 Посилання скопійовано! ' + url.split('/').pop());
+  var uid = currentSellerId ? currentSellerId.replace('uid:', '') : '';
+  // Визначити правильний шлях: uid: prefix → /seller/UID, інакше /seller/ID
+  var path = currentSellerId && currentSellerId.startsWith('uid:')
+    ? '/seller/' + uid
+    : (currentSellerId ? '/seller/' + currentSellerId : '/');
+  var url = location.origin + path;
+  navigator.clipboard && navigator.clipboard.writeText(url).catch(function(){});
+  showToast('🔗 Посилання скопійовано!');
 }
 
 // ============================================================
@@ -1470,7 +1467,27 @@ let galleryIdx = 0;
 
 function showDetail(id, _skipPush) {
   const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
-  if (!l) return;
+  if (!l) {
+    // Дані ще не завантажені — завантажити оголошення напряму з Firestore
+    if (window._db && id) {
+      // Показати сторінку деталей зі спінером поки грузиться
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      var detailPage = document.getElementById('page-detail');
+      if (detailPage) detailPage.classList.add('active');
+      var titleEl = document.getElementById('detail-title');
+      if (titleEl) titleEl.textContent = 'Завантаження...';
+      window._db.collection('listings').doc(id).get().then(function(snap) {
+        if (!snap.exists) { showToast('⚠️ Оголошення не знайдено'); return; }
+        var data = Object.assign({ id: snap.id }, snap.data());
+        // Додати в кеш і показати
+        _fbListings.unshift(data);
+        showDetail(id, _skipPush);
+      }).catch(function(e) {
+        showToast('⚠️ Помилка завантаження: ' + e.message);
+      });
+    }
+    return;
+  }
   currentDetailId = id;
   // Скинути кнопку телефону
   var _revBtn = document.getElementById('reveal-phone-btn');
@@ -1482,7 +1499,7 @@ function showDetail(id, _skipPush) {
     title: l.title,
     desc: l.desc ? l.desc.substring(0,160) : (l.title + ' — ' + (l.cat||'') + ' в ' + (l.city||'Україні')),
     img: l.img || '',
-    url: 'https://ridego-sigma.vercel.app/#detail/' + id
+    url: 'https://ridego-sigma.vercel.app/listing/' + id
   });
   _setListingSchema(l);
   // Рахувати перегляди в Firestore
@@ -1609,14 +1626,14 @@ function renderGalleryImage(l) {
 function galleryNav(dir) {
   if (!galleryImgs.length) return;
   galleryIdx = (galleryIdx + dir + galleryImgs.length) % galleryImgs.length;
-  const l = [...LISTINGS, ...myListings].find(x => x && x.id === currentDetailId);
+  const l = [..._fbListings, ...myListings].find(x => x && x.id === currentDetailId);
   renderGalleryImage(l);
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,i) => t.classList.toggle('active', i===galleryIdx));
 }
 
 function setGalleryIdx(i) {
   galleryIdx = i;
-  const l = [...LISTINGS, ...myListings].find(x => x && x.id === currentDetailId);
+  const l = [..._fbListings, ...myListings].find(x => x && x.id === currentDetailId);
   renderGalleryImage(l);
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,j) => t.classList.toggle('active', j===i));
 }
