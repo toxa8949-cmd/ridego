@@ -1974,6 +1974,31 @@ function _renderSellerByUid(uid) {
       if (d.city) document.getElementById('seller-page-city').innerHTML =
         '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + d.city;
 
+      // Фото аватара
+      var avEl = document.getElementById('seller-page-avatar');
+      if (avEl) {
+        if (d.photoUrl) {
+          avEl.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:14px">';
+        } else {
+          avEl.textContent = (d.name || sellerName)[0].toUpperCase();
+        }
+      }
+
+      // Обкладинка — колір на основі типу
+      if (d.type === 'business') {
+        document.getElementById('seller-page-type-badge').innerHTML =
+          '<span class="seller-shop-badge"><i class="fa-solid fa-store" style="margin-right:4px"></i>Офіційний магазин</span>';
+        var isDarkNow = !document.body.classList.contains('light');
+        document.getElementById('seller-cover-bg').style.background =
+          'linear-gradient(160deg, #0a2a1a 0%, ' + (isDarkNow ? '#1a2e1a' : '#d4edda') + ' 100%)';
+      }
+
+      // Опис у header
+      var descEl = document.getElementById('seller-page-desc');
+      if (descEl && (d.about || d.desc)) {
+        descEl.textContent = d.about || d.desc;
+      }
+
       // Тип бейдж
       var typeBadgeEl = document.getElementById('seller-page-type-badge');
       if (typeBadgeEl) {
@@ -4019,6 +4044,17 @@ function renderProfile() {
       fill('set-address',   d.address);
       fill('set-hours',     d.hours);
       fill('set-about',     d.about || d.desc);
+
+      // Завантажити фото з Firestore якщо є
+      if (d.photoUrl && !profilePhotoUrl) {
+        profilePhotoUrl = d.photoUrl;
+        ['profile-pic-el', 'settings-avatar-preview'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+        });
+        var letterEl = document.getElementById('profile-pic-letter');
+        if (letterEl) letterEl.style.display = 'none';
+      }
     }).catch(function(){});
   }
 
