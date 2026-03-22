@@ -2426,13 +2426,12 @@
   header .header-inner { padding: 0 16px; gap: 8px; }
   /* На мобільному ховаємо десктопні елементи */
   header nav { display: none; }
-  header .btn-messages { display: none; }
   header .search-wrap { display: none; }
-  /* Лого зліва, повідомлення вправо */
+  /* Лого зліва, перемикач поруч, повідомлення вправо */
   header .logo { font-size: 20px; }
-  header .theme-toggle { margin-left: auto; }
-  /* Показуємо мобільні іконки */
+  header .btn-messages { margin-left: auto; }
   .mobile-search-btn { display: none !important; }
+  .mobile-msg-btn { display: none !important; }
   .mobile-search-btn { display: none !important; }
   .mobile-msg-btn {
     display: flex; align-items: center; justify-content: center;
