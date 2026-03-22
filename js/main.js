@@ -5544,10 +5544,89 @@ function _buildSvcDetailBody(s){
     "<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center\">"+
     "<div style=\"font-size:48px;font-weight:800;color:var(--brand);line-height:1\">"+ratingNum+"</div>"+
     "<div style=\"color:#ffa726;font-size:22px;margin:6px 0\">"+ratingStars+"</div>"+
-    "<div style=\"font-size:13px;color:var(--text-muted)\">"+reviewsTxt+"</div>"+
-    "<button class=\"btn-outline\" style=\"width:100%;margin-top:14px;padding:10px\" onclick=\"showToast('\u2705 \u0412\u0456\u0434\u0433\u0443\u043a \u043d\u0430\u0434\u0456\u0441\u043b\u0430\u043d\u043e!')\"><i class=\"fa-solid fa-star\" style=\"margin-right:5px\"></i>\u0417\u0430\u043b\u0438\u0448\u0438\u0442\u0438 \u0432\u0456\u0434\u0433\u0443\u043a</button></div>"+
+    "<div style=\"font-size:13px;color:var(--text-muted);margin-bottom:14px\">"+reviewsTxt+"</div>"+
+    "<button class=\"btn-outline\" style=\"width:100%;padding:10px\" onclick=\"openSvcReviewForm('"+s.uid+"')\"><i class=\"fa-solid fa-star\" style=\"margin-right:5px\"></i>Залишити відгук</button>"+
+    "</div>"+
+    "<div id=\"svc-review-form-"+s.uid+"\" style=\"display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px\">"+
+    "<div style=\"font-size:14px;font-weight:700;margin-bottom:12px\">Ваш відгук</div>"+
+    "<div style=\"display:flex;gap:6px;margin-bottom:12px;font-size:28px\" id=\"svc-stars-"+s.uid+"\">"+
+    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',1)\">☆</span>"+
+    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',2)\">☆</span>"+
+    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',3)\">☆</span>"+
+    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',4)\">☆</span>"+
+    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',5)\">☆</span>"+
+    "</div>"+
+    "<textarea id=\"svc-review-text-"+s.uid+"\" rows=\"3\" placeholder=\"Розкажіть про досвід з цим сервісом...\" style=\"width:100%;background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:vertical;margin-bottom:10px\"></textarea>"+
+    "<div style=\"display:flex;gap:8px\">"+
+    "<button class=\"btn-outline\" style=\"flex:1;padding:10px\" onclick=\"closeSvcReviewForm('"+s.uid+"')\">Скасувати</button>"+
+    "<button class=\"btn-primary\" style=\"flex:2;padding:10px\" onclick=\"submitSvcReview('"+s.uid+"')\"><i class=\"fa-solid fa-paper-plane\" style=\"margin-right:6px\"></i>Надіслати</button>"+
+    "</div>"+
+    "</div>"+
     socialBlock+shopBlock+"</div>";
 }
+
+// ── SVC REVIEW FORM ──────────────────────────────────────────
+var _svcReviewStars = {};
+
+function openSvcReviewForm(uid) {
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Спочатку увійдіть в акаунт'); showPage('profile'); return;
+  }
+  if (currentUser.uid === uid) {
+    showToast('⚠️ Не можна залишити відгук собі'); return;
+  }
+  var form = document.getElementById('svc-review-form-' + uid);
+  if (form) form.style.display = '';
+}
+
+function closeSvcReviewForm(uid) {
+  var form = document.getElementById('svc-review-form-' + uid);
+  if (form) form.style.display = 'none';
+}
+
+function setSvcStar(uid, n) {
+  _svcReviewStars[uid] = n;
+  var starsEl = document.getElementById('svc-stars-' + uid);
+  if (!starsEl) return;
+  starsEl.querySelectorAll('span').forEach(function(s, i) {
+    s.textContent = i < n ? '★' : '☆';
+    s.style.color  = i < n ? '#ffa726' : '';
+    s.style.transform = i < n ? 'scale(1.1)' : '';
+  });
+}
+
+function submitSvcReview(uid) {
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Спочатку увійдіть в акаунт'); return;
+  }
+  var stars = _svcReviewStars[uid] || 0;
+  if (!stars) { showToast('⚠️ Оберіть оцінку'); return; }
+  var textEl = document.getElementById('svc-review-text-' + uid);
+  var text = textEl ? textEl.value.trim() : '';
+  if (!text) { showToast('⚠️ Напишіть текст відгуку'); return; }
+  if (text.length < 10) { showToast('⚠️ Відгук занадто короткий'); return; }
+
+  if (!window._db) return;
+  window._db.collection('reviews').add({
+    sellerUid:    uid,
+    reviewerUid:  currentUser.uid,
+    reviewerName: currentUser.name || currentUser.email || '',
+    rating:  stars,
+    text:    text,
+    type:    'service',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    showToast('✅ Відгук опубліковано!');
+    closeSvcReviewForm(uid);
+    if (textEl) textEl.value = '';
+    setSvcStar(uid, 0);
+    // Оновити відгуки сервісу
+    if (typeof _loadSellerReviews === 'function') _loadSellerReviews(uid);
+  }).catch(function(e) {
+    showToast('⚠️ Помилка: ' + e.message);
+  });
+}
+// ── SVC REVIEW FORM END ───────────────────────────────────────
 
 function showServiceDetail(id){
   var s=_fbServices.concat(myServices).filter(function(x){return x.id===id;})[0];
