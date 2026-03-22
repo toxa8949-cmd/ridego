@@ -5810,13 +5810,55 @@ function submitSvcReview(uid) {
     closeSvcReviewForm(uid);
     if (textEl) textEl.value = '';
     setSvcStar(uid, 0);
-    // Оновити відгуки сервісу
+    // Перерахувати рейтинг в блоці сервісу
+    _refreshSvcRating(uid, stars);
+    // Оновити відгуки на сторінці продавця якщо відкрита
     if (typeof _loadSellerReviews === 'function') _loadSellerReviews(uid);
   }).catch(function(e) {
     showToast('⚠️ Помилка: ' + e.message);
   });
 }
 // ── SVC REVIEW FORM END ───────────────────────────────────────
+
+// Оновити рейтинговий блок в svc-detail-body після нового відгуку
+function _refreshSvcRating(uid, newStars) {
+  if (!window._db) return;
+  window._db.collection('reviews').where('sellerUid', '==', uid).get()
+    .then(function(snap) {
+      var revs = snap.docs.map(function(d){ return d.data(); });
+      var total = revs.length;
+      var avg = total > 0
+        ? (revs.reduce(function(s,r){ return s+(r.rating||0); }, 0) / total)
+        : 0;
+      var avgStr = avg > 0 ? avg.toFixed(1) : '—';
+      var starsStr = avg > 0
+        ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg)))
+        : '☆☆☆☆☆';
+      var reviewsTxt = total > 0
+        ? 'на основі ' + total + ' відгук' + (total===1?'а':total<5?'ів':'ів')
+        : 'Поки немає відгуків';
+
+      // Знайти і оновити блок рейтингу в svc-detail-body
+      // Блок має унікальний id svc-review-form-UID, тому шукаємо його сусідній div
+      var form = document.getElementById('svc-review-form-' + uid);
+      if (form) {
+        // Рейтинговий div — попередній sibling
+        var ratingDiv = form.previousElementSibling;
+        if (ratingDiv) {
+          var numEl = ratingDiv.querySelector('div[style*="font-size:48px"]');
+          var starsEl = ratingDiv.querySelector('div[style*="color:#ffa726"]');
+          var cntEl = ratingDiv.querySelector('div[style*="font-size:13px"][style*="text-muted"]');
+          if (numEl) numEl.textContent = avgStr;
+          if (starsEl) starsEl.textContent = starsStr;
+          if (cntEl) cntEl.textContent = reviewsTxt;
+        }
+      }
+
+      // Також оновити сервіс в кешах
+      var svc = _fbServices.concat(myServices).find(function(x){ return x.uid === uid; });
+      if (svc) { svc.rating = avg; svc.reviews = total; }
+    }).catch(function(){});
+}
 
 function showServiceDetail(id){
   var s=_fbServices.concat(myServices).filter(function(x){return x.id===id;})[0];
