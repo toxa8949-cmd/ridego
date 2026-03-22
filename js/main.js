@@ -4895,6 +4895,8 @@ try {
     if (knob) knob.textContent = '☀️';
     if (savedTheme === null) localStorage.setItem('eria-theme', 'light');
   }
+  // Прибрати anti-flash клас з <html> — тепер body.light взяв управління
+  document.documentElement.classList.remove('light-preload');
 } catch(e) {}
 
 loadSavedProfile();
