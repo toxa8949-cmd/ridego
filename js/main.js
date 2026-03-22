@@ -550,7 +550,7 @@ function createCard(l, backPage) {
   const isFav    = favorites.includes(l.id);
   const thumbSrc = _cdnThumb(l.img) || l.img;
   const imgHtml  = l.img
-    ? `<div class="listing-img-wrap"><img class="listing-img" src="${thumbSrc}" alt="${l.title}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\"listing-img-placeholder\\">${l.icon || '📦'}</div>'"></div>`
+    ? `<div class="listing-img-wrap"><img class="listing-img" src="${thumbSrc}" alt="${l.title}" loading="lazy" onerror="this.style.display='none'"></div>`
     : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
   const badgeHtml = l.badge
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
