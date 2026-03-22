@@ -49,6 +49,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/css/main.css">
+<!-- Тема: виконується СИНХРОННО до рендеру body — усуває flash темної теми -->
+<script>
+(function(){
+  try {
+    var t = localStorage.getItem('eria-theme');
+    // За замовчуванням — light
+    if (t === 'light' || t === null) {
+      document.documentElement.classList.add('light-preload');
+    }
+  } catch(e) {}
+})();
+</script>
 </head>
 
   <!-- Firebase Compat SDK -->
