@@ -2758,3 +2758,81 @@
 .slot-pkg-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--brand-dim); color: var(--brand); }
 .slot-pkg-badge.best { background: var(--brand); color: #000; }
 .slot-popular-tag { font-size: 11px; font-weight: 600; color: var(--brand); margin-left: 6px; }
+
+/* ── SELLER PAGE MOBILE FIXES ──────────────────────────────── */
+@media(max-width: 768px) {
+
+  /* Таби — скролл замість обрізання */
+  .seller-tabs-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+  }
+  .seller-tabs-wrap::-webkit-scrollbar { display: none; }
+  .seller-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  .seller-tab i { display: none; } /* ховаємо іконки щоб менше займало */
+
+  /* About tab — одна колонка */
+  #stab-about > div[style*="grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  /* Права колонка (контакти/соцмережі/посилання) — виходить першою на мобільному */
+  #stab-about > div > div:last-child {
+    order: -1;
+  }
+  /* URL посилання — не виходить за край */
+  #seller-page-url {
+    word-break: break-all !important;
+    font-size: 11px !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* Reviews tab — одна колонка, рейтинг зверху */
+  #stab-reviews > div[style*="grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  /* Sticky рейтингова картка — знімаємо sticky на мобільному */
+  #stab-reviews > div > div:first-child {
+    position: static !important;
+  }
+
+  /* Stats — 2 колонки замість 4 */
+  .seller-stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Actions — кнопки вертикально */
+  .seller-actions {
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100%;
+  }
+  .seller-actions button,
+  .seller-actions .share-shop-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Body padding */
+  #page-seller > div:last-child {
+    padding: 20px 16px 80px !important;
+  }
+}
+
+@media(max-width: 480px) {
+  .seller-tab {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .seller-stat-val { font-size: 20px !important; }
+}
