@@ -261,26 +261,24 @@ function showSkeletons() {
 var _CLOUDINARY_BASE = 'https://res.cloudinary.com/dxgtpo5dq/image/upload';
 
 // Генерує оптимізований Cloudinary URL з автоматичним WebP та стисненням
-// w — ширина, q — якість (auto = автовибір), f — формат (auto = WebP якщо підтримується)
 function _cdnImg(url, opts) {
   if (!url || !url.includes('cloudinary.com')) return url;
   opts = opts || {};
   var w = opts.w || 600;
   var q = opts.q || 'auto';
-  var f = opts.f || 'auto'; // auto = WebP/AVIF де підтримується
-  var c = opts.c || 'fill'; // fill, fit, limit
-  var g = opts.g || 'auto'; // gravity: auto = розумний crop
-  var transforms = 'w_' + w + ',q_' + q + ',f_' + f + ',c_' + c + ',g_' + g;
-  // Замінити /upload/ на /upload/<transforms>/
+  var f = opts.f || 'auto'; // auto = WebP/AVIF де підтримується браузером
+  var c = opts.c || 'fill';
+  // g_auto (smart gravity) — платна фіча, не використовуємо
+  var transforms = 'w_' + w + ',q_' + q + ',f_' + f + ',c_' + c;
   return url.replace('/upload/', '/upload/' + transforms + '/');
 }
 
-// Thumbnail — маленька версія для картки у списку (400px, агресивне стиснення)
-function _cdnThumb(url) { return _cdnImg(url, { w: 400, q: 75, c: 'fill', g: 'auto' }); }
-// Detail — велика версія для деталей (1200px, хороша якість)
-function _cdnDetail(url) { return _cdnImg(url, { w: 1200, q: 85, c: 'limit', g: 'auto' }); }
-// Preview OG — квадрат для соцмереж
-function _cdnOg(url) { return _cdnImg(url, { w: 1200, q: 80, c: 'fill', g: 'auto' }); }
+// Thumbnail — для карток у списку (400px)
+function _cdnThumb(url) { return _cdnImg(url, { w: 400, q: 75, c: 'fill' }); }
+// Detail — для сторінки деталей (1200px)
+function _cdnDetail(url) { return _cdnImg(url, { w: 1200, q: 85, c: 'limit' }); }
+// OG — для соцмереж (1200px квадрат)
+function _cdnOg(url) { return _cdnImg(url, { w: 1200, q: 80, c: 'fill' }); }
 
 // ============================================================
 // LISTINGS RENDER
