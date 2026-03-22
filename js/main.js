@@ -395,7 +395,16 @@ function onCityInput(val) {
   if (val.length < 2) { sugEl.style.display = 'none'; return; }
   clearTimeout(_citySearchTimer);
   _citySearchTimer = setTimeout(function() { _searchCityNominatim(val); }, 350);
+  // Також оновити карту з debounce 800ms при ручному введенні
+  clearTimeout(_cityMapTimer);
+  _cityMapTimer = setTimeout(function() {
+    if (document.getElementById('new-city').value.trim().length >= 2) {
+      onCityChange();
+    }
+  }, 800);
 }
+
+var _cityMapTimer = null;
 
 function _searchCityNominatim(q) {
   var sugEl = document.getElementById('city-suggestions');
@@ -463,6 +472,8 @@ function selectCitySuggestion(name) {
   var inp = document.getElementById('new-city');
   if (inp) inp.value = name;
   closeCitySuggestions();
+  // Оновити карту одразу після вибору
+  setTimeout(onCityChange, 50);
 }
 
 function closeCitySuggestions() {
