@@ -5708,7 +5708,21 @@ function _buildSvcDetailHeader(s){
   var btnMsg = s.uid
     ? "<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"_openSvcChat('"+s.uid+"','"+s.name+"')\"><i class=\"fa-solid fa-comment\" style=\"margin-right:6px\"></i>Написати</button>"
     : "";
-  return "<div><div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><span>"+s.icon+"</span>"+badge+"</div></div>"+
+  // Обкладинка — фото або градієнт з іконкою
+  var coverHtml;
+  if (s.photoUrl) {
+    coverHtml = "<div class=\"service-detail-cover\" style=\"background:none;padding:0;overflow:hidden\">" +
+      "<img src=\"" + s.photoUrl + "\" style=\"width:100%;height:100%;object-fit:cover\">" +
+      badge + "</div>";
+  } else {
+    coverHtml = "<div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><span>"+s.icon+"</span>"+badge+"</div>";
+  }
+  // Кнопка редагування фото — тільки для власника
+  var isOwner = (typeof currentUser !== 'undefined') && currentUser && currentUser.uid && s.uid && currentUser.uid === s.uid;
+  var editPhotoBtn = isOwner
+    ? "<button onclick=\"triggerSvcPhotoUpload('"+s.id+"')\" style=\"position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px\"><i class='fa-solid fa-camera'></i> Змінити фото</button>"
+    : "";
+  return "<div style=\"position:relative\">" + coverHtml + editPhotoBtn + "</div>"+
     "<div><div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">"+cats+"</div>"+
     "<div class=\"service-detail-name\">"+s.name+"</div>"+
     "<div style=\"display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-muted);margin-bottom:16px\">"+cityLine+hoursLine+phoneLine+"</div>"+
@@ -5718,6 +5732,65 @@ function _buildSvcDetailHeader(s){
 function _openSvcChat(sellerUid, svcName) {
   _startChat(sellerUid, null, svcName);
 }
+
+// ── SERVICE PHOTO UPLOAD ──────────────────────────────────────
+function triggerSvcPhotoUpload(svcId) {
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    showToast('⏳ Завантаження фото...');
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var maxW = 1200, maxH = 600;
+        var w = img.width, h = img.height;
+        if (w > maxW) { h = h*maxW/w; w = maxW; }
+        if (h > maxH) { w = w*maxH/h; h = maxH; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) {
+          var fd = new FormData();
+          fd.append('file', blob, 'svc-cover.jpg');
+          fd.append('upload_preset', 'ridego_unsigned');
+          fd.append('folder', 'services');
+          fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method:'POST', body:fd })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+              if (!data.secure_url) { showToast('⚠️ Помилка завантаження'); return; }
+              var url = data.secure_url;
+              // Зберегти в Firestore
+              if (window._db) {
+                window._db.collection('services').doc(svcId).update({ photoUrl: url })
+                  .then(function() {
+                    showToast('✅ Фото оновлено!');
+                    // Оновити кеш
+                    var svc = _fbServices.concat(myServices).find(function(x){ return x.id === svcId; });
+                    if (svc) svc.photoUrl = url;
+                    // Оновити DOM одразу
+                    var coverEl = document.querySelector('#page-service-detail .service-detail-cover img');
+                    if (coverEl) {
+                      coverEl.src = url;
+                    } else {
+                      // Якщо була іконка — замінюємо весь блок
+                      showServiceDetail(svcId);
+                    }
+                  }).catch(function(e){ showToast('⚠️ ' + e.message); });
+              }
+            }).catch(function(){ showToast('⚠️ Помилка зв\'язку з Cloudinary'); });
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+// ── SERVICE PHOTO UPLOAD END ──────────────────────────────────
 
 function _buildSvcDetailBody(s){
   var stars5="\u2605".repeat(Math.round(s.rating))+"\u2606".repeat(5-Math.round(s.rating));
@@ -5886,9 +5959,37 @@ function showServiceDetail(id){
   document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
   document.getElementById("page-service-detail").classList.add("active");
   window.scrollTo({top:0,behavior:"smooth"});
-  // Оновити URL
   _setPath('/service/' + id);
   _updateSEO({ title: s.name, desc: s.desc ? s.desc.slice(0,160) : s.name + ' — сервісний центр у ' + (s.city||''), url: 'https://ridego-sigma.vercel.app/service/' + id });
+
+  // Завантажити актуальний рейтинг з Firestore
+  if (window._db && s.uid) {
+    window._db.collection('reviews').where('sellerUid', '==', s.uid).get()
+      .then(function(snap) {
+        var revs = snap.docs.map(function(d){ return d.data(); });
+        if (!revs.length) return;
+        var total = revs.length;
+        var avg = revs.reduce(function(sum, r){ return sum + (r.rating||0); }, 0) / total;
+        var avgStr = avg.toFixed(1);
+        var starsStr = '★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg));
+        var reviewsTxt = 'на основі ' + total + ' відгук' + (total===1?'а':total<5?'ів':'ів');
+        // Оновити DOM
+        var form = document.getElementById('svc-review-form-' + s.uid);
+        if (form) {
+          var ratingDiv = form.previousElementSibling;
+          if (ratingDiv) {
+            var numEl = ratingDiv.querySelector('div[style*="48px"]');
+            var starsEl = ratingDiv.querySelector('div[style*="#ffa726"]');
+            var cntEl = ratingDiv.querySelector('div[style*="13px"][style*="text-muted"]');
+            if (numEl) numEl.textContent = avgStr;
+            if (starsEl) starsEl.textContent = starsStr;
+            if (cntEl) cntEl.textContent = reviewsTxt;
+          }
+        }
+        // Оновити кеш
+        s.rating = +avgStr; s.reviews = total;
+      }).catch(function(){});
+  }
 }
 
 function openAddServiceModal(){
