@@ -157,6 +157,12 @@
         if (typeof renderProfile === 'function') renderProfile();
       }
       _authInitialized = true;
+      window._authInitialized = true;
+      // Якщо юзер відкрив /messages напряму — оновити список після auth
+      if (typeof renderChats === 'function') {
+        var _msgsPage = document.getElementById('page-messages');
+        if (_msgsPage && _msgsPage.classList.contains('active')) renderChats();
+      }
     });
 
     console.log('✅ RideGO Firebase підключено!');
@@ -1273,8 +1279,17 @@
 <!-- ============================================================ -->
 <div id="page-profile" class="page">
 
+  <!-- ── AUTH LOADING (показується поки Firebase перевіряє сесію) ── -->
+  <div id="auth-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:360px;padding:0 24px">
+      <div class="skeleton" style="width:80px;height:80px;border-radius:50%"></div>
+      <div class="skeleton" style="width:160px;height:18px;border-radius:6px"></div>
+      <div class="skeleton" style="width:220px;height:14px;border-radius:6px"></div>
+    </div>
+  </div>
+
   <!-- ── AUTH WALL ── -->
-  <div id="auth-wall">
+  <div id="auth-wall" style="display:none">
     <div class="auth-wrap">
       <div class="auth-card">
         <div class="auth-logo">
