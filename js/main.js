@@ -372,6 +372,17 @@ function _sortWithPromo(data, sortType) {
 }
 
 // ── PROMO HELPERS END ────────────────────────────────────────
+
+// Дедублікація — прибрати повтори по id (myListings може перетинатись з _fbListings)
+function _allListings() {
+  var seen = {};
+  return _allListings().filter(function(l) {
+    if (!l || !l.id) return false;
+    if (seen[l.id]) return false;
+    seen[l.id] = true;
+    return true;
+  });
+}
 function toggleMobileSearch() {
   var bar = document.getElementById('mobileSearchBar');
   if (!bar) return;
@@ -894,7 +905,7 @@ function loadUserChats() {
 }
 
 function renderHomeListings() {
-  var all = _fbListings.concat(myListings).filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive'; });
+  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive'; });
   _cleanExpiredPromos(all);
 
   // Оновити лічильники категорій
@@ -1724,7 +1735,7 @@ function renderCatalog(catFilter) {
   var allLbl = document.getElementById('catalog-all-label');
   if (!allEl) return;
 
-  var all = _fbListings.concat(myListings).filter(function(l){ return l && l.status !== 'deleted'; });
+  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted'; });
 
   // Фільтр по категорії
   if (catFilter) all = all.filter(function(l){ return l.cat === catFilter; });
@@ -4855,7 +4866,7 @@ function _updatePromoUI() {
 function applyPromo() {
   if (!_promoListingId) return;
 
-  var listing = (_fbListings.concat(myListings))
+  var listing = (_allListings())
     .find(function(x){ return x && (x.id === _promoListingId || x.id === +_promoListingId || String(x.id) === String(_promoListingId)); });
 
   var promoUntilDate = new Date(Date.now() + _selectedPromoDays * 86400000);
