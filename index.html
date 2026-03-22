@@ -189,7 +189,7 @@
     <a class="logo" onclick="showPage('home')">Ride<span>GO</span></a>
     <div class="search-wrap">
       <i class="fa-solid fa-search"></i>
-      <input type="search" id="headerSearch" name="ridego-search" placeholder="Самокат, велосипед, скутер..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
+      <input type="search" id="headerSearch" name="ridego-search" placeholder="Самокат, велосипед, скутер..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
     </div>
     <nav>
       <a onclick="showPage('catalog')">Каталог</a>
@@ -866,7 +866,7 @@
     <h1>Ремонт та <span>обслуговування</span></h1>
     <p>Знайдіть перевірений сервіс для вашого електротранспорту</p>
     <div class="services-search-bar">
-      <input type="search" id="svc-search-input" name="ridego-svc-search" placeholder="Ремонт самокатів, заміна шин, діагностика..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="filterServices()">
+      <input type="search" id="svc-search-input" name="ridego-svc-search" placeholder="Ремонт самокатів, заміна шин, діагностика..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="filterServices()">
       <select id="svc-city-select" onchange="filterServices()" style="padding:13px 14px;border-radius:50px;border:1.5px solid var(--border);background:var(--dark3);color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none;cursor:pointer;min-width:150px;transition:border-color .2s">
         <option value="">📍 Всі міста</option>
       </select>
