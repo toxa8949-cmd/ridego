@@ -397,7 +397,13 @@ function showNewsDetail(id) {
     return;
   }
 
-  // Оновити URL
+  // Оновити URL правильно:
+  // Якщо прийшли НЕ зі сторінки /news — спочатку додати /news в history,
+  // щоб кнопка "Назад" браузера повертала на список новин
+  var _fromNews = (window.location.pathname === '/news' || window.location.pathname.startsWith('/news/'));
+  if (!_fromNews && typeof _setPath === 'function') {
+    history.pushState(null, '', '/news'); // тихо додаємо /news в history
+  }
   if (typeof _setPath === 'function') _setPath('/news/' + id);
   document.title = n.title + ' — RideGO';
 
@@ -421,7 +427,13 @@ function showNewsDetail(id) {
     + '<h1 style="font-size:clamp(22px,3vw,32px);font-weight:800;margin-bottom:20px;line-height:1.3">'+(n.title||'')+'</h1>'
     + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+(n.excerpt||'')+'</div>'
     + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'')+'</div>';
-  showPage('news-detail');
+
+  // Показати сторінку БЕЗ виклику showPage — щоб не перетерти URL /news/ID
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var _ndPage = document.getElementById('page-news-detail');
+  if (_ndPage) _ndPage.classList.add('active');
+  document.querySelectorAll('.mnav-item').forEach(function(b){ b.classList.remove('active'); });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function filterNewsCat(cat, btn) {
   document.querySelectorAll('.news-cat-btn').forEach(function(b){ b.classList.remove('active'); });
