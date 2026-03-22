@@ -1,8 +1,10 @@
 // Завантажити дані після повного завантаження DOM
 document.addEventListener('DOMContentLoaded', function() {
-  // Очистити поле пошуку при завантаженні (браузер може автозаповнити)
   var searchEl = document.getElementById('headerSearch');
   if (searchEl) { searchEl.value = ''; searchEl.setAttribute('autocomplete', 'off'); }
+
+  // Показати skeleton заглушки поки грузяться дані
+  if (typeof showSkeletons === 'function') showSkeletons();
 
   setTimeout(loadFirebaseData, 300);
   setTimeout(loadSiteNews, 800);
@@ -125,17 +127,19 @@ function _loadSellerReviews(sellerUid) {
 
       var colors = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#22c55e','#f97316'];
       document.getElementById('reviews-list').innerHTML = revs.length ? revs.map(function(r, i) {
-        var initials = (r.reviewerName||'?').split(' ').map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+        var safeName = typeof _esc === 'function' ? _esc(r.reviewerName||'Анонім') : (r.reviewerName||'Анонім');
+        var safeText = typeof _esc === 'function' ? _esc(r.text||'')               : (r.text||'');
+        var initials = safeName.replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g,'').split(' ').map(function(w){ return w[0]||''; }).join('').slice(0,2).toUpperCase() || '?';
         var stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
         var date = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '';
         return '<div class="review-card">' +
           '<div style="display:flex;align-items:flex-start;gap:14px">' +
           '<div style="width:44px;height:44px;border-radius:50%;background:' + colors[i%colors.length] + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0">' + initials + '</div>' +
           '<div style="flex:1"><div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
-          '<span style="font-weight:700;font-size:14px">' + (r.reviewerName||'Анонім') + '</span>' +
+          '<span style="font-weight:700;font-size:14px">' + safeName + '</span>' +
           '<span style="font-size:11px;color:var(--text-muted)">' + date + '</span></div>' +
           '<div style="color:#ffa726;font-size:13px;margin-bottom:8px">' + stars + '</div>' +
-          '<p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">' + r.text + '</p>' +
+          '<p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">' + safeText + '</p>' +
           '</div></div></div>';
       }).join('') :
         '<div class="empty-state"><i class="fa-regular fa-star"></i><h3>Поки немає відгуків</h3><p>Будьте першим хто залишить відгук</p></div>';

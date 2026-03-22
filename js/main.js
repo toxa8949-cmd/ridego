@@ -1,6 +1,18 @@
 // ============================================================
 // DATA
 // ============================================================
+
+// XSS-захист: екранувати user-generated контент перед innerHTML
+function _esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const LISTINGS = [];
 
 let favorites = [];
@@ -217,6 +229,31 @@ function _initRouter() {
 }
 
 
+
+// ============================================================
+// SKELETON LOADERS
+// ============================================================
+function _skeletonCards(count) {
+  count = count || 4;
+  var card = '<div class="skel-card">'
+    + '<div class="skeleton skel-img"></div>'
+    + '<div class="skel-body">'
+    + '<div class="skeleton skel-line short"></div>'
+    + '<div class="skeleton skel-line full"></div>'
+    + '<div class="skeleton skel-line price"></div>'
+    + '<div class="skeleton skel-line short"></div>'
+    + '</div></div>';
+  return Array(count).fill(card).join('');
+}
+
+function showSkeletons() {
+  var homeEl   = document.getElementById('home-listings');
+  var catalogEl = document.getElementById('catalog-listings');
+  var svcEl    = document.getElementById('home-services-grid');
+  if (homeEl    && !homeEl.children.length)    homeEl.innerHTML    = _skeletonCards(6);
+  if (catalogEl && !catalogEl.children.length) catalogEl.innerHTML = _skeletonCards(4);
+  if (svcEl     && !svcEl.children.length)     svcEl.innerHTML     = _skeletonCards(3);
+}
 
 // ============================================================
 // LISTINGS RENDER
@@ -991,6 +1028,13 @@ function updateResultCount() {
   if(el) el.textContent = count;
 }
 
+// Debounce helper — щоб не спамити при кожному натисканні клавіші
+var _debounceTimers = {};
+function _debounce(key, fn, delay) {
+  clearTimeout(_debounceTimers[key]);
+  _debounceTimers[key] = setTimeout(fn, delay || 200);
+}
+
 function updateActiveFilters() {
   updateResultCount();
   const chips = [];
@@ -1016,6 +1060,12 @@ function updateActiveFilters() {
   ];
   document.getElementById('active-filters').innerHTML = chips.map(c =>
     `<div class="af-chip">${c.label}<button onclick="window._filterChipActions[${c.i}]()">×</button></div>`).join('');
+  // Запустити пошук з debounce — не спамимо при кожній зміні фільтру
+  _debounce('runSearch', function() {
+    if (document.getElementById('catalog-results-wrap').style.display !== 'none') {
+      runSearch();
+    }
+  }, 250);
 }
 
 function clearFilters() {
@@ -1515,10 +1565,10 @@ function showDetail(id, _skipPush) {
     }).catch(function(){});
   }
 
-  // update URL
+  // update URL + title
+  document.title = 'RideGO — ' + l.title;
   if (!_skipPush) {
     _setPath('/listing/' + id);
-    document.title = 'RideGO — ' + l.title;
   }
 
   // breadcrumb + title
@@ -1638,9 +1688,10 @@ function showDetail(id, _skipPush) {
 function renderGalleryImage(l) {
   const wrap = document.getElementById('detail-main-img-wrap');
   if (l && l.img) {
-    wrap.innerHTML = `<img src="${galleryImgs[galleryIdx]}" alt="${l.title}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s">`;
+    var fallbackIcon = l.icon || '📦';
+    wrap.innerHTML = `<img src="${galleryImgs[galleryIdx]}" alt="${l.title || ''}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${fallbackIcon}</div>`;
   } else {
-    const icon = l ? l.icon : '📦';
+    const icon = l ? (l.icon || '📦') : '📦';
     wrap.innerHTML = `<div style="font-size:100px;color:var(--brand);opacity:.5">${icon}</div>`;
   }
 }
@@ -3058,10 +3109,17 @@ function doSocialLogin(provider) {
 }
 function doLogout() {
   if (window._auth) {
+    if (typeof _chatsUnsubscribe === 'function') { _chatsUnsubscribe(); window._chatsUnsubscribe = null; }
+    if (typeof _chatUnsubscribe  === 'function') { _chatUnsubscribe();  _chatUnsubscribe = null; }
     window._auth.signOut().then(function() {
-      isLoggedIn = false; myListings = [];
-      if (typeof renderProfile === 'function') renderProfile();
-      showToast('До побаज़ення!');
+      isLoggedIn  = false;
+      myListings  = [];
+      _fbChats    = [];
+      currentUser = { name:'', email:'', initial:'' };
+      if (typeof renderProfile    === 'function') renderProfile();
+      if (typeof renderChats      === 'function') renderChats();
+      if (typeof _updateChatBadge === 'function') _updateChatBadge();
+      showToast('До побачення!');
       showPage('home');
     });
   }
@@ -3465,7 +3523,7 @@ function _renderMessages(msgs) {
     var mine = m.senderUid === currentUser.uid;
     var time = m.createdAt ? _formatChatTime(typeof m.createdAt === 'object' ? m.createdAt.seconds : m.createdAt/1000) : '';
     return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
-      + '<div class="msg-bubble">' + (m.text || '') + '</div>'
+      + '<div class="msg-bubble">' + _esc(m.text || '') + '</div>'
       + '<div class="msg-time">' + time + '</div>'
       + '</div>';
   }).join('');
