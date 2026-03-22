@@ -2423,29 +2423,24 @@
   }
 
   /* Хедер */
-  header .header-inner { padding: 0 16px; gap: 4px; }
+  header .header-inner { padding: 0 16px; gap: 8px; }
   /* На мобільному ховаємо десктопні елементи */
   header nav { display: none; }
   header .btn-messages { display: none; }
   header .search-wrap { display: none; }
-  /* Лого зліва, іконки притиснуті вправо */
-  header .logo { margin-right: auto; font-size: 20px; }
-  header .theme-toggle { width: 34px; height: 34px; padding: 0; }
+  /* Лого зліва, повідомлення вправо */
+  header .logo { font-size: 20px; }
+  header .theme-toggle { margin-left: auto; }
   /* Показуємо мобільні іконки */
-  .mobile-search-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border-radius: 8px;
-    background: none; border: none;
-    color: var(--text-muted); cursor: pointer; font-size: 20px;
-    flex-shrink: 0; transition: color .15s;
-  }
-  .mobile-search-btn:active { color: var(--brand); }
+  .mobile-search-btn { display: none !important; }
+  .mobile-search-btn { display: none !important; }
   .mobile-msg-btn {
     display: flex; align-items: center; justify-content: center;
     width: 36px; height: 36px; border-radius: 8px;
     background: none; border: none;
-    color: var(--text); cursor: pointer; font-size: 20px;
+    color: var(--text); cursor: pointer; font-size: 22px;
     flex-shrink: 0; transition: color .15s;
+    margin-left: 4px;
   }
   .mobile-msg-btn:active { color: var(--brand); }
   /* Мобільний рядок пошуку що розгортається */
