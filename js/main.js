@@ -4142,6 +4142,30 @@ function saveProfileSettings() {
     };
     window._db.collection('users').doc(currentUser.uid).update(profileData)
       .catch(function(e){ console.error('profile save:', e); });
+
+    // Оновити sellerName і seller у всіх оголошеннях цього юзера
+    window._db.collection('listings')
+      .where('uid', '==', currentUser.uid)
+      .get()
+      .then(function(snap) {
+        if (snap.empty) return;
+        var batch = window._db.batch();
+        snap.docs.forEach(function(doc) {
+          batch.update(doc.ref, { sellerName: name, seller: name });
+        });
+        return batch.commit();
+      })
+      .then(function() {
+        // Оновити локальний кеш теж
+        _fbListings.forEach(function(l) {
+          if (l && l.uid === currentUser.uid) {
+            l.sellerName = name;
+            l.seller = name;
+          }
+        });
+        renderHomeListings();
+      })
+      .catch(function(e){ console.log('batch sellerName:', e.message); });
   }
 
   showToast('✅ Профіль збережено!');
