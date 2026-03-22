@@ -2420,6 +2420,13 @@
 
   /* Хедер */
   header .header-inner { padding: 0 12px; gap: 8px; }
+  /* На мобільному є bottom nav — ховаємо дублюючі елементи з хедера */
+  header nav { display: none; }
+  header .btn-messages { display: none; }
+  /* Пошук займає весь простір між лого і theme-toggle */
+  header .search-wrap { flex: 1; max-width: none; }
+  /* Theme toggle компактний */
+  header .theme-toggle { flex-shrink: 0; }
 
   /* ── Сервіси ── */
   .services-hero { padding: 24px 16px; }
@@ -2437,6 +2444,8 @@
   .service-detail-cover { height: 180px; }
   .service-detail-info { padding: 16px; }
   .service-detail-name { font-size: 20px; }
+  /* svc-detail-body має inline grid-template-columns — перекриваємо через id */
+  #svc-detail-body,
   .service-detail-body {
     grid-template-columns: 1fr !important;
     padding: 16px;
@@ -2526,28 +2535,23 @@
   }
   .service-detail-cover { height: 160px; border-radius: 14px; font-size: 56px; }
   .service-detail-name { font-size: 20px; }
+  /* Головний фікс — inline style grid перекриваємо через id з !important */
+  #svc-detail-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    grid-template-columns: unset !important;
+  }
   .service-detail-body {
     display: flex !important;
     flex-direction: column !important;
     gap: 12px;
   }
   /* Блоки всередині деталі сервісу */
-  #svc-detail-body > div,
-  #svc-detail-body [style*="display:grid"],
-  #svc-detail-body [style*="display: grid"] {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
+  #svc-detail-body > div {
     width: 100% !important;
-  }
-  /* Карточки всередині */
-  #svc-detail-body [style*="background:var(--card-bg)"],
-  #svc-detail-body [style*="background: var(--card-bg)"],
-  #svc-detail-body [style*="border-radius:16px"],
-  #svc-detail-body [style*="border-radius: 16px"] {
-    width: 100% !important;
-    box-sizing: border-box !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   /* Список послуг */
   .svc-list-item { padding: 12px 14px; flex-wrap: wrap; gap: 6px; }
@@ -2561,10 +2565,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  /* Соціальні посилання */
-  #svc-detail-body [style*="display:flex"][style*="gap:10px"] {
-    flex-wrap: wrap;
   }
 }
 @media(max-width:480px) {
