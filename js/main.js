@@ -2047,11 +2047,12 @@ function _renderSellerByUid(uid) {
     // Прямий перехід — завантажити оголошення цього продавця напряму
     window._db.collection('listings')
       .where('uid', '==', uid)
-      .where('status', '==', 'active')
       .orderBy('createdAt', 'desc')
       .get()
       .then(function(snap) {
-        var listings = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+        var listings = snap.docs
+          .map(function(d){ return Object.assign({id: d.id}, d.data()); })
+          .filter(function(l){ return l.status !== 'inactive' && l.status !== 'deleted'; });
         // Додати в кеш
         listings.forEach(function(l) {
           if (!_fbListings.find(function(x){ return x.id === l.id; })) {
@@ -3990,10 +3991,27 @@ function renderProfile() {
         }).catch(function() {
           metaEl.innerHTML = 'На сайті з ' + year;
         });
+
+      // Заповнити форму налаштувань з Firestore
+      var fill = function(id, val) {
+        var el = document.getElementById(id);
+        if (el && val) el.value = val;
+      };
+      fill('set-name',      d.name);
+      fill('set-phone',     d.phone);
+      fill('set-telegram',  d.telegram);
+      fill('set-instagram', d.instagram);
+      fill('set-youtube',   d.youtube);
+      fill('set-tiktok',    d.tiktok);
+      fill('set-website',   d.website);
+      fill('set-company',   d.company);
+      fill('set-address',   d.address);
+      fill('set-hours',     d.hours);
+      fill('set-about',     d.about || d.desc);
     }).catch(function(){});
   }
 
-  // pre-fill settings
+  // pre-fill settings (localStorage fallback)
   const nameEl  = document.getElementById('set-name');
   const emailEl = document.getElementById('set-email');
   if (nameEl && !nameEl.value)  nameEl.value  = currentUser.name;
@@ -4095,13 +4113,24 @@ function onProfilePhotoChange(input) {
 }
 
 function saveProfileSettings() {
-  const name   = document.getElementById('set-name')?.value.trim();
-  const email  = document.getElementById('set-email')?.value.trim();
-  const phone  = document.getElementById('set-phone')?.value.trim();
-  const oblast = document.getElementById('set-oblast')?.value;
-  const city   = document.getElementById('set-city')?.value;
-  const pass   = document.getElementById('set-pass')?.value;
-  const pass2  = document.getElementById('set-pass2')?.value;
+  const name     = document.getElementById('set-name')?.value.trim();
+  const email    = document.getElementById('set-email')?.value.trim();
+  const phone    = document.getElementById('set-phone')?.value.trim();
+  const oblast   = document.getElementById('set-oblast')?.value;
+  const city     = document.getElementById('set-city')?.value;
+  const pass     = document.getElementById('set-pass')?.value;
+  const pass2    = document.getElementById('set-pass2')?.value;
+  // Соцмережі
+  const telegram  = document.getElementById('set-telegram')?.value.trim();
+  const instagram = document.getElementById('set-instagram')?.value.trim();
+  const youtube   = document.getElementById('set-youtube')?.value.trim();
+  const tiktok    = document.getElementById('set-tiktok')?.value.trim();
+  // Бізнес
+  const website  = document.getElementById('set-website')?.value.trim();
+  const company  = document.getElementById('set-company')?.value.trim();
+  const address  = document.getElementById('set-address')?.value.trim();
+  const hours    = document.getElementById('set-hours')?.value.trim();
+  const about    = document.getElementById('set-about')?.value.trim();
 
   if (!name) { showToast("⚠️ Введіть ваше ім'я"); return; }
   if (pass && pass !== pass2) { showToast('⚠️ Паролі не збігаються'); return; }
@@ -4120,7 +4149,6 @@ function saveProfileSettings() {
     document.getElementById('profile-meta-text').innerHTML =
       `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:4px"></i>${loc}`;
   }
-  // Update initials if no photo
   if (!profilePhotoUrl) {
     const l = document.getElementById('profile-pic-letter');
     if (l) l.textContent = currentUser.initial;
@@ -4132,18 +4160,29 @@ function saveProfileSettings() {
   // Зберегти в Firestore
   if (window._db && currentUser && currentUser.uid) {
     var profileData = {
-      name: name,
-      email: email || '',
-      phone: phone || '',
-      city: city || '',
-      oblast: oblast || '',
-      type: profileType || 'personal',
+      name:      name,
+      email:     email || '',
+      phone:     phone || '',
+      city:      city || '',
+      oblast:    oblast || '',
+      type:      profileType || 'personal',
+      telegram:  telegram || '',
+      instagram: instagram || '',
+      youtube:   youtube || '',
+      tiktok:    tiktok || '',
+      website:   website || '',
+      company:   company || '',
+      address:   address || '',
+      hours:     hours || '',
+      about:     about || '',
+      desc:      about || '',
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     window._db.collection('users').doc(currentUser.uid).update(profileData)
-      .catch(function(e){ console.error('profile save:', e); });
+      .then(function(){ showToast('✅ Профіль збережено!'); })
+      .catch(function(e){ console.error('profile save:', e); showToast('⚠️ Помилка: ' + e.message); });
 
-    // Оновити sellerName і seller у всіх оголошеннях цього юзера
+    // Оновити sellerName у всіх оголошеннях цього юзера
     window._db.collection('listings')
       .where('uid', '==', currentUser.uid)
       .get()
@@ -4156,19 +4195,14 @@ function saveProfileSettings() {
         return batch.commit();
       })
       .then(function() {
-        // Оновити локальний кеш теж
         _fbListings.forEach(function(l) {
-          if (l && l.uid === currentUser.uid) {
-            l.sellerName = name;
-            l.seller = name;
-          }
+          if (l && l.uid === currentUser.uid) { l.sellerName = name; l.seller = name; }
         });
         renderHomeListings();
       })
       .catch(function(e){ console.log('batch sellerName:', e.message); });
   }
 
-  showToast('✅ Профіль збережено!');
   switchPTab('my', document.querySelector('.ptab'));
 }
 
