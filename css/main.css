@@ -2723,3 +2723,21 @@
 .static-page-content ul li { margin-bottom: 6px; }
 .static-page-content a { color: var(--brand); text-decoration: none; }
 .static-page-content a:hover { text-decoration: underline; }
+
+/* ── SLOT PACKAGES ──────────────────────────────────────────────── */
+.slot-pkg-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--card-bg);
+  cursor: pointer; transition: all .15s; gap: 12px;
+}
+.slot-pkg-card:hover { border-color: var(--brand); background: var(--brand-dim); }
+.slot-pkg-card.popular { border-color: var(--brand); background: var(--brand-dim); }
+.slot-pkg-left { flex: 1; }
+.slot-pkg-count { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.slot-pkg-note { font-size: 12px; color: var(--text-muted); }
+.slot-pkg-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.slot-pkg-price { font-size: 17px; font-weight: 800; color: var(--brand); }
+.slot-pkg-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--brand-dim); color: var(--brand); }
+.slot-pkg-badge.best { background: var(--brand); color: #000; }
+.slot-popular-tag { font-size: 11px; font-weight: 600; color: var(--brand); margin-left: 6px; }
