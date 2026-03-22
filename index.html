@@ -1551,6 +1551,31 @@
           </div>
         </div>
 
+        <!-- 3.5 Про себе / магазин — для всіх типів -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <i class="fa-solid fa-circle-info"></i> Про себе
+          </div>
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Опис (відображається на сторінці продавця)</label>
+            <textarea class="form-input" id="set-about" rows="4"
+              placeholder="Розкажіть про себе або ваш магазин: що продаєте, де знаходитесь, чому варто купувати у вас..."
+              style="resize:vertical;min-height:100px"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Категорії товарів (оберіть що продаєте)</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px" id="set-cats-wrap">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" value="Електросамокати" onchange="updateProfileCats()"> Електросамокати</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" value="Велосипеди" onchange="updateProfileCats()"> Велосипеди</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" value="Електровелосипеди" onchange="updateProfileCats()"> Електровелосипеди</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" value="Електроскутери" onchange="updateProfileCats()"> Електроскутери</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" value="Електромотоцикли" onchange="updateProfileCats()"> Електромотоцикли</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" value="Акумулятори" onchange="updateProfileCats()"> Акумулятори</label>
+            </div>
+            <input type="hidden" id="set-cats-value">
+          </div>
+        </div>
+
         <!-- 4. Business (shown only if type=business) -->
         <div class="settings-section" id="settings-business-block" style="display:none">
           <div class="settings-section-title">
@@ -1579,12 +1604,6 @@
           <div class="form-group" style="margin-top:16px">
             <label>Сайт компанії</label>
             <input type="url" class="form-input" id="set-website" placeholder="https://myshop.ua">
-          </div>
-          <div class="form-group" style="margin-top:16px">
-            <label>Про магазин / компанію</label>
-            <textarea class="form-input" id="set-about" rows="4"
-              placeholder="Розкажіть про ваш магазин, що продаєте, де знаходитесь, чому варто купувати у вас..."
-              style="resize:vertical;min-height:100px"></textarea>
           </div>
         </div>
 
