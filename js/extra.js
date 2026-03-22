@@ -1,7 +1,14 @@
 // Завантажити дані після повного завантаження DOM
 document.addEventListener('DOMContentLoaded', function() {
   var searchEl = document.getElementById('headerSearch');
-  if (searchEl) { searchEl.value = ''; searchEl.setAttribute('autocomplete', 'off'); }
+  if (searchEl) {
+    searchEl.value = '';
+    searchEl.setAttribute('autocomplete', 'off');
+    searchEl.setAttribute('name', 'ridego-search-' + Date.now()); // унікальне ім'я — Chrome не матчить збережені паролі
+    // Додаткова перестраховка — очистити після того як браузер може вставити значення
+    setTimeout(function() { if (searchEl.value && !searchEl.dataset.userTyped) searchEl.value = ''; }, 300);
+    searchEl.addEventListener('input', function() { searchEl.dataset.userTyped = '1'; });
+  }
 
   // Показати skeleton заглушки поки грузяться дані
   if (typeof showSkeletons === 'function') showSkeletons();
