@@ -126,7 +126,19 @@ function _renderRoute(route) {
 
   if (page === 'home')     renderHomeListings();
   if (page === 'messages') renderChats();
-  if (page === 'profile')  renderProfile();
+  if (page === 'profile') {
+    // Якщо auth ще не завершився — показати loading skeleton замість форми логіну
+    var _authLoading = document.getElementById('auth-loading');
+    var _authWall    = document.getElementById('auth-wall');
+    var _profileWall = document.getElementById('profile-wall');
+    if (!window._authInitialized) {
+      if (_authLoading) _authLoading.style.display = '';
+      if (_authWall)    _authWall.style.display    = 'none';
+      if (_profileWall) _profileWall.style.display = 'none';
+    } else {
+      renderProfile();
+    }
+  }
   if (page === 'catalog') {
     // Якщо немає категорії в URL — скинути вибір
     if (!route.cat) {
@@ -143,7 +155,15 @@ function _renderRoute(route) {
   }
   if (page === 'services')       renderServices();
   if (page === 'service-detail' && id) showServiceDetail(id);
-  if (page === 'add')      setTimeout(initOblastSelect, 50);
+  if (page === 'add') {
+    // Якщо auth вже завершився і юзер не залогінений — редірект на профіль
+    if (window._authInitialized && !isLoggedIn) {
+      showToast('⚠️ Увійдіть щоб подати оголошення');
+      setTimeout(function(){ showPage('profile'); }, 100);
+      return;
+    }
+    setTimeout(initOblastSelect, 50);
+  }
   if (page === 'seller' && id) renderSellerPage(id);
   if (page === 'detail' && id) showDetail(id, true); // true = skip pushState
 
@@ -3325,8 +3345,11 @@ let profileType = 'personal'; // 'personal' | 'business'
 let profilePhotoUrl = null;
 
 function renderProfile() {
+  const authLoading = document.getElementById('auth-loading');
   const authWall    = document.getElementById('auth-wall');
   const profileWall = document.getElementById('profile-wall');
+  // Завжди ховаємо loading після того як auth визначився
+  if (authLoading) authLoading.style.display = 'none';
   if (!isLoggedIn) {
     authWall.style.display = '';
     profileWall.style.display = 'none';
@@ -3580,6 +3603,20 @@ var _chatUnsubscribe = null;
 function renderChats() {
   var list = document.getElementById('chat-list');
   if (!list) return;
+  // Поки auth не завершився — skeleton замість "Увійдіть"
+  if (!window._authInitialized) {
+    list.innerHTML = '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
+      + [1,2,3].map(function() {
+          return '<div style="display:flex;gap:12px;align-items:center">'
+            + '<div class="skeleton" style="width:44px;height:44px;border-radius:50%;flex-shrink:0"></div>'
+            + '<div style="flex:1;display:flex;flex-direction:column;gap:8px">'
+            + '<div class="skeleton" style="height:13px;width:55%;border-radius:4px"></div>'
+            + '<div class="skeleton" style="height:11px;width:80%;border-radius:4px"></div>'
+            + '</div></div>';
+        }).join('')
+      + '</div>';
+    return;
+  }
   if (!isLoggedIn) {
     list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Увійдіть щоб переглянути повідомлення</div>';
     return;
