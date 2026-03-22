@@ -13,6 +13,202 @@ function _esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ============================================================
+// SLOT SYSTEM
+// ============================================================
+// Структура в Firestore users/{uid}:
+//   slots: number           — куплені слоти (не згорають)
+//   slotsWelcome: number    — стартові 10 слотів (згорають через 30 днів)
+//   slotsWelcomeExpiry: timestamp — коли згорають стартові
+//   lastFreeSlotAt: timestamp  — коли останній раз нараховували щомісячний безкоштовний
+//   totalListingsPublished: number — лічильник усіх опублікованих
+
+var _userSlots = {
+  slots: 0,          // куплені
+  slotsWelcome: 0,   // стартові (згорають)
+  slotsWelcomeExpiry: null,
+  lastFreeSlotAt: null,
+  loaded: false
+};
+
+// Загальна кількість доступних слотів
+function _totalSlots() {
+  var welcome = _userSlots.slotsWelcome || 0;
+  // Перевірити чи не протерміновані стартові
+  if (welcome > 0 && _userSlots.slotsWelcomeExpiry) {
+    var expiry = _userSlots.slotsWelcomeExpiry.seconds
+      ? new Date(_userSlots.slotsWelcomeExpiry.seconds * 1000)
+      : new Date(_userSlots.slotsWelcomeExpiry);
+    if (new Date() > expiry) welcome = 0;
+  }
+  return (_userSlots.slots || 0) + welcome;
+}
+
+// Завантажити слоти з Firestore і нарахувати щомісячний якщо треба
+function loadUserSlots() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
+    if (!snap.exists) return;
+    var d = snap.data();
+    _userSlots.slots             = d.slots || 0;
+    _userSlots.slotsWelcome      = d.slotsWelcome || 0;
+    _userSlots.slotsWelcomeExpiry= d.slotsWelcomeExpiry || null;
+    _userSlots.lastFreeSlotAt    = d.lastFreeSlotAt || null;
+    _userSlots.loaded            = true;
+
+    // Нарахувати щомісячний безкоштовний слот якщо минув місяць
+    _checkMonthlyFreeSlot();
+    // Оновити UI
+    _renderSlotsUI();
+  }).catch(function(e){ console.log('slots load:', e.message); });
+}
+
+function _checkMonthlyFreeSlot() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  var now = new Date();
+  var lastDate = _userSlots.lastFreeSlotAt
+    ? (_userSlots.lastFreeSlotAt.seconds
+        ? new Date(_userSlots.lastFreeSlotAt.seconds * 1000)
+        : new Date(_userSlots.lastFreeSlotAt))
+    : null;
+  // Якщо ще жодного разу або минув місяць — нарахувати
+  var shouldGive = !lastDate || (now - lastDate) >= 30 * 24 * 60 * 60 * 1000;
+  if (!shouldGive) return;
+  // Перший раз (реєстрація) — вже дали 10 стартових, не давати ще 1
+  if (!lastDate) return;
+  // Нарахувати +1 безкоштовний купений слот (не стартовий — не згорає)
+  _userSlots.slots = (_userSlots.slots || 0) + 1;
+  window._db.collection('users').doc(currentUser.uid).update({
+    slots: firebase.firestore.FieldValue.increment(1),
+    lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    _userSlots.lastFreeSlotAt = { seconds: Math.floor(Date.now() / 1000) };
+    _renderSlotsUI();
+    showToast('🎁 Нараховано 1 безкоштовний слот за цей місяць!');
+  }).catch(function(e){ console.log('monthly slot:', e.message); });
+}
+
+// Ініціалізувати слоти при першій реєстрації (викликається при створенні нового юзера)
+function _initNewUserSlots(uid) {
+  if (!window._db || !uid) return;
+  var expiry = new Date();
+  expiry.setDate(expiry.getDate() + 30);
+  window._db.collection('users').doc(uid).update({
+    slots: 0,
+    slotsWelcome: 10,
+    slotsWelcomeExpiry: firebase.firestore.Timestamp.fromDate(expiry),
+    lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp(),
+    totalListingsPublished: 0
+  }).catch(function(e){ console.log('init slots:', e.message); });
+  _userSlots.slots = 0;
+  _userSlots.slotsWelcome = 10;
+  _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
+  _userSlots.loaded = true;
+}
+
+// Списати 1 слот (спочатку стартові, потім куплені)
+// Повертає Promise<bool> — true якщо успішно
+function _consumeSlot() {
+  if (!window._db || !currentUser || !currentUser.uid) return Promise.resolve(false);
+  if (_totalSlots() <= 0) return Promise.resolve(false);
+
+  var now = new Date();
+  var welcomeValid = (_userSlots.slotsWelcome || 0) > 0 &&
+    (_userSlots.slotsWelcomeExpiry
+      ? now < new Date(_userSlots.slotsWelcomeExpiry.seconds * 1000)
+      : true);
+
+  var update = {};
+  if (welcomeValid) {
+    update.slotsWelcome = firebase.firestore.FieldValue.increment(-1);
+    _userSlots.slotsWelcome = Math.max(0, (_userSlots.slotsWelcome || 1) - 1);
+  } else {
+    update.slots = firebase.firestore.FieldValue.increment(-1);
+    _userSlots.slots = Math.max(0, (_userSlots.slots || 1) - 1);
+  }
+  update.totalListingsPublished = firebase.firestore.FieldValue.increment(1);
+
+  return window._db.collection('users').doc(currentUser.uid).update(update)
+    .then(function() { _renderSlotsUI(); return true; })
+    .catch(function(e) { console.log('consume slot:', e.message); return false; });
+}
+
+// Пакети покупки слотів
+var SLOT_PACKAGES = [
+  { count: 1,  price: 15,  label: '1 слот',    discount: 0   },
+  { count: 3,  price: 43,  label: '3 слоти',   discount: 5   },
+  { count: 5,  price: 68,  label: '5 слотів',  discount: 10  },
+  { count: 10, price: 128, label: '10 слотів', discount: 15  },
+  { count: 20, price: 225, label: '20 слотів', discount: 25  },
+  { count: 50, price: 525, label: '50 слотів', discount: 30  },
+];
+
+// Купити пакет (симуляція — в реальності тут буде платіжний шлюз)
+function buySlotPackage(count, price) {
+  if (!window._db || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Увійдіть в акаунт'); return;
+  }
+  // TODO: інтегрувати платіжний шлюз (LiqPay, WayForPay)
+  // Поки що — симуляція успішної оплати
+  var confirmed = confirm('Купити ' + count + ' слот(ів) за ' + price + ' грн?\n(Тестовий режим — оплата не стягується)');
+  if (!confirmed) return;
+
+  window._db.collection('users').doc(currentUser.uid).update({
+    slots: firebase.firestore.FieldValue.increment(count)
+  }).then(function() {
+    _userSlots.slots = (_userSlots.slots || 0) + count;
+    _renderSlotsUI();
+    closeBuySlots();
+    showToast('✅ Куплено ' + count + ' слот(ів)!');
+  }).catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
+}
+
+// Рендер балансу слотів в UI
+function _renderSlotsUI() {
+  var total = _totalSlots();
+  var welcome = Math.min(_userSlots.slotsWelcome || 0, total);
+  var bought  = _userSlots.slots || 0;
+
+  // Бейдж в хедері профілю
+  var el = document.getElementById('profile-slots-badge');
+  if (el) {
+    el.textContent = total + ' слот' + (total === 1 ? '' : total < 5 ? 'и' : 'ів');
+    el.style.color = total > 0 ? 'var(--brand)' : '#ff5252';
+  }
+
+  // Детальна панель
+  var panel = document.getElementById('slots-panel');
+  if (!panel) return;
+
+  var welcomeExpiry = '';
+  if (welcome > 0 && _userSlots.slotsWelcomeExpiry) {
+    var exp = new Date(_userSlots.slotsWelcomeExpiry.seconds * 1000);
+    welcomeExpiry = ' (згорають ' + exp.toLocaleDateString('uk-UA', {day:'numeric',month:'long'}) + ')';
+  }
+
+  panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
+    + '<div>'
+    + '<div style="font-size:28px;font-weight:800;color:var(--brand)">' + total + '</div>'
+    + '<div style="font-size:13px;color:var(--text-muted)">доступних слотів</div>'
+    + '</div>'
+    + '<button class="btn-primary" style="padding:10px 20px;font-size:14px" onclick="openBuySlots()">'
+    + '<i class="fa-solid fa-plus" style="margin-right:6px"></i>Купити слоти</button>'
+    + '</div>'
+    + (welcome > 0 ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">🎁 Стартові: <b>' + welcome + '</b>' + welcomeExpiry + '</div>' : '')
+    + (bought > 0  ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">💳 Куплені: <b>' + bought + '</b> (не згорають)</div>' : '')
+    + (total === 0 ? '<div style="font-size:13px;color:#ff5252;margin-bottom:8px">⚠️ Слотів немає — купіть щоб публікувати оголошення</div>' : '');
+}
+
+// Відкрити/закрити модалку покупки
+function openBuySlots() {
+  var overlay = document.getElementById('buy-slots-overlay');
+  if (overlay) { overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+function closeBuySlots() {
+  var overlay = document.getElementById('buy-slots-overlay');
+  if (overlay) { overlay.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
 const LISTINGS = [];
 
 let favorites = [];
@@ -4548,6 +4744,13 @@ function applyPromo() {
 }
 
 function submitListing() {
+  // Перевірити баланс слотів
+  if (_userSlots.loaded && _totalSlots() <= 0) {
+    showToast('⚠️ Немає слотів для публікації');
+    openBuySlots();
+    return;
+  }
+
   const title = document.getElementById('new-title')?.value.trim();
   const price = parseInt(document.getElementById('new-price')?.value);
   const phone = document.getElementById('new-phone')?.value.trim();
@@ -4718,12 +4921,15 @@ function submitListing() {
       sellerName: (currentUser.name || '').substring(0, 100),
       sellerEmail: (currentUser.email || '').substring(0, 200),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
       status: 'active'
     };
     console.log('Saving to Firestore...', fbListing.title, fbListing.uid);
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
         console.log('Saved OK:', docRef.id);
+        // Списати 1 слот
+        _consumeSlot();
         newL.id = docRef.id;
         myListings.unshift(newL);
         _fbListings.unshift(newL);
@@ -4814,36 +5020,81 @@ function renderMyListings() {
   grid.innerHTML = myListings.map(l => createMyCard(l)).join('');
 }
 
+function renewListing(id) {
+  if (_totalSlots() <= 0) {
+    showToast('⚠️ Немає слотів — купіть щоб поновити');
+    openBuySlots();
+    return;
+  }
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  var newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  _consumeSlot().then(function(ok) {
+    if (!ok) { showToast('⚠️ Помилка списання слоту'); return; }
+    window._db.collection('listings').doc(id).update({
+      status: 'active',
+      expiresAt: firebase.firestore.Timestamp.fromDate(newExpiry),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function() {
+      // Оновити локально
+      var l = myListings.find(function(x){ return x.id === id; });
+      if (l) { l.status = 'active'; l.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; }
+      var fl = _fbListings.find(function(x){ return x.id === id; });
+      if (fl) { fl.status = 'active'; fl.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; }
+      renderMyListings();
+      showToast('✅ Оголошення поновлено на 30 днів!');
+    }).catch(function(e){ showToast('⚠️ ' + e.message); });
+  });
+}
+
 function createMyCard(l) {
   const base = createCard(l, 'profile');
   const hasPromo = !!l.promo;
   const promoLabel = hasPromo ? PROMO_NAMES[l.promo] : null;
 
-  // Inject promo manage button into card footer area
-  // We replace the last </div></div> with our button inserted
+  // Статус і дата закінчення
+  var isInactive = l.status === 'inactive' || l.status === 'expired';
+  var expiryStr = '';
+  if (l.expiresAt && l.expiresAt.seconds) {
+    var exp = new Date(l.expiresAt.seconds * 1000);
+    var daysLeft = Math.ceil((exp - new Date()) / (1000 * 60 * 60 * 24));
+    if (isInactive) {
+      expiryStr = '<span style="font-size:11px;color:#ff5252">Неактивне</span>';
+    } else if (daysLeft <= 3) {
+      expiryStr = '<span style="font-size:11px;color:#ffa726">Закінчується через ' + daysLeft + ' дн.</span>';
+    } else {
+      expiryStr = '<span style="font-size:11px;color:var(--text-muted)">Активне до ' + exp.toLocaleDateString('uk-UA',{day:'numeric',month:'short'}) + '</span>';
+    }
+  }
+
   const promoBtn = `
     <div style="padding: 8px 16px 12px; border-top: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-      ${hasPromo
-        ? `<span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
-             <i class="fa-solid fa-circle-dot" style="color:var(--brand);font-size:8px"></i>
-             Активно: ${promoLabel}
-           </span>`
-        : `<span style="font-size:11px;color:var(--text-muted)">Звичайне розміщення</span>`
-      }
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        ${expiryStr}
+        ${hasPromo && !isInactive
+          ? `<span style="font-size:11px;color:var(--brand);display:flex;align-items:center;gap:5px">
+               <i class="fa-solid fa-circle-dot" style="font-size:8px"></i>${promoLabel}
+             </span>`
+          : (!isInactive ? `<span style="font-size:11px;color:var(--text-muted)">Звичайне розміщення</span>` : '')
+        }
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="promo-manage-btn no-promo" style="background:var(--dark3);color:var(--text-muted)"
           onclick="event.stopPropagation(); deleteListing('${l.id}')">
           <i class="fa-solid fa-trash"></i> Видалити
         </button>
-        <button class="promo-manage-btn ${hasPromo ? 'has-promo' : 'no-promo'}"
-          onclick="event.stopPropagation(); openPromoModal('${l.id}', false)">
-          <i class="fa-solid fa-${hasPromo ? 'pen' : 'rocket'}"></i>
-          ${hasPromo ? 'Змінити' : 'Просувати'}
-        </button>
+        ${isInactive
+          ? `<button class="promo-manage-btn has-promo" onclick="event.stopPropagation(); renewListing('${l.id}')">
+               <i class="fa-solid fa-rotate-right"></i> Поновити (1 слот)
+             </button>`
+          : `<button class="promo-manage-btn ${hasPromo ? 'has-promo' : 'no-promo'}"
+               onclick="event.stopPropagation(); openPromoModal('${l.id}', false)">
+               <i class="fa-solid fa-${hasPromo ? 'pen' : 'rocket'}"></i>
+               ${hasPromo ? 'Змінити' : 'Просувати'}
+             </button>`
+        }
       </div>
     </div>`;
 
-  // Insert before closing </div> of the card
   const insertAt = base.lastIndexOf('</div>');
   return base.slice(0, insertAt) + promoBtn + base.slice(insertAt);
 }
