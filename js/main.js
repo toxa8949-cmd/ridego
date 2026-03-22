@@ -1905,60 +1905,99 @@ function showSeller(sellerName) {
 
 function _renderSellerByUid(uid) {
   if (!window._db) return;
-  var listings = _fbListings.filter(function(x){ return x && x.uid === uid; });
-  var sellerName = listings.length ? (listings[0].sellerName || listings[0].seller || 'Продавець') : 'Продавець';
-  var initial = sellerName[0] ? sellerName[0].toUpperCase() : '?';
 
-  var isDark = !document.body.classList.contains('light');
-  var endColor = isDark ? '#21262d' : '#e8f0e8';
-  document.getElementById('seller-cover-bg').style.background =
-    'linear-gradient(160deg, #0a1a0a 0%, ' + endColor + ' 100%)';
+  // Скелетон поки грузяться дані
   var av = document.getElementById('seller-page-avatar');
-  av.textContent = initial;
-  av.className = 'seller-avatar-big';
-  document.getElementById('seller-page-name').textContent = sellerName;
-  document.getElementById('seller-page-type-badge').innerHTML =
-    '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
-  document.getElementById('seller-page-desc').textContent = '';
-  document.getElementById('seller-page-city').innerHTML = '';
+  if (av) { av.textContent = '?'; av.className = 'seller-avatar-big'; }
+  var nameEl = document.getElementById('seller-page-name');
+  if (nameEl) nameEl.textContent = 'Завантаження...';
+  var gridEl = document.getElementById('seller-listings-grid');
+  if (gridEl) gridEl.innerHTML = _skeletonCards ? _skeletonCards(4) : '';
 
-  // Завантажити профіль
-  window._db.collection('users').doc(uid).get().then(function(snap) {
-    if (snap.exists) {
-      var d = snap.data();
-      var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
-      document.getElementById('seller-page-name').textContent = d.name || sellerName;
-      if (year) document.getElementById('seller-page-since').innerHTML =
-        '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
+  // Функція що рендерить після того як дані є
+  function _doRender(listings) {
+    var sellerName = listings.length ? (listings[0].sellerName || listings[0].seller || 'Продавець') : 'Продавець';
+    var initial = sellerName[0] ? sellerName[0].toUpperCase() : '?';
+
+    var isDark = !document.body.classList.contains('light');
+    var endColor = isDark ? '#21262d' : '#e8f0e8';
+    document.getElementById('seller-cover-bg').style.background =
+      'linear-gradient(160deg, #0a1a0a 0%, ' + endColor + ' 100%)';
+    var av = document.getElementById('seller-page-avatar');
+    av.textContent = initial;
+    av.className = 'seller-avatar-big';
+    document.getElementById('seller-page-name').textContent = sellerName;
+    document.getElementById('seller-page-type-badge').innerHTML =
+      '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
+    document.getElementById('seller-page-desc').textContent = '';
+    document.getElementById('seller-page-city').innerHTML = '';
+
+    // Завантажити профіль юзера
+    window._db.collection('users').doc(uid).get().then(function(snap) {
+      if (snap.exists) {
+        var d = snap.data();
+        var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
+        document.getElementById('seller-page-name').textContent = d.name || sellerName;
+        if (year) document.getElementById('seller-page-since').innerHTML =
+          '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
+        if (d.city) document.getElementById('seller-page-city').innerHTML =
+          '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + d.city;
+      }
+    }).catch(function(){});
+
+    var adsEl = document.getElementById('sp-stat-ads');
+    if (adsEl) adsEl.textContent = listings.length;
+    ['sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid){
+      var el = document.getElementById(sid); if(el) el.textContent = '—';
+    });
+    renderSellerListings(listings, {name: sellerName, id: 'uid:' + uid});
+    var catsEl = document.getElementById('seller-cats-list');
+    if (catsEl) catsEl.innerHTML = '';
+    var aboutEl = document.getElementById('seller-about-text');
+    if (aboutEl) aboutEl.textContent = '';
+    var contactsEl = document.getElementById('seller-contacts');
+    if (contactsEl) contactsEl.innerHTML = '';
+    var socialsEl = document.getElementById('seller-socials');
+    if (socialsEl) socialsEl.innerHTML = '';
+    var urlEl = document.getElementById('seller-page-url');
+    if (urlEl) urlEl.textContent = 'https://ridego-sigma.vercel.app/seller/' + uid;
+    _loadSellerReviews(uid);
+    _initReviewForm(uid);
+    var svcTab = document.getElementById('seller-tab-service');
+    var sellerSvc = _fbServices.concat(myServices).filter(function(s){ return s.uid === uid; })[0];
+    if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
+    if (sellerSvc) {
+      var svcContent = document.getElementById('seller-service-content');
+      if (svcContent) svcContent.innerHTML = _buildSvcDetailBody(sellerSvc);
     }
-  }).catch(function(){});
+    switchSellerTab('listings', document.querySelector('.seller-tab'));
+  }
 
-  var adsEl = document.getElementById('sp-stat-ads');
-  if (adsEl) adsEl.textContent = listings.length;
-  ['sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid){
-    var el = document.getElementById(sid); if(el) el.textContent = '—';
-  });
-  renderSellerListings(listings, {name: sellerName, id: 'uid:' + uid});
-  var catsEl = document.getElementById('seller-cats-list');
-  if (catsEl) catsEl.innerHTML = '';
-  var aboutEl = document.getElementById('seller-about-text');
-  if (aboutEl) aboutEl.textContent = '';
-  var contactsEl = document.getElementById('seller-contacts');
-  if (contactsEl) contactsEl.innerHTML = '';
-  var socialsEl = document.getElementById('seller-socials');
-  if (socialsEl) socialsEl.innerHTML = '';
-  var urlEl = document.getElementById('seller-page-url');
-  if (urlEl) urlEl.textContent = location.href.split('#')[0] + '#seller/uid:' + uid;
-  // Завантажити реальні відгуки з Firestore
-  _loadSellerReviews(uid);
-  _initReviewForm(uid);
-  // Показати вкладку сервісу якщо є
-  var svcTab = document.getElementById('seller-tab-service');
-  var sellerSvc = _fbServices.concat(myServices).filter(function(s){ return s.uid === uid; })[0];
-  if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
-  if (sellerSvc) {
-    var svcContent = document.getElementById('seller-service-content');
-    if (svcContent) svcContent.innerHTML = _buildSvcDetailBody(sellerSvc);
+  // Якщо _fbListings вже завантажений — використати кеш
+  var cached = _fbListings.filter(function(x){ return x && x.uid === uid; });
+  if (cached.length > 0 || _fbListings.length > 0) {
+    // Дані є — рендеримо одразу
+    _doRender(cached);
+  } else {
+    // Прямий перехід — завантажити оголошення цього продавця напряму
+    window._db.collection('listings')
+      .where('uid', '==', uid)
+      .where('status', '==', 'active')
+      .orderBy('createdAt', 'desc')
+      .get()
+      .then(function(snap) {
+        var listings = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+        // Додати в кеш
+        listings.forEach(function(l) {
+          if (!_fbListings.find(function(x){ return x.id === l.id; })) {
+            _fbListings.push(l);
+          }
+        });
+        _doRender(listings);
+      })
+      .catch(function(e) {
+        showToast('⚠️ Помилка завантаження: ' + e.message);
+      });
   }
 }
 
