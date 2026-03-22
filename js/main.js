@@ -4109,6 +4109,14 @@ function onSettingsOblastChange() {
   citySel.innerHTML = '<option value="">Оберіть місто / село...</option>';
   citySel.disabled  = !oblast;
   if (!oblast) return;
+  // Якщо "Місто Київ" або "Місто Севастополь" — одразу вибрати місто
+  const _cityOblasts3 = {'Місто Київ': 'Київ', 'Місто Севастополь': 'Севастополь'};
+  if (_cityOblasts3[oblast]) {
+    citySel.innerHTML = '<option value="' + _cityOblasts3[oblast] + '">' + _cityOblasts3[oblast] + '</option>';
+    citySel.disabled = false;
+    citySel.value = _cityOblasts3[oblast];
+    return;
+  }
   const raions = UA_GEO[oblast]?.raions || {};
   const cities = [...new Set(Object.values(raions).flatMap(r => r.cities))].sort((a,b) => a.localeCompare(b,'uk'));
   cities.forEach(c => {
@@ -4853,6 +4861,15 @@ function onOblastChange() {
   // City input — просто очищаємо, не блокуємо (тепер text autocomplete)
   var cityInp = document.getElementById('new-city');
   if (cityInp) cityInp.value = '';
+
+  // Якщо "Місто Київ" або "Місто Севастополь" — одразу підставити місто
+  var _cityOblasts2 = {'Місто Київ': 'Київ', 'Місто Севастополь': 'Севастополь'};
+  if (_cityOblasts2[oblast] && cityInp) {
+    cityInp.value = _cityOblasts2[oblast];
+    raionSel.disabled = true;
+    setTimeout(onCityChange, 50);
+    return;
+  }
 
   const hint = document.getElementById('add-location-hint');
   if (hint) hint.style.display = 'none';
@@ -5891,9 +5908,12 @@ function closeAddServiceModal(){
 function onSvcOblastChange(){
   var oblast=document.getElementById("svc-add-oblast").value;
   var citySel=document.getElementById("svc-add-city");
-  citySel.innerHTML="<option value=\"\">\u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043c\u0456\u0441\u0442\u043e...</option>";
+  citySel.innerHTML="<option value=\"\">Оберіть місто...</option>";
   citySel.disabled=!oblast;
   if(!oblast)return;
+  // Місто Київ / Севастополь — одразу вибрати місто
+  var _km={'Місто Київ':'Київ','Місто Севастополь':'Севастополь'};
+  if(_km[oblast]){citySel.innerHTML='<option value="'+_km[oblast]+'">'+_km[oblast]+'</option>';citySel.disabled=false;citySel.value=_km[oblast];return;}
   var raions=(UA_GEO[oblast]&&UA_GEO[oblast].raions)||{};
   var allCities=[];
   Object.values(raions).forEach(function(r){r.cities.forEach(function(c){if(allCities.indexOf(c)<0)allCities.push(c);});});
@@ -5901,7 +5921,6 @@ function onSvcOblastChange(){
   allCities.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent=c;citySel.appendChild(o);});
   citySel.disabled=false;
 }
-
 function toggleSvcCat(el){el.classList.toggle("active");}
 
 function addSvcServiceRow(){
