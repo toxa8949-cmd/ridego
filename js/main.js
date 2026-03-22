@@ -178,6 +178,15 @@ function _renderRoute(route) {
   }
   if (page === 'seller' && id) renderSellerPage(id);
   if (page === 'detail' && id) showDetail(id, true); // true = skip pushState
+  if (page === 'news-detail' && id) {
+    // Викликати showNewsDetail після завантаження новин
+    if (typeof showNewsDetail === 'function') {
+      showNewsDetail(id);
+    } else {
+      // showNewsDetail ще не готова — чекаємо
+      setTimeout(function(){ if (typeof showNewsDetail === 'function') showNewsDetail(id); }, 500);
+    }
+  }
 
   document.title = _pageTitle(page, id);
   _routerLock = false;

@@ -371,7 +371,36 @@ function createNewsCard(n) {
 
 function showNewsDetail(id) {
   var n = _allNews.find(function(x){ return x.id === id; });
-  if (!n) return;
+  if (!n) {
+    // Новини ще не завантажились — завантажити напряму з Firestore
+    if (window._db && id) {
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+      var detailPage = document.getElementById('page-news-detail');
+      if (detailPage) detailPage.classList.add('active');
+      var contentEl = document.getElementById('news-detail-content');
+      if (contentEl) contentEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:16px;padding:20px 0">'
+        + '<div class="skeleton" style="height:300px;border-radius:12px"></div>'
+        + '<div class="skeleton" style="height:18px;width:40%;border-radius:6px"></div>'
+        + '<div class="skeleton" style="height:28px;width:80%;border-radius:6px"></div>'
+        + '<div class="skeleton" style="height:14px;border-radius:4px"></div>'
+        + '</div>';
+      if (typeof _setPath === 'function') _setPath('/news/' + id);
+      window._db.collection('news').doc(id).get().then(function(snap) {
+        if (!snap.exists) { if(typeof showToast==='function') showToast('⚠️ Новину не знайдено'); return; }
+        var data = Object.assign({ id: snap.id }, snap.data());
+        _allNews.unshift(data);
+        showNewsDetail(id);
+      }).catch(function(e) {
+        if(typeof showToast==='function') showToast('⚠️ Помилка: ' + e.message);
+      });
+    }
+    return;
+  }
+
+  // Оновити URL
+  if (typeof _setPath === 'function') _setPath('/news/' + id);
+  document.title = n.title + ' — RideGO';
+
   _updateSEO({
     title: n.title,
     desc: n.excerpt || '',
@@ -394,7 +423,6 @@ function showNewsDetail(id) {
     + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'')+'</div>';
   showPage('news-detail');
 }
-
 function filterNewsCat(cat, btn) {
   document.querySelectorAll('.news-cat-btn').forEach(function(b){ b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
