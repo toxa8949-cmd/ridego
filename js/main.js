@@ -555,7 +555,7 @@ function _pageTitle(page, id) {
     return s ? base + ' — ' + s.name : base + ' — Продавець';
   }
   if (page === 'detail') {
-    const l = [...LISTINGS, ...myListings].find(x => x.id === id);
+    const l = _allListings().find(x => x && x.id === id);
     return l ? base + ' — ' + l.title : base + ' — Оголошення';
   }
   return base;
@@ -1542,7 +1542,7 @@ function clearFilters() {
 }
 
 function getFilteredData() {
-  let data = [..._fbListings, ...myListings].filter(l => l && l.cat && l.price != null && l.status !== 'deleted');
+  let data = _allListings().filter(l => l && l.cat && l.price != null && l.status !== 'deleted');
   if (selectedCat) data = data.filter(l => l.cat === selectedCat);
   const oblast = document.getElementById('fp-oblast')?.value;
   const city   = document.getElementById('fp-city')?.value;
@@ -1914,7 +1914,7 @@ function renderSellerPage(id) {
     `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>${s.city || ''}`;
   document.getElementById('seller-page-since').innerHTML =
     `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since || ''}`;
-  const listings = [..._fbListings, ...myListings].filter(l => l && l.seller === s.name);
+  const listings = _allListings().filter(l => l && l.seller === s.name);
   const sellerSvc = _fbServices.concat(myServices).find(function(sv){ return sv.uid === s.uid; }) || null;
   ['sp-stat-ads','sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid) {
     var el = document.getElementById(sid);
@@ -2084,7 +2084,7 @@ let galleryImgs = [];
 let galleryIdx = 0;
 
 function showDetail(id, _skipPush) {
-  const l = [..._fbListings, ...myListings].find(x => x && x.id === id);
+  const l = _allListings().find(x => x && x.id === id);
   if (!l) {
     // Дані ще не завантажені — показати skeleton і завантажити напряму з Firestore
     if (window._db && id) {
@@ -2247,7 +2247,7 @@ function showDetail(id, _skipPush) {
   updateFavBtn();
 
   // similar
-  const similar = [..._fbListings, ...myListings].filter(x => x && x.cat === l.cat && x.id !== id).slice(0, 4);
+  const similar = _allListings().filter(x => x && x.cat === l.cat && x.id !== id).slice(0, 4);
   document.getElementById('similar-listings').innerHTML = similar.length
     ? similar.map(s => createCard(s, 'catalog')).join('')
     : '<p style="color:var(--text-muted);font-size:14px">Схожих оголошень не знайдено</p>';
@@ -2276,14 +2276,14 @@ function renderGalleryImage(l) {
 function galleryNav(dir) {
   if (!galleryImgs.length) return;
   galleryIdx = (galleryIdx + dir + galleryImgs.length) % galleryImgs.length;
-  const l = [..._fbListings, ...myListings].find(x => x && x.id === currentDetailId);
+  const l = _allListings().find(x => x && x.id === currentDetailId);
   renderGalleryImage(l);
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,i) => t.classList.toggle('active', i===galleryIdx));
 }
 
 function setGalleryIdx(i) {
   galleryIdx = i;
-  const l = [..._fbListings, ...myListings].find(x => x && x.id === currentDetailId);
+  const l = _allListings().find(x => x && x.id === currentDetailId);
   renderGalleryImage(l);
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,j) => t.classList.toggle('active', j===i));
 }
@@ -3993,7 +3993,7 @@ function switchPTab(tab, btn) {
 function renderFavs() {
   const grid  = document.getElementById('favs-grid');
   const empty = document.getElementById('favs-empty');
-  const favData = [...LISTINGS,...myListings].filter(l => favorites.includes(l.id));
+  const favData = _allListings().filter(l => favorites.includes(l.id));
   if (!favData.length) { grid.innerHTML=''; empty.style.display=''; return; }
   empty.style.display = 'none';
   grid.innerHTML = favData.map(l => createCard(l,'profile')).join('');
@@ -4258,7 +4258,7 @@ document.getElementById('headerSearch').addEventListener('keydown', e=>{
     showPage('catalog');
     currentCatFilter = 'all';
     setTimeout(()=>{
-      let data = [...LISTINGS,...myListings].filter(l=>l.title.toLowerCase().includes(q)||l.cat.toLowerCase().includes(q)||l.city.toLowerCase().includes(q));
+      let data = _allListings().filter(l=>l.title.toLowerCase().includes(q)||l.cat.toLowerCase().includes(q)||l.city.toLowerCase().includes(q));
       document.getElementById('catalog-listings').innerHTML = data.length
         ? data.map(l=>createCard(l,'catalog')).join('')
         : '<div class="empty-state"><i class="fa-solid fa-search"></i><h3>Нічого не знайдено</h3><p>Спробуйте інший запит</p></div>';
@@ -4796,7 +4796,7 @@ function openPromoModal(listingId, afterAdd) {
 
   // Назва оголошення в заголовок — безпечний пошук
   const allListings = (typeof LISTINGS !== 'undefined' ? LISTINGS : []).concat(
-                      typeof myListings !== 'undefined' ? myListings : []);
+                      _allListings();
   const l = allListings.find(x => x && (x.id === +listingId || x.id === listingId));
   const subEl = document.getElementById('promo-modal-listing-name');
   if (subEl) {
@@ -5107,8 +5107,7 @@ function submitListing() {
         // Списати 1 слот
         _consumeSlot();
         newL.id = docRef.id;
-        myListings.unshift(newL);
-        _fbListings.unshift(newL);
+        _fbListings.unshift(newL); // myListings не використовуємо — лише _fbListings
         if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
@@ -5155,9 +5154,8 @@ function submitListing() {
       });
   } else {
     console.warn('No db or uid, saving locally');
-    myListings.unshift(newL);
     _fbListings.unshift(newL);
-    if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
+    if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = _allListings().filter(function(l){ return l.uid === (currentUser && currentUser.uid); }).length;
     if (typeof renderMyListings === 'function') renderMyListings();
     showToast('✅ Оголошення опубліковано!');
     _resetAddWizard();
@@ -5191,9 +5189,15 @@ function _resetAddWizard() {
 function renderMyListings() {
   const grid  = document.getElementById('my-listings-grid');
   const empty = document.getElementById('my-listings-empty');
-  if (!myListings.length) { grid.innerHTML=''; empty.style.display=''; return; }
+  if (!grid || !empty) return;
+  // Власні оголошення — з усього дедублікованого списку фільтруємо по uid
+  var uid = currentUser && currentUser.uid;
+  var mine = uid
+    ? _allListings().filter(function(l){ return l && l.uid === uid; })
+    : myListings; // fallback якщо uid невідомий
+  if (!mine.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  grid.innerHTML = myListings.map(l => createMyCard(l)).join('');
+  grid.innerHTML = mine.map(function(l){ return createMyCard(l); }).join('');
 }
 
 function renewListing(id) {
