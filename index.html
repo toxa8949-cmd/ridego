@@ -189,7 +189,7 @@
     <a class="logo" onclick="showPage('home')">Ride<span>GO</span></a>
     <div class="search-wrap">
       <i class="fa-solid fa-search"></i>
-      <input type="text" id="headerSearch" placeholder="Самокат, велосипед, скутер..." autocomplete="off" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
+      <input type="search" id="headerSearch" name="ridego-search" placeholder="Самокат, велосипед, скутер..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter') handleSearch(this.value, true)">
     </div>
     <nav>
       <a onclick="showPage('catalog')">Каталог</a>
