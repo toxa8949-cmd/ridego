@@ -256,12 +256,40 @@ function showSkeletons() {
 }
 
 // ============================================================
+// CLOUDINARY IMAGE OPTIMIZATION
+// ============================================================
+var _CLOUDINARY_BASE = 'https://res.cloudinary.com/dxgtpo5dq/image/upload';
+
+// Генерує оптимізований Cloudinary URL з автоматичним WebP та стисненням
+// w — ширина, q — якість (auto = автовибір), f — формат (auto = WebP якщо підтримується)
+function _cdnImg(url, opts) {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  opts = opts || {};
+  var w = opts.w || 600;
+  var q = opts.q || 'auto';
+  var f = opts.f || 'auto'; // auto = WebP/AVIF де підтримується
+  var c = opts.c || 'fill'; // fill, fit, limit
+  var g = opts.g || 'auto'; // gravity: auto = розумний crop
+  var transforms = 'w_' + w + ',q_' + q + ',f_' + f + ',c_' + c + ',g_' + g;
+  // Замінити /upload/ на /upload/<transforms>/
+  return url.replace('/upload/', '/upload/' + transforms + '/');
+}
+
+// Thumbnail — маленька версія для картки у списку (400px, агресивне стиснення)
+function _cdnThumb(url) { return _cdnImg(url, { w: 400, q: 75, c: 'fill', g: 'auto' }); }
+// Detail — велика версія для деталей (1200px, хороша якість)
+function _cdnDetail(url) { return _cdnImg(url, { w: 1200, q: 85, c: 'limit', g: 'auto' }); }
+// Preview OG — квадрат для соцмереж
+function _cdnOg(url) { return _cdnImg(url, { w: 1200, q: 80, c: 'fill', g: 'auto' }); }
+
+// ============================================================
 // LISTINGS RENDER
 // ============================================================
 function createCard(l, backPage) {
   const isFav    = favorites.includes(l.id);
+  const thumbSrc = _cdnThumb(l.img) || l.img;
   const imgHtml  = l.img
-    ? `<img class="listing-img" src="${l.img}" alt="${l.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex')">`
+    ? `<img class="listing-img" src="${thumbSrc}" alt="${l.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex')">`
     : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
   const badgeHtml = l.badge
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
@@ -1124,54 +1152,147 @@ function getFilteredData() {
   return data;
 }
 
+// ── PAGINATION ───────────────────────────────────────────────
+const PAGE_SIZE = 20;          // карток на одну сторінку
+var _catalogData  = [];        // весь відфільтрований масив
+var _catalogPage  = 0;         // скільки сторінок вже показано
+var _catalogAllShown = false;  // чи показали все
+
 function runSearch() {
-  let data = getFilteredData();
-  if (currentSort==='cheap') data.sort((a,b)=>a.price-b.price);
-  if (currentSort==='expensive') data.sort((a,b)=>b.price-a.price);
+  var data = getFilteredData();
+  if (currentSort === 'cheap')     data.sort((a,b) => a.price - b.price);
+  if (currentSort === 'expensive') data.sort((a,b) => b.price - a.price);
+  // TOP/highlight/urgent завжди вище звичайних
+  const promoOrder = { top:0, highlight:1, urgent:2 };
+  data.sort((a,b) => (promoOrder[a.promo] ?? 3) - (promoOrder[b.promo] ?? 3));
+
+  _catalogData     = data;
+  _catalogPage     = 0;
+  _catalogAllShown = false;
+
   const wrap = document.getElementById('catalog-results-wrap');
   if (wrap) wrap.style.display = '';
   document.getElementById('results-num').textContent = data.length;
-  document.getElementById('results-cat-label').textContent = selectedCat ? 'Категорія: '+selectedCat : 'Всі категорії';
-  // Сортування: спочатку по ціні якщо потрібно, потім TOP завжди вгорі
-  if (currentSort==='cheap') data.sort((a,b)=>a.price-b.price);
-  if (currentSort==='expensive') data.sort((a,b)=>b.price-a.price);
-  // TOP/highlight/urgent завжди вище звичайних
-  const promoOrder = {top:0, highlight:1, urgent:2};
-  data.sort((a,b)=>(promoOrder[a.promo]??3)-(promoOrder[b.promo]??3));
+  document.getElementById('results-cat-label').textContent = selectedCat ? 'Категорія: ' + selectedCat : 'Всі категорії';
 
   const grid = document.getElementById('catalog-listings');
-  grid.className = 'listing-grid'+(currentLayout==='list'?' list-view':'');
+  grid.className = 'listing-grid' + (currentLayout === 'list' ? ' list-view' : '');
 
   if (!data.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><i class="fa-solid fa-search"></i><h3>Нічого не знайдено</h3><p>Спробуйте змінити фільтри</p></div>`;
+    _removePaginationUI();
   } else {
-    // Банер магазину після кожних 6 карток
-    const BANNER_INTERVAL = 6;
-    const shopBanners = _fbSellers.filter(s => s.type === 'shop' && s.banner);
-    let html = ''; let bannerIdx = 0;
-    data.forEach((l, i) => {
-      html += createCard(l, 'catalog');
-      if ((i + 1) % BANNER_INTERVAL === 0 && bannerIdx < shopBanners.length) {
-        html += createShopBanner(shopBanners[bannerIdx++]);
-      }
-    });
-    grid.innerHTML = html;
+    grid.innerHTML = '';
+    _appendCatalogPage();
   }
-  setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+
+function _appendCatalogPage() {
+  const grid = document.getElementById('catalog-listings');
+  if (!grid || !_catalogData.length) return;
+
+  const start = _catalogPage * PAGE_SIZE;
+  const slice = _catalogData.slice(start, start + PAGE_SIZE);
+  if (!slice.length) return;
+
+  const BANNER_INTERVAL = 6;
+  const shopBanners = _fbSellers.filter(s => s.type === 'shop' && s.banner);
+  let html = '';
+  let bannerIdx = Math.floor(start / BANNER_INTERVAL); // продовжити банери
+  slice.forEach((l, i) => {
+    html += createCard(l, 'catalog');
+    const globalIdx = start + i;
+    if ((globalIdx + 1) % BANNER_INTERVAL === 0 && bannerIdx < shopBanners.length) {
+      html += createShopBanner(shopBanners[bannerIdx++]);
+    }
+  });
+  grid.insertAdjacentHTML('beforeend', html);
+  _catalogPage++;
+
+  const shown = _catalogPage * PAGE_SIZE;
+  _catalogAllShown = shown >= _catalogData.length;
+  _updatePaginationUI();
+}
+
+function _updatePaginationUI() {
+  var existing = document.getElementById('catalog-load-more-wrap');
+  if (_catalogAllShown) {
+    if (existing) existing.remove();
+    _detachInfiniteScroll();
+    return;
+  }
+  if (!existing) {
+    var div = document.createElement('div');
+    div.id = 'catalog-load-more-wrap';
+    div.style.cssText = 'display:flex;justify-content:center;padding:28px 0 8px;grid-column:1/-1';
+    div.innerHTML = `<button id="catalog-load-more-btn" onclick="_appendCatalogPage()"
+      style="padding:13px 36px;border-radius:50px;border:1px solid var(--brand);color:var(--brand);
+             background:transparent;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit"
+      onmouseover="this.style.background='var(--brand-dim)'" onmouseout="this.style.background='transparent'">
+      <i class="fa-solid fa-chevron-down" style="margin-right:8px"></i>
+      Завантажити ще
+      <span style="opacity:.6;font-weight:400;margin-left:6px" id="catalog-remaining-count"></span>
+    </button>`;
+    document.getElementById('catalog-listings').after(div);
+    _attachInfiniteScroll();
+  }
+  // Оновити лічильник що залишилось
+  var remEl = document.getElementById('catalog-remaining-count');
+  if (remEl) {
+    var remaining = _catalogData.length - _catalogPage * PAGE_SIZE;
+    remEl.textContent = remaining > 0 ? '(' + remaining + ' ще)' : '';
+  }
+}
+
+function _removePaginationUI() {
+  var el = document.getElementById('catalog-load-more-wrap');
+  if (el) el.remove();
+  _detachInfiniteScroll();
+}
+
+// Infinite scroll — підвантажує наступну сторінку коли юзер майже внизу
+var _infiniteScrollObserver = null;
+function _attachInfiniteScroll() {
+  if (_infiniteScrollObserver || typeof IntersectionObserver === 'undefined') return;
+  var sentinel = document.getElementById('catalog-load-more-wrap');
+  if (!sentinel) return;
+  _infiniteScrollObserver = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting && !_catalogAllShown) {
+      _appendCatalogPage();
+    }
+  }, { rootMargin: '200px' });
+  _infiniteScrollObserver.observe(sentinel);
+}
+
+function _detachInfiniteScroll() {
+  if (_infiniteScrollObserver) {
+    _infiniteScrollObserver.disconnect();
+    _infiniteScrollObserver = null;
+  }
 }
 
 function setSort(sort, el) {
   currentSort = sort;
-  document.querySelectorAll('.sort-pill').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sort-pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   runSearch();
 }
 
 function setLayout(mode) {
   currentLayout = mode;
-  document.getElementById('lt-grid').classList.toggle('active', mode==='grid');
-  document.getElementById('lt-list').classList.toggle('active', mode==='list');
-  document.getElementById('catalog-listings').className = 'listing-grid'+(mode==='list'?' list-view':'');
+  document.getElementById('lt-grid').classList.toggle('active', mode === 'grid');
+  document.getElementById('lt-list').classList.toggle('active', mode === 'list');
+  const grid = document.getElementById('catalog-listings');
+  if (grid) grid.className = 'listing-grid' + (mode === 'list' ? ' list-view' : '');
+  // Перемалювати з тими самими даними але новим layout
+  if (_catalogData.length) {
+    grid.innerHTML = '';
+    _catalogPage = 0;
+    _catalogAllShown = false;
+    _removePaginationUI();
+    _appendCatalogPage();
+  }
 }
 
 function filterCatalog(cat) {
@@ -1577,7 +1698,7 @@ function showDetail(id, _skipPush) {
   _updateSEO({
     title: l.title,
     desc: l.desc ? l.desc.substring(0,160) : (l.title + ' — ' + (l.cat||'') + ' в ' + (l.city||'Україні')),
-    img: l.img || '',
+    img: _cdnOg(l.img) || l.img || '',
     url: 'https://ridego-sigma.vercel.app/listing/' + id
   });
   _setListingSchema(l);
@@ -1718,7 +1839,8 @@ function renderGalleryImage(l) {
   const wrap = document.getElementById('detail-main-img-wrap');
   if (l && l.img) {
     var fallbackIcon = l.icon || '📦';
-    wrap.innerHTML = `<img src="${galleryImgs[galleryIdx]}" alt="${l.title || ''}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${fallbackIcon}</div>`;
+    var detailSrc = _cdnDetail(galleryImgs[galleryIdx]) || galleryImgs[galleryIdx];
+    wrap.innerHTML = `<img src="${detailSrc}" alt="${l.title || ''}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${fallbackIcon}</div>`;
   } else {
     const icon = l ? (l.icon || '📦') : '📦';
     wrap.innerHTML = `<div style="font-size:100px;color:var(--brand);opacity:.5">${icon}</div>`;
@@ -3001,11 +3123,14 @@ function compressImage(file, maxWidth, maxHeight, quality) {
       img.onload = function() {
         var canvas = document.createElement('canvas');
         var w = img.width, h = img.height;
-        if (w > maxWidth) { h = h * maxWidth / w; w = maxWidth; }
-        if (h > maxHeight) { w = w * maxHeight / h; h = maxHeight; }
+        if (w > maxWidth)  { h = Math.round(h * maxWidth  / w); w = maxWidth; }
+        if (h > maxHeight) { w = Math.round(w * maxHeight / h); h = maxHeight; }
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', quality);
+        // Спробувати WebP (швидше та менше), fallback на JPEG
+        var supportsWebP = canvas.toDataURL('image/webp').startsWith('data:image/webp');
+        var mimeType = supportsWebP ? 'image/webp' : 'image/jpeg';
+        canvas.toBlob(function(blob) { resolve(blob); }, mimeType, quality);
       };
       img.src = e.target.result;
     };
@@ -3017,7 +3142,8 @@ function handlePhotoUpload(event) {
   var files = Array.from(event.target.files);
   var remaining = 10 - uploadedPhotos.length;
   files.slice(0, remaining).forEach(function(file) {
-    compressImage(file, 1200, 1200, 0.82).then(function(blob) {
+    // 1600px — достатньо для Cloudinary, який далі стискає на льоту
+    compressImage(file, 1600, 1600, 0.88).then(function(blob) {
       var url = URL.createObjectURL(blob);
       uploadedPhotos.push({ blob: blob, preview: url, uploaded: false, storageUrl: null });
       renderPhotoGrid();
