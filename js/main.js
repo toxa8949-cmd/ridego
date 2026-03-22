@@ -262,8 +262,15 @@ function _isPromoActive(l) {
 // Очистити протерміновані промо — викликати після завантаження даних
 function _cleanExpiredPromos(listings) {
   var expired = [];
+  var now = new Date();
   listings.forEach(function(l) {
-    if (l.promo && l.promoUntil && new Date(l.promoUntil) <= new Date()) {
+    if (!l || !l.promo) return;
+    // Якщо promoUntil не вказаний — не чіпаємо (старі записи без дати)
+    if (!l.promoUntil) return;
+    var until = new Date(l.promoUntil);
+    // Якщо дата некоректна — не чіпаємо
+    if (isNaN(until.getTime())) return;
+    if (until <= now) {
       expired.push(l.id);
       delete l.promo;
       delete l.promoUntil;
@@ -273,7 +280,8 @@ function _cleanExpiredPromos(listings) {
   // Оновити в Firestore асинхронно
   if (window._db && expired.length) {
     expired.forEach(function(id) {
-      window._db.collection('listings').doc(id).update({
+      if (!id) return;
+      window._db.collection('listings').doc(String(id)).update({
         promo: firebase.firestore.FieldValue.delete(),
         promoUntil: firebase.firestore.FieldValue.delete(),
         promoDays: firebase.firestore.FieldValue.delete()
@@ -4848,33 +4856,37 @@ function applyPromo() {
   if (!_promoListingId) return;
 
   var listing = (_fbListings.concat(myListings))
-    .find(function(x){ return x && (x.id === _promoListingId || x.id === +_promoListingId); });
+    .find(function(x){ return x && (x.id === _promoListingId || x.id === +_promoListingId || String(x.id) === String(_promoListingId)); });
 
+  var promoUntilDate = new Date(Date.now() + _selectedPromoDays * 86400000);
   var promoData = {
     promo:      _selectedPromoType,
     promoDays:  _selectedPromoDays,
-    promoUntil: new Date(Date.now() + _selectedPromoDays * 86400000).toISOString()
+    promoUntil: promoUntilDate.toISOString()
   };
 
+  var listingId = String(_promoListingId);
+
   // Зберегти в Firestore
-  if (window._db && _promoListingId && typeof _promoListingId === 'string') {
-    window._db.collection('listings').doc(_promoListingId).update(promoData)
+  if (window._db && listingId) {
+    window._db.collection('listings').doc(listingId).update(promoData)
       .then(function() {
-        showToast('🚀 ' + PROMO_NAMES[_selectedPromoType] + ' активовано на ' + _selectedPromoDays + ' днів!');
+        console.log('Promo saved to Firestore:', listingId, promoData);
+        showToast('🚀 ' + PROMO_NAMES[_selectedPromoType] + ' активовано на ' + _selectedPromoDays + ' днів! (до ' + promoUntilDate.toLocaleDateString('uk-UA', {day:'numeric',month:'long'}) + ')');
       })
       .catch(function(e) {
-        showToast('⚠️ Помилка збереження: ' + e.message);
+        showToast('⚠️ Помилка збереження промо: ' + e.message);
+        console.error('Promo save error:', e);
       });
   }
 
-  // Оновити локально
+  // Оновити локально — одразу щоб UI оновився без чекання Firestore
   if (listing) {
     Object.assign(listing, promoData);
   }
-  // Оновити в обох кешах
-  var inFb = _fbListings.find(function(x){ return x && x.id === _promoListingId; });
+  var inFb = _fbListings.find(function(x){ return x && String(x.id) === listingId; });
   if (inFb) Object.assign(inFb, promoData);
-  var inMy = myListings.find(function(x){ return x && x.id === _promoListingId; });
+  var inMy = myListings.find(function(x){ return x && String(x.id) === listingId; });
   if (inMy) Object.assign(inMy, promoData);
 
   closePromoModal();
