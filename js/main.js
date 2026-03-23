@@ -2101,7 +2101,7 @@ function _renderSellerByUid(uid) {
       if (year) document.getElementById('seller-page-since').innerHTML =
         '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
       if (d.city) document.getElementById('seller-page-city').innerHTML =
-        '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + d.city;
+        '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + _esc(d.city);
 
       // Фото аватара
       var avEl = document.getElementById('seller-page-avatar');
@@ -2145,7 +2145,7 @@ function _renderSellerByUid(uid) {
       if (catsEl) {
         var cats = d.cats || [];
         catsEl.innerHTML = cats.map(function(c) {
-          return '<span class="tag tag-blue" style="padding:6px 14px;font-size:13px">' + c + '</span>';
+          return '<span class="tag tag-blue" style="padding:6px 14px;font-size:13px">' + _esc(c) + '</span>';
         }).join('');
       }
 
@@ -2153,8 +2153,8 @@ function _renderSellerByUid(uid) {
       var contactsEl = document.getElementById('seller-contacts');
       if (contactsEl) {
         var lines = [];
-        if (d.phone) lines.push('<a href="tel:' + d.phone + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:500"><i class="fa-solid fa-phone" style="color:var(--brand);width:16px"></i>' + d.phone + '</a>');
-        if (d.email) lines.push('<a href="mailto:' + d.email + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><i class="fa-solid fa-envelope" style="color:var(--brand);width:16px"></i>' + d.email + '</a>');
+        if (d.phone) lines.push('<a href="tel:' + d.phone + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:500"><i class="fa-solid fa-phone" style="color:var(--brand);width:16px"></i>' + _esc(d.phone) + '</a>');
+        if (d.email) lines.push('<a href="mailto:' + d.email + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><i class="fa-solid fa-envelope" style="color:var(--brand);width:16px"></i>' + _esc(d.email) + '</a>');
         if (d.website) lines.push('<a href="' + d.website + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--brand);text-decoration:none;font-size:14px"><i class="fa-solid fa-globe" style="width:16px"></i>' + d.website.replace(/^https?:\/\//, '') + '</a>');
         contactsEl.innerHTML = lines.join('') || '<span style="font-size:13px;color:var(--text-muted)">Контакти не вказані</span>';
       }
@@ -2476,17 +2476,23 @@ function showDetail(id, _skipPush) {
     url: 'https://ridego-sigma.vercel.app/listing/' + id
   });
   _setListingSchema(l);
-  // Рахувати перегляди в Firestore
+  // Рахувати перегляди — захист від накрутки через localStorage
   if (window._db && id && typeof id === 'string') {
-    var today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
-    window._db.collection('analytics').doc('views_' + today).set({
-      date: today,
-      count: firebase.firestore.FieldValue.increment(1)
-    }, { merge: true }).catch(function(){});
-    // Також збільшити лічильник самого оголошення
-    window._db.collection('listings').doc(id).update({
-      views: firebase.firestore.FieldValue.increment(1)
-    }).catch(function(){});
+    var today = new Date().toISOString().slice(0,10);
+    var _viewKey = 'ridego_view_' + id + '_' + today;
+    var _alreadyViewed = false;
+    try { _alreadyViewed = !!localStorage.getItem(_viewKey); } catch(e) {}
+
+    if (!_alreadyViewed) {
+      window._db.collection('analytics').doc('views_' + today).set({
+        date: today,
+        count: firebase.firestore.FieldValue.increment(1)
+      }, { merge: true }).catch(function(){});
+      window._db.collection('listings').doc(id).update({
+        views: firebase.firestore.FieldValue.increment(1)
+      }).catch(function(){});
+      try { localStorage.setItem(_viewKey, '1'); } catch(e) {}
+    }
   }
 
   // update URL + title
@@ -5485,6 +5491,25 @@ function applyPromo() {
 }
 
 function submitListing() {
+  // Auth guard
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Увійдіть щоб публікувати'); showPage('profile'); return;
+  }
+
+  // Rate limiting — не більше 5 оголошень на 10 хвилин
+  var _rateKey = 'ridego_post_rate';
+  try {
+    var rateData = JSON.parse(localStorage.getItem(_rateKey) || '{"count":0,"since":0}');
+    var now = Date.now();
+    if (now - rateData.since < 600000) { // 10 хвилин
+      if (rateData.count >= 5) {
+        showToast('⚠️ Забагато оголошень підряд. Зачекайте кілька хвилин.'); return;
+      }
+    } else {
+      rateData = { count: 0, since: now };
+    }
+  } catch(e) { var rateData = { count: 0, since: Date.now() }; }
+
   // Перевірити баланс слотів
   if (_userSlots.loaded && _totalSlots() <= 0) {
     showToast('⚠️ Немає слотів для публікації');
@@ -5495,9 +5520,21 @@ function submitListing() {
   const title = document.getElementById('new-title')?.value.trim();
   const price = parseInt(document.getElementById('new-price')?.value);
   const phone = document.getElementById('new-phone')?.value.trim();
+
+  // Розширена валідація
   if (!title) { showToast('⚠️ Введіть назву оголошення'); return; }
+  if (title.length > 200) { showToast('⚠️ Назва занадто довга (макс 200 символів)'); return; }
   if (!price || price < 1) { showToast('⚠️ Введіть коректну ціну'); return; }
+  if (price > 10000000) { showToast('⚠️ Ціна перевищує максимум (10 млн грн)'); return; }
   if (!phone) { showToast('⚠️ Введіть номер телефону'); return; }
+  // Перевірка телефону — тільки цифри, +, пробіли, дужки
+  if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
+    showToast('⚠️ Невірний формат телефону'); return;
+  }
+  // Перевірка на spam-посилання в назві
+  if (/https?:\/\/|www\.|\.com|\.ua|\.org/i.test(title)) {
+    showToast('⚠️ Посилання в назві заборонені'); return;
+  }
 
   const condition = document.getElementById('new-condition')?.value || 'Хороший';
   const bargain   = document.getElementById('new-bargain')?.value || '';
@@ -5677,6 +5714,12 @@ function submitListing() {
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
         showToast('✅ Оголошення опубліковано!');
+        // Записати rate limit
+        try {
+          var _rd = JSON.parse(localStorage.getItem('ridego_post_rate') || '{"count":0,"since":' + Date.now() + '}');
+          _rd.count = (_rd.count || 0) + 1;
+          localStorage.setItem('ridego_post_rate', JSON.stringify(_rd));
+        } catch(e) {}
         // Зберегти копію фото ДО reset
         var photos = uploadedPhotos.filter(function(p){ return p && p.blob; });
         _resetAddWizard();
