@@ -1678,14 +1678,22 @@
 <!-- PAGE: MESSAGES                                                -->
 <!-- ============================================================ -->
 <div id="page-messages" class="page">
-  <div class="messages-layout">
-    <div class="chat-list" id="chat-list"></div>
-    <div class="chat-window">
+  <div class="messages-layout" id="messages-layout">
+    <div class="chat-list-panel" id="chat-list-panel">
+      <div style="padding:16px 20px;font-size:16px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <i class="fa-solid fa-comment-dots" style="color:var(--brand)"></i> Повідомлення
+      </div>
+      <div class="chat-list" id="chat-list"></div>
+    </div>
+    <div class="chat-window" id="chat-window">
       <div class="chat-header" id="chat-header">
+        <button class="chat-back-btn" onclick="closeChatOnMobile()" title="Назад">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
         <div class="chat-avatar" id="chat-header-avatar">А</div>
-        <div>
-          <div style="font-weight:700;font-size:15px" id="chat-header-name">Оберіть чат</div>
-          <div style="font-size:12px;color:var(--text-muted)" id="chat-header-sub">—</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="chat-header-name">Оберіть чат</div>
+          <div style="font-size:12px;color:var(--brand);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="chat-header-sub">—</div>
         </div>
       </div>
       <div class="messages-area" id="messages-area">
