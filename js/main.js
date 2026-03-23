@@ -4368,22 +4368,26 @@ function renderChats() {
     return;
   }
   list.innerHTML = _fbChats.map(function(c) {
-    var otherName = c.names ? (c.names[currentUser.uid] ? '' : '') : '';
-    // Знайти ім'я співрозмовника
     var otherId = c.participants ? c.participants.find(function(p){ return p !== currentUser.uid; }) : null;
-    var name = c.otherName || otherId || 'Користувач';
+    var name = c.otherName || (otherId && c[otherId+'_name']) || 'Користувач';
     var lastMsg = c.lastMessage || '';
     var lastTime = c.lastMessageAt ? _formatChatTime(c.lastMessageAt.seconds) : '';
     var initial = (name[0] || '?').toUpperCase();
     var isActive = _activeChatId === c.id;
+    var listingTag = c.listingTitle
+      ? '<div style="font-size:10px;color:var(--brand);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><i class="fa-solid fa-tag" style="font-size:9px;margin-right:3px"></i>' + _esc(c.listingTitle) + '</div>'
+      : '';
+    var unreadDot = (c.unread && c.unread > 0 && !isActive)
+      ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--brand);flex-shrink:0"></span>' : '';
     return '<div class="chat-item ' + (isActive ? 'active' : '') + '" onclick="openChatById(this.dataset.id)" data-id="' + c.id + '">'
-      + '<div class="chat-avatar">' + initial + '</div>'
+      + '<div class="chat-avatar" style="cursor:pointer" onclick="event.stopPropagation();' + (otherId ? 'showSellerByUid(\''+otherId+'\')' : '') + '">' + initial + '</div>'
       + '<div style="flex:1;min-width:0">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center">'
-      + '<div class="chat-name">' + name + '</div>'
-      + '<div class="chat-time">' + lastTime + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
+      + '<div class="chat-name">' + _esc(name) + '</div>'
+      + '<div style="display:flex;align-items:center;gap:5px;flex-shrink:0">' + unreadDot + '<div class="chat-time">' + lastTime + '</div></div>'
       + '</div>'
-      + '<div class="chat-last" style="margin-top:3px">' + lastMsg + '</div>'
+      + listingTag
+      + '<div class="chat-last" style="margin-top:3px">' + _esc(lastMsg) + '</div>'
       + '</div></div>';
   }).join('');
 }
@@ -4404,59 +4408,99 @@ function openChatById(chatId) {
   _activeChatId = chatId;
   var c = _fbChats.find(function(x){ return x.id === chatId; });
 
-  // Оновити хедер
   var otherId = c && c.participants ? c.participants.find(function(p){ return p !== currentUser.uid; }) : null;
-  var name = (c && c.otherName) || 'Користувач';
+  var name = (c && c.otherName) || (c && c[otherId + '_name']) || 'Користувач';
   var sub  = (c && c.listingTitle) ? 'Оголошення: ' + c.listingTitle : '';
+
   var headerName = document.getElementById('chat-header-name');
   var headerSub  = document.getElementById('chat-header-sub');
   var headerAva  = document.getElementById('chat-header-avatar');
-  if (headerName) headerName.textContent = name;
-  if (headerSub)  headerSub.textContent  = sub;
-  if (headerAva)  headerAva.textContent  = (name[0] || '?').toUpperCase();
 
-  // Показати область чату
+  // Клікабельне ім'я — перехід на профіль продавця
+  if (headerName) {
+    if (otherId) {
+      headerName.innerHTML = '<span style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--brand)" onclick="showSellerByUid(\''+otherId+'\')">' + _esc(name) + '</span>';
+    } else {
+      headerName.textContent = name;
+    }
+  }
+
+  // Підзаголовок — клікабельне оголошення
+  if (headerSub) {
+    if (c && c.listingId) {
+      headerSub.innerHTML = '<span style="cursor:pointer;color:var(--brand)" onclick="showDetail(\''+c.listingId+'\')">'
+        + '<i class="fa-solid fa-tag" style="margin-right:4px;font-size:10px"></i>' + _esc(c.listingTitle || 'Оголошення') + '</span>';
+    } else {
+      headerSub.textContent = sub || '';
+    }
+  }
+  if (headerAva) headerAva.textContent = (name[0] || '?').toUpperCase();
+
+  // Мобільний: показати вікно чату, приховати список
+  var layout = document.querySelector('.messages-layout');
+  if (layout && window.innerWidth <= 700) {
+    layout.classList.add('chat-open');
+  }
+
   var area = document.getElementById('messages-area');
   if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Завантаження...</div>';
 
-  // Відписатись від попереднього слухача
   if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
 
-  // Слухати повідомлення в реальному часі через RTDB
   if (window._rtdb) {
     var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
     var _rtdbCallback = msgsRef.on('value', function(snap) {
       var msgs = [];
-      // snap може бути null якщо чат порожній або немає прав
       if (snap && snap.forEach) {
-        snap.forEach(function(child) {
-          msgs.push(child.val());
-        });
+        snap.forEach(function(child) { msgs.push(child.val()); });
       }
-      _renderMessages(msgs);
+      _renderMessages(msgs, c);
     });
-    // RTDB відписка — треба зберегти і ref, і callback
     _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
   } else if (window._db) {
-    // Fallback — Firestore
     _chatUnsubscribe = window._db.collection('chats').doc(chatId)
-      .collection('messages').orderBy('createdAt').onSnapshot(function(snap) {
+      .collection('messages').onSnapshot(function(snap) {
         var msgs = snap.docs.map(function(d){ return d.data(); });
-        _renderMessages(msgs);
+        msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
+        _renderMessages(msgs, c);
       });
   }
 
   renderChats();
 }
 
-function _renderMessages(msgs) {
+function _renderMessages(msgs, chat) {
   var area = document.getElementById('messages-area');
   if (!area) return;
+
+  var html = '';
+
+  // Картка оголошення зверху якщо є
+  if (chat && chat.listingId && chat.listingTitle) {
+    var listing = _allListings().find(function(l){ return l && l.id === chat.listingId; });
+    var imgHtml = listing && listing.photos && listing.photos[0]
+      ? '<img src="' + listing.photos[0] + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0">'
+      : '<div style="width:56px;height:56px;background:var(--dark3);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px">🛵</div>';
+    var priceHtml = listing ? '<div style="color:var(--brand);font-weight:700;font-size:15px">' + listing.price.toLocaleString('uk') + ' грн</div>' : '';
+    html += '<div style="margin-bottom:12px;display:flex;justify-content:center">'
+      + '<div onclick="showDetail(\''+chat.listingId+'\')" style="cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:12px 16px;max-width:320px;width:100%;transition:box-shadow .2s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,200,83,.15)\'" onmouseout="this.style.boxShadow=\'none\'">'
+      + imgHtml
+      + '<div style="min-width:0">'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Оголошення</div>'
+      + '<div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(chat.listingTitle) + '</div>'
+      + priceHtml
+      + '</div>'
+      + '<i class="fa-solid fa-arrow-right" style="color:var(--brand);font-size:12px;flex-shrink:0;margin-left:auto"></i>'
+      + '</div></div>';
+  }
+
   if (!msgs.length) {
-    area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Напишіть перше повідомлення!</div>';
+    html += '<div style="text-align:center;padding:24px;color:var(--text-muted)">Напишіть перше повідомлення!</div>';
+    area.innerHTML = html;
     return;
   }
-  area.innerHTML = msgs.map(function(m) {
+
+  html += msgs.map(function(m) {
     var mine = m.senderUid === currentUser.uid;
     var time = m.createdAt ? _formatChatTime(typeof m.createdAt === 'object' ? m.createdAt.seconds : m.createdAt/1000) : '';
     return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
@@ -4464,6 +4508,8 @@ function _renderMessages(msgs) {
       + '<div class="msg-time">' + time + '</div>'
       + '</div>';
   }).join('');
+
+  area.innerHTML = html;
   area.scrollTop = area.scrollHeight;
 }
 
@@ -4520,18 +4566,36 @@ function openChat() {
   showPage('messages');
 }
 
+function closeChatOnMobile() {
+  var layout = document.getElementById('messages-layout');
+  if (layout) layout.classList.remove('chat-open');
+  _activeChatId = null;
+  renderChats();
+}
+
 // Відкрити або створити чат з продавцем
 function _startChat(sellerUid, listingId, listingTitle) {
   if (!isLoggedIn) { showToast('⚠️ Увійдіть щоб написати'); showPage('profile'); return; }
   if (sellerUid === currentUser.uid) { showToast('ℹ️ Це ваше оголошення'); return; }
 
-  // Знайти існуючий чат
+  // Знайти БУДЬ-ЯКИЙ існуючий чат з цим юзером (незалежно від оголошення)
   var existing = _fbChats.find(function(c) {
     return c.participants && c.participants.indexOf(sellerUid) >= 0
-      && (!listingId || c.listingId === listingId);
+      && c.participants.indexOf(currentUser.uid) >= 0;
   });
 
   if (existing) {
+    // Якщо відкривають з іншого оголошення — оновити listingId і показати картку
+    if (listingId && existing.listingId !== listingId) {
+      existing.listingId = listingId;
+      existing.listingTitle = listingTitle || '';
+      if (window._db) {
+        window._db.collection('chats').doc(existing.id).update({
+          listingId: listingId,
+          listingTitle: listingTitle || ''
+        }).catch(function(){});
+      }
+    }
     showPage('messages');
     setTimeout(function(){ openChatById(existing.id); }, 200);
     return;
@@ -4546,14 +4610,13 @@ function _startChat(sellerUid, listingId, listingTitle) {
     lastMessage: '',
     lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    // Імена для відображення
     [currentUser.uid + '_name']: currentUser.name || currentUser.email || '',
     [sellerUid + '_name']: ''
   };
 
   window._db.collection('chats').add(chatData).then(function(ref) {
     var newChat = Object.assign({ id: ref.id }, chatData);
-    newChat.otherName = ''; // завантажимо пізніше
+    newChat.otherName = '';
     _fbChats.unshift(newChat);
     showPage('messages');
     setTimeout(function(){ openChatById(ref.id); }, 200);
@@ -4561,10 +4624,11 @@ function _startChat(sellerUid, listingId, listingTitle) {
     window._db.collection('users').doc(sellerUid).get().then(function(snap) {
       if (snap.exists) {
         var sellerName = snap.data().name || '';
-        window._db.collection('chats').doc(ref.id).update({ otherName: sellerName });
+        var upd = { otherName: sellerName };
+        upd[sellerUid + '_name'] = sellerName;
+        window._db.collection('chats').doc(ref.id).update(upd);
         var chat = _fbChats.find(function(c){ return c.id === ref.id; });
-        if (chat) chat.otherName = sellerName;
-        renderChats();
+        if (chat) { chat.otherName = sellerName; renderChats(); }
       }
     });
   }).catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
