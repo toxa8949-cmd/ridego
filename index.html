@@ -158,6 +158,8 @@
           }
           if (typeof _subscribeChats === 'function') _subscribeChats(); else loadUserChats();
           if (typeof loadUserSlots === 'function') loadUserSlots();
+          // Запросити дозвіл на push-повідомлення
+          if (typeof _requestNotifPermission === 'function') setTimeout(_requestNotifPermission, 2000);
           // Завантажити сервіси юзера
           _loadUserServices(_cu.uid);
           // Завантажуємо оголошення юзера
