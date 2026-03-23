@@ -1434,6 +1434,23 @@
         <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:20px" id="slots-panel">
           <div style="font-size:13px;color:var(--text-muted)">Завантаження балансу...</div>
         </div>
+
+        <!-- Панель статистики переглядів -->
+        <div id="views-stats-panel" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+              <i class="fa-solid fa-chart-line" style="color:var(--brand)"></i> Статистика переглядів
+            </div>
+            <div style="display:flex;gap:6px">
+              <button onclick="loadViewsStats('7')" id="vstab-7" class="vstab active" style="padding:5px 12px;border-radius:20px;border:1px solid var(--brand);background:var(--brand);color:#000;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">7 днів</button>
+              <button onclick="loadViewsStats('30')" id="vstab-30" class="vstab" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">30 днів</button>
+            </div>
+          </div>
+          <div id="views-stats-content">
+            <div style="text-align:center;padding:20px;color:var(--text-muted)">Завантаження...</div>
+          </div>
+        </div>
+
         <div id="my-listings-grid" class="listing-grid"></div>
         <div id="my-listings-empty" class="empty-state" style="display:none">
           <i class="fa-solid fa-box-open"></i>
