@@ -1045,6 +1045,10 @@ function loadFirebaseData(force) {
 
       renderHomeListings();
       renderCatalog();
+      // Перевірити зниження цін в обраних
+      setTimeout(function() {
+        if (typeof _trackFavPrices === 'function') _trackFavPrices();
+      }, 1500);
       // Якщо поточний URL — /listing/ID, показати після завантаження
       var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
       if (_lstPath) showDetail(_lstPath[1], true);
@@ -2225,6 +2229,19 @@ function _renderSellerByUid(uid) {
           : '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
       }
 
+      // Бейдж "Надійний продавець" якщо вже є в профілі
+      if (d.trustedSeller) {
+        var metaEl = document.querySelector('.seller-meta');
+        if (metaEl && !document.getElementById('trusted-badge')) {
+          var tb = document.createElement('span');
+          tb.id = 'trusted-badge';
+          tb.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#f59e0b20,#f59e0b10);border:1px solid #f59e0b50;color:#f59e0b;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:help';
+          tb.title = '\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c \u0437 5+ \u0443\u0433\u043e\u0434\u0430\u043c\u0438 \u0456 \u0440\u0435\u0439\u0442\u0438\u043d\u0433\u043e\u043c 4.0+';
+          tb.innerHTML = '<i class="fa-solid fa-shield-halved"></i> \u041d\u0430\u0434\u0456\u0439\u043d\u0438\u0439 \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c';
+          metaEl.appendChild(tb);
+        }
+      }
+
       // Schema.org для продавця
       if (typeof _setSellerSchema === 'function') {
         _setSellerSchema(Object.assign({ uid: uid }, d), cached);
@@ -2285,6 +2302,8 @@ function _renderSellerByUid(uid) {
     // Підписка і статистика підписників
     if (typeof _initFollowBtn === 'function') _initFollowBtn(uid);
     if (typeof _renderFollowersCount === 'function') _renderFollowersCount(uid);
+    // Бейдж "Надійний продавець"
+    if (typeof _renderTrustedBadge === 'function') _renderTrustedBadge(uid, listings);
     var svcTab = document.getElementById('seller-tab-service');
     var sellerSvc = _fbServices.concat(myServices).filter(function(s){ return s.uid === uid; })[0];
     if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
@@ -2476,13 +2495,22 @@ function renderSellerReviews(s) {
     const initials = r.author.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const color = colors[i % colors.length];
     const stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
+    const reviewId = r.id || ('rev_' + i);
+    const safeText = _esc(r.text || '');
     return `<div class="review-card">
       <div style="display:flex;align-items:flex-start;gap:14px">
         <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
             <span style="font-weight:700;font-size:14px">${r.author}</span>
-            <span style="font-size:11px;color:var(--text-muted)">${r.date}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:var(--text-muted)">${r.date}</span>
+              <button onclick="reportReview('${reviewId}','${safeText.slice(0,100)}')" title="Поскаржитись на відгук"
+                style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;transition:color .15s"
+                onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">
+                <i class="fa-solid fa-flag"></i>
+              </button>
+            </div>
           </div>
           <div style="color:#ffa726;font-size:13px;margin-bottom:8px;letter-spacing:1px">${stars}</div>
           <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">${r.text}</p>
@@ -2529,6 +2557,9 @@ let galleryImgs = [];
 let galleryIdx = 0;
 
 function showDetail(id, _skipPush) {
+  // Додати до історії переглядів
+  if (id && typeof _addToHistory === 'function') _addToHistory(id);
+
   const l = _allListings().find(x => x && x.id === id);
   if (!l) {
     // Дані ще не завантажені — показати skeleton і завантажити напряму з Firestore
@@ -4526,15 +4557,188 @@ function loadSavedProfile() {
 }
 
 function switchPTab(tab, btn) {
-  ['my','favs','settings','myservice'].forEach(t => {
-    document.getElementById('ptab-'+t).style.display = t===tab ? '' : 'none';
+  ['my','favs','settings','myservice','history'].forEach(t => {
+    var el = document.getElementById('ptab-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
   });
   document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  if (tab === 'favs') renderFavs();
-  if (tab === 'settings') initSettingsOblast();
+  if (tab === 'favs')      renderFavs();
+  if (tab === 'settings')  initSettingsOblast();
   if (tab === 'myservice') renderMyServiceTab();
+  if (tab === 'history')   renderViewHistory();
 }
+
+// ── HISTORY OF VIEWED LISTINGS ────────────────────────────────
+var HISTORY_KEY = 'ridego_view_history';
+var HISTORY_MAX = 20;
+
+function _addToHistory(id) {
+  if (!id) return;
+  try {
+    var hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    hist = hist.filter(function(i){ return i !== id; }); // прибрати дублі
+    hist.unshift(id);
+    if (hist.length > HISTORY_MAX) hist = hist.slice(0, HISTORY_MAX);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+  } catch(e) {}
+}
+
+function renderViewHistory() {
+  var grid  = document.getElementById('history-grid');
+  var empty = document.getElementById('history-empty');
+  if (!grid) return;
+  try {
+    var hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    var listings = hist.map(function(id) {
+      return _allListings().find(function(l){ return l && l.id === id; });
+    }).filter(Boolean);
+    if (!listings.length) {
+      grid.innerHTML = ''; empty.style.display = '';
+    } else {
+      empty.style.display = 'none';
+      grid.innerHTML = listings.map(function(l){ return createCard(l,'profile'); }).join('');
+    }
+  } catch(e) { grid.innerHTML = ''; empty.style.display = ''; }
+}
+
+function clearViewHistory() {
+  try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
+  renderViewHistory();
+  showToast('\u2705 \u0406\u0441\u0442\u043e\u0440\u0456\u044e \u043e\u0447\u0438\u0449\u0435\u043d\u043e');
+}
+// ── HISTORY END ───────────────────────────────────────────────
+
+// ── PRICE DROP NOTIFICATIONS ─────────────────────────────────
+var PRICE_WATCH_KEY = 'ridego_price_watch';
+
+function _trackFavPrices() {
+  // Зберегти поточні ціни улюблених оголошень
+  if (!favorites.length) return;
+  try {
+    var priceMap = {};
+    favorites.forEach(function(id) {
+      var l = _allListings().find(function(x){ return x && x.id === id; });
+      if (l && l.price) priceMap[id] = l.price;
+    });
+    var existing = JSON.parse(localStorage.getItem(PRICE_WATCH_KEY) || '{}');
+    // Перевірити зниження цін
+    Object.keys(priceMap).forEach(function(id) {
+      var oldPrice = existing[id];
+      var newPrice = priceMap[id];
+      if (oldPrice && newPrice < oldPrice) {
+        var l = _allListings().find(function(x){ return x && x.id === id; });
+        var diff = oldPrice - newPrice;
+        var pct  = Math.round(diff / oldPrice * 100);
+        _showPriceDropToast(l, diff, pct);
+      }
+    });
+    // Оновити збережені ціни
+    Object.assign(existing, priceMap);
+    localStorage.setItem(PRICE_WATCH_KEY, JSON.stringify(existing));
+  } catch(e) {}
+}
+
+function _showPriceDropToast(l, diff, pct) {
+  if (!l) return;
+
+  // Браузерний push якщо вкладка не активна
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
+    try {
+      var n = new Notification('\uD83D\uDCB8 \u0426\u0456\u043d\u0430 \u0437\u043d\u0438\u0437\u0438\u043b\u0430\u0441\u044c \u043d\u0430 ' + pct + '%! \u2014 RideGO', {
+        body: l.title + '\n-' + diff.toLocaleString('uk') + ' \u0433\u0440\u043d',
+        icon: '/favicon.svg',
+        tag: 'price-drop-' + l.id
+      });
+      n.onclick = function() { window.focus(); showDetail(l.id); n.close(); };
+    } catch(e) {}
+  }
+
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:80px;left:20px;z-index:9999;background:var(--card-bg);'
+    + 'border:1px solid #16a34a;border-radius:16px;padding:14px 18px;max-width:300px;'
+    + 'box-shadow:0 8px 32px rgba(22,163,74,.25);display:flex;align-items:center;gap:12px;'
+    + 'cursor:pointer;animation:_slideInL .3s ease;transition:opacity .3s';
+  toast.onclick = function() { showDetail(l.id); toast.style.opacity='0'; setTimeout(function(){ toast.remove(); },300); };
+  toast.innerHTML = '<div style="font-size:28px">\uD83D\uDCB8</div>'
+    + '<div><div style="font-weight:700;font-size:13px;margin-bottom:2px">\u0426\u0456\u043d\u0430 \u0437\u043d\u0438\u0437\u0438\u043b\u0430\u0441\u044c \u043d\u0430 ' + pct + '%!</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">' + _esc(l.title) + '</div>'
+    + '<div style="font-size:12px;color:#16a34a;font-weight:700">-' + diff.toLocaleString('uk') + ' \u0433\u0440\u043d</div></div>';
+  document.body.appendChild(toast);
+  var style = document.createElement('style');
+  style.textContent = '@keyframes _slideInL{from{transform:translateX(-110%);opacity:0}to{transform:translateX(0);opacity:1}}';
+  document.head.appendChild(style);
+  setTimeout(function() { toast.style.opacity='0'; setTimeout(function(){ toast.remove(); },300); }, 6000);
+}
+// ── PRICE DROP END ────────────────────────────────────────────
+
+// ── GEOLOCATION FILTER ────────────────────────────────────────
+var _userCoords = null;
+
+function filterByLocation() {
+  if (!navigator.geolocation) {
+    showToast('\u26a0\ufe0f \u0413\u0435\u043e\u043b\u043e\u043a\u0430\u0446\u0456\u044f \u043d\u0435 \u043f\u0456\u0434\u0442\u0440\u0438\u043c\u0443\u0454\u0442\u044c\u0441\u044f \u0432\u0430\u0448\u0438\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043e\u043c');
+    return;
+  }
+  var btn = document.getElementById('geo-filter-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> \u0412\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u044f...'; }
+
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    _userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> \u041f\u043e\u0440\u044f\u0434 \u0437\u0456 \u043c\u043d\u043e\u044e'; btn.style.background = 'var(--brand)'; btn.style.color = '#000'; }
+
+    // Зворотня геокодизація через Nominatim — знайти місто
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + _userCoords.lat + '&lon=' + _userCoords.lng + '&accept-language=uk')
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        var city = data.address && (data.address.city || data.address.town || data.address.village || data.address.hamlet);
+        if (city) {
+          showToast('\uD83D\uDCCD \u0412\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043e: ' + city);
+          // Показати оголошення відсортовані по відстані
+          _renderNearbyListings(city);
+        } else {
+          _renderNearbyListingsCoords();
+        }
+      }).catch(function() { _renderNearbyListingsCoords(); });
+  }, function(err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> \u041f\u043e\u0440\u044f\u0434 \u0437\u0456 \u043c\u043d\u043e\u044e'; }
+    var msg = err.code === 1 ? '\u0414\u043e\u0437\u0432\u0456\u043b \u043d\u0430 \u0433\u0435\u043e\u043b\u043e\u043a\u0430\u0446\u0456\u044e \u0437\u0430\u0431\u043e\u0440\u043e\u043d\u0435\u043d\u043e' : '\u041d\u0435 \u0432\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u0438\u0437\u043d\u0430\u0447\u0438\u0442\u0438 \u043c\u0456\u0441\u0446\u0435\u0437\u043d\u0430\u0445\u043e\u0434\u0436\u0435\u043d\u043d\u044f';
+    showToast('\u26a0\ufe0f ' + msg);
+  }, { timeout: 8000, maximumAge: 300000 });
+}
+
+function _renderNearbyListings(city) {
+  // Фільтрувати оголошення по місту
+  var nearby = _allListings().filter(function(l) {
+    return l && l.status !== 'deleted' && l.status !== 'sold' && l.city &&
+      l.city.toLowerCase().includes(city.toLowerCase().slice(0, 4));
+  });
+  if (!nearby.length) {
+    showToast('\u041e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u044c \u0443 ' + city + ' \u043d\u0435 \u0437\u043d\u0430\u0439\u0434\u0435\u043d\u043e \u2014 \u043f\u043e\u043a\u0430\u0437\u0443\u044e \u0432\u0441\u0456');
+    return;
+  }
+  showPage('catalog');
+  var grid = document.getElementById('catalog-listings');
+  var wrap = document.getElementById('catalog-results-wrap');
+  var numEl = document.getElementById('results-num');
+  var lblEl = document.getElementById('results-cat-label');
+  if (wrap) wrap.style.display = '';
+  if (numEl) numEl.textContent = nearby.length;
+  if (lblEl) lblEl.innerHTML = '\uD83D\uDCCD \u041f\u043e\u0440\u044f\u0434 \u0437 \u0432\u0430\u043c\u0438: <b>' + city + '</b>';
+  if (grid) grid.innerHTML = nearby.map(function(l){ return createCard(l,'catalog'); }).join('');
+  // Сховати TOP секцію
+  var topSec = document.getElementById('catalog-top-section');
+  if (topSec) topSec.style.display = 'none';
+  var allLbl = document.getElementById('catalog-all-label');
+  if (allLbl) allLbl.style.display = 'none';
+  showToast('\uD83D\uDCCD \u0417\u043d\u0430\u0439\u0434\u0435\u043d\u043e ' + nearby.length + ' \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u044c \u0443 ' + city);
+}
+
+function _renderNearbyListingsCoords() {
+  // Якщо не вдалось визначити місто — просто повідомити
+  showToast('\uD83D\uDCCD \u041c\u0456\u0441\u0446\u0435\u0437\u043d\u0430\u0445\u043e\u0434\u0436\u0435\u043d\u043d\u044f \u0432\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043e, \u0430\u043b\u0435 \u043c\u0456\u0441\u0442\u043e \u043d\u0435 \u0440\u043e\u0437\u043f\u0456\u0437\u043d\u0430\u043d\u043e');
+}
+// ── GEOLOCATION END ───────────────────────────────────────────
 
 // [renderMyListings defined in promo block below]
 function renderFavs() {
@@ -8156,4 +8360,171 @@ function _setHomeBreadcrumbSchema() {
   document.head.appendChild(script);
 }
 // ── SCHEMA.ORG END ────────────────────────────────────────────
+
+
+// ── QR CODE FOR LISTING ───────────────────────────────────────
+function showListingQR() {
+  var id = currentDetailId;
+  if (!id) return;
+  var l = _allListings().find(function(x){ return x && x.id === id; });
+  var url = 'https://ridego-sigma.vercel.app/listing/' + id;
+  var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&format=png&color=000000&bgcolor=ffffff&data=' + encodeURIComponent(url);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'qr-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML = '<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;width:100%;text-align:center;color:#111">'
+    + '<div style="font-size:18px;font-weight:800;margin-bottom:4px;color:#111">QR-код оголошення</div>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (l ? l.title : '') + '</div>'
+    + '<div style="background:#f5f5f5;border-radius:12px;padding:16px;margin-bottom:16px;display:flex;justify-content:center">'
+    + '<img src="' + qrUrl + '" width="200" height="200" alt="QR код" style="border-radius:8px">'
+    + '</div>'
+    + '<div style="font-size:11px;color:#888;margin-bottom:20px;word-break:break-all">' + url + '</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button onclick="_closeQR()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">\u0417\u0430\u043a\u0440\u0438\u0442\u0438</button>'
+    + '<button onclick="_downloadQR(\'' + qrUrl + '\',\'' + id + '\')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#00c853;color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"><i class="fa-solid fa-download" style="margin-right:6px"></i>\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0438\u0442\u0438</button>'
+    + '<button onclick="_printQR(\'' + qrUrl + '\')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#333;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"><i class="fa-solid fa-print" style="margin-right:6px"></i>\u0414\u0440\u0443\u043a\u0443\u0432\u0430\u0442\u0438</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+}
+
+function _closeQR() {
+  var o = document.getElementById('qr-overlay');
+  if (o) o.remove();
+}
+
+function _downloadQR(qrUrl, id) {
+  var a = document.createElement('a');
+  a.href = qrUrl;
+  a.download = 'ridego-qr-' + id + '.png';
+  a.target = '_blank';
+  a.click();
+}
+
+function _printQR(qrUrl) {
+  var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
+  var win = window.open('', '_blank', 'width=400,height=500');
+  win.document.write('<!DOCTYPE html><html><head><title>QR \u043a\u043e\u0434 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f</title>'
+    + '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#111}'
+    + 'h2{font-size:18px;margin-bottom:8px}.price{font-size:24px;font-weight:800;color:#00c853;margin-bottom:20px}'
+    + '.url{font-size:10px;color:#888;margin-top:16px;word-break:break-all}'
+    + '.brand{font-size:13px;color:#666;margin-bottom:6px}'
+    + '</style></head><body>'
+    + '<div class="brand">RideGO \u2014 \u041c\u0430\u0440\u043a\u0435\u0442\u043f\u043b\u0435\u0439\u0441 \u0435\u043b\u0435\u043a\u0442\u0440\u043e\u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u0443</div>'
+    + '<h2>' + (l ? l.title : '') + '</h2>'
+    + '<div class="price">' + (l ? l.price.toLocaleString('uk') + ' \u0433\u0440\u043d' : '') + '</div>'
+    + '<img src="' + qrUrl + '" width="220" height="220"><br>'
+    + '<div style="font-size:13px;color:#444;margin-top:12px">\u0432\u0456\u0434\u0441\u043a\u0430\u043d\u0443\u0439\u0442\u0435 QR-\u043a\u043e\u0434, \u0449\u043e\u0431 \u043f\u0435\u0440\u0435\u0439\u0442\u0438 \u0434\u043e \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f</div>'
+    + '<div class="url">ridego-sigma.vercel.app/listing/' + currentDetailId + '</div>'
+    + '</body></html>');
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 500);
+}
+// ── QR CODE END ───────────────────────────────────────────────
+
+// ── REPORT REVIEW ─────────────────────────────────────────────
+function reportReview(reviewId, reviewText) {
+  if (!isLoggedIn) { showToast('\u26a0\ufe0f \u0423\u0432\u0456\u0439\u0434\u0456\u0442\u044c \u0449\u043e\u0431 \u043f\u043e\u0441\u043a\u0430\u0440\u0436\u0438\u0442\u0438\u0441\u044c'); return; }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'report-review-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  var reasons = [
+    '\u0424\u0430\u043b\u044c\u0448\u0438\u0432\u0438\u0439 \u0432\u0456\u0434\u0433\u0443\u043a',
+    '\u041e\u0444\u0435\u043d\u0437\u0438\u0432\u043d\u0438\u0439 \u043a\u043e\u043d\u0442\u0435\u043d\u0442',
+    '\u0421\u043f\u0430\u043c / \u0440\u0435\u043a\u043b\u0430\u043c\u0430',
+    '\u041d\u0435 \u0441\u0442\u043e\u0441\u0443\u0454\u0442\u044c\u0441\u044f \u0446\u044c\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u0430\u0432\u0446\u044f',
+    '\u0406\u043d\u0448\u0430 \u043f\u0440\u0438\u0447\u0438\u043d\u0430'
+  ];
+
+  overlay.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:380px;width:100%">'
+    + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">\uD83D\uDEA9 \u0421\u043a\u0430\u0440\u0433\u0430 \u043d\u0430 \u0432\u0456\u0434\u0433\u0443\u043a</div>'
+    + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">\u0412\u0456\u0434\u0433\u0443\u043a:</div>'
+    + '<div style="font-size:13px;background:var(--dark3);border-radius:10px;padding:10px 14px;margin-bottom:16px;color:var(--text-muted);font-style:italic">&laquo;' + (reviewText || '').slice(0, 80) + (reviewText && reviewText.length > 80 ? '...' : '') + '&raquo;</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
+    + reasons.map(function(r) {
+        return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">'
+          + '<input type="radio" name="rev-report-reason" value="' + r + '" style="accent-color:var(--brand)"> ' + r + '</label>';
+      }).join('')
+    + '</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button class="btn-outline" style="flex:1;padding:11px" onclick="document.getElementById(\'report-review-overlay\').remove()">\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button>'
+    + '<button class="btn-primary" style="flex:1;padding:11px;background:#ef4444;border-color:#ef4444" onclick="_submitReviewReport(\'' + reviewId + '\')">'
+    + '<i class="fa-solid fa-flag" style="margin-right:6px"></i>\u041d\u0430\u0434\u0456\u0441\u043b\u0430\u0442\u0438</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+}
+
+function _submitReviewReport(reviewId) {
+  var reason = document.querySelector('input[name="rev-report-reason"]:checked');
+  if (!reason) { showToast('\u26a0\ufe0f \u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043f\u0440\u0438\u0447\u0438\u043d\u0443'); return; }
+  var overlay = document.getElementById('report-review-overlay');
+  if (overlay) overlay.remove();
+
+  if (!window._db || !currentUser) return;
+  window._db.collection('reports').add({
+    type: 'review',
+    reviewId: reviewId,
+    reason: reason.value,
+    reporterUid: currentUser.uid,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    showToast('\u2705 \u0421\u043a\u0430\u0440\u0433\u0443 \u043d\u0430\u0434\u0456\u0441\u043b\u0430\u043d\u043e. \u041c\u0438 \u0440\u043e\u0437\u0433\u043b\u044f\u043d\u0435\u043c\u043e \u043f\u0440\u043e\u0442\u044f\u0433\u043e\u043c 24 \u0433\u043e\u0434\u0438\u043d');
+  }).catch(function(e) {
+    showToast('\u26a0\ufe0f ' + e.message);
+  });
+}
+// ── REPORT REVIEW END ─────────────────────────────────────────
+
+// ── TRUSTED SELLER BADGE ──────────────────────────────────────
+function _calcTrustedSeller(uid, listings, reviews) {
+  // Критерії "Надійний продавець":
+  // 1. 5+ продажів (status === 'sold')
+  // 2. Рейтинг 4.0+
+  // 3. Мінімум 3 відгуки
+  var soldCount = listings.filter(function(l) {
+    return l && l.uid === uid && l.status === 'sold';
+  }).length;
+  var revCount = reviews.length;
+  var avgRating = revCount > 0
+    ? reviews.reduce(function(s, r){ return s + (r.rating || 0); }, 0) / revCount
+    : 0;
+
+  return soldCount >= 5 && revCount >= 3 && avgRating >= 4.0;
+}
+
+function _renderTrustedBadge(uid, listings) {
+  if (!window._db) return;
+  // Завантажити відгуки продавця
+  window._db.collection('reviews').where('sellerUid', '==', uid).get()
+    .then(function(snap) {
+      var reviews = snap.docs.map(function(d){ return d.data(); });
+      var isTrusted = _calcTrustedSeller(uid, listings, reviews);
+      if (!isTrusted) return;
+      // Показати бейдж
+      var metaEl = document.querySelector('.seller-meta');
+      if (!metaEl) return;
+      var existing = document.getElementById('trusted-badge');
+      if (existing) return;
+      var badge = document.createElement('span');
+      badge.id = 'trusted-badge';
+      badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#f59e0b20,#f59e0b10);'
+        + 'border:1px solid #f59e0b50;color:#f59e0b;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:help';
+      badge.title = '\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c \u0437 5+ \u0443\u0433\u043e\u0434\u0430\u043c\u0438 \u0456 \u0440\u0435\u0439\u0442\u0438\u043d\u0433\u043e\u043c 4.0+';
+      badge.innerHTML = '<i class="fa-solid fa-shield-halved"></i> \u041d\u0430\u0434\u0456\u0439\u043d\u0438\u0439 \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c';
+      metaEl.appendChild(badge);
+
+      // Також зберегти в Firestore якщо ще не збережено
+      if (window._db && uid) {
+        window._db.collection('users').doc(uid).update({ trustedSeller: true }).catch(function(){});
+      }
+    }).catch(function(){});
+}
+// ── TRUSTED SELLER END ────────────────────────────────────────
 
