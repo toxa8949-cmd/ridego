@@ -543,6 +543,9 @@
             <div class="sort-pill active" data-sort="new" onclick="setSort('new',this)">Нові</div>
             <div class="sort-pill" data-sort="cheap" onclick="setSort('cheap',this)">Дешевші</div>
             <div class="sort-pill" data-sort="expensive" onclick="setSort('expensive',this)">Дорожчі</div>
+            <div class="sort-pill" id="geo-filter-btn" onclick="filterByLocation()" title="Поряд зі мною" style="display:flex;align-items:center;gap:5px">
+              <i class="fa-solid fa-location-crosshairs"></i> Поряд
+            </div>
           </div>
           <div class="layout-toggle">
             <button class="lt-btn active" id="lt-grid" onclick="setLayout('grid')" title="Сітка"><i class="fa-solid fa-grip"></i></button>
@@ -680,6 +683,7 @@
           <button class="btn-msg" onclick="toggleFavDetail()" id="fav-detail-btn"><i class="fa-regular fa-heart" style="margin-right:8px"></i>В обране</button>
           <div style="display:flex;gap:8px;margin-top:4px">
             <button class="btn-msg" style="flex:1;font-size:13px;padding:10px 8px" onclick="shareListing()"><i class="fa-solid fa-share-nodes"></i> Поділитись</button>
+            <button class="btn-msg" style="flex:1;font-size:13px;padding:10px 8px" onclick="showListingQR()"><i class="fa-solid fa-qrcode"></i> QR-код</button>
             <button class="btn-msg" style="flex:1;font-size:13px;padding:10px 8px" onclick="reportListing(currentDetailId)"><i class="fa-solid fa-flag"></i> Поскаржитись</button>
           </div>
         </div>
@@ -1442,6 +1446,9 @@
         <button class="ptab" onclick="switchPTab('favs',this)">
           <i class="fa-solid fa-heart" style="margin-right:6px;font-size:12px"></i>Обране
         </button>
+        <button class="ptab" onclick="switchPTab('history',this)">
+          <i class="fa-solid fa-clock-rotate-left" style="margin-right:6px;font-size:12px"></i>Історія
+        </button>
         <button class="ptab" onclick="switchPTab('settings',this)">
           <i class="fa-solid fa-sliders" style="margin-right:6px;font-size:12px"></i>Налаштування
         </button>
@@ -1492,6 +1499,24 @@
           <i class="fa-regular fa-heart"></i>
           <h3>Обраних немає</h3>
           <p>Натискайте ♥ на оголошеннях щоб зберегти</p>
+        </div>
+      </div>
+
+      <!-- TAB: History -->
+      <div id="ptab-history" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+            <i class="fa-solid fa-clock-rotate-left" style="color:var(--brand)"></i> Переглянуті оголошення
+          </div>
+          <button onclick="clearViewHistory()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:8px;transition:all .2s" onmouseover="this.style.color='#ff5252'" onmouseout="this.style.color='var(--text-muted)'">
+            <i class="fa-solid fa-trash" style="margin-right:4px"></i>Очистити
+          </button>
+        </div>
+        <div id="history-grid" class="listing-grid"></div>
+        <div id="history-empty" class="empty-state" style="display:none">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <h3>Історія порожня</h3>
+          <p>Переглянуті оголошення з'являться тут</p>
         </div>
       </div>
 
