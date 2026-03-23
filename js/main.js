@@ -997,19 +997,89 @@ function loadFirebaseData(force) {
 // Завантажити чати для поточного юзера
 
 function _updateChatBadge() {
-  var unread = _fbChats.filter(function(c){ return c.unread && c.unread > 0; }).length;
-  // Оновити всі badge-елементи (десктоп хедер + мобільна навігація)
+  var unread = _fbChats.reduce(function(s, c){ return s + (c.unread || 0); }, 0);
   ['header-msg-badge', 'mobile-msg-badge'].forEach(function(id) {
     var badge = document.getElementById(id);
     if (!badge) return;
     if (unread > 0) {
-      badge.textContent = unread;
+      badge.textContent = unread > 99 ? '99+' : unread;
       badge.style.display = '';
     } else {
       badge.style.display = 'none';
     }
   });
+  if (unread > 0) {
+    if (!document.title.match(/^\(\d/)) document.title = "(" + unread + ") " + document.title;
+  } else {
+    document.title = document.title.replace(/^\(\d+\)\s*/, '');
+  }
 }
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────
+function _requestNotifPermission() {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().catch(function(){});
+  }
+}
+
+function _showMsgPush(senderName, text, chatId) {
+  // Браузерний push якщо вкладка не активна
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
+    try {
+      var n = new Notification('💬 ' + senderName + ' — RideGO', {
+        body: text, icon: '/favicon.ico',
+        tag: 'ridego-msg-' + chatId, renotify: true
+      });
+      n.onclick = function() {
+        window.focus();
+        if (typeof showPage === 'function') showPage('messages');
+        if (typeof openChatById === 'function') setTimeout(function(){ openChatById(chatId); }, 200);
+        n.close();
+      };
+    } catch(e) {}
+  }
+  // In-app toast (якщо не відкритий цей чат)
+  if (_activeChatId === chatId) return;
+  var toast = document.getElementById('msg-push-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'msg-push-toast';
+    toast.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:9999;background:var(--card-bg);'
+      + 'border:1px solid var(--brand);border-radius:16px;padding:14px 18px;max-width:300px;'
+      + 'box-shadow:0 8px 32px rgba(0,200,83,.25);display:flex;align-items:center;gap:12px;'
+      + 'cursor:pointer;transition:opacity .3s;';
+    var _pushStyle = document.createElement('style');
+    _pushStyle.textContent = '@keyframes _slideInR{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}';
+    document.head.appendChild(_pushStyle);
+    toast.style.animation = '_slideInR .3s ease';
+    document.body.appendChild(toast);
+  }
+  toast.onclick = function() {
+    if (typeof showPage === 'function') showPage('messages');
+    if (typeof openChatById === 'function') setTimeout(function(){ openChatById(chatId); }, 200);
+    toast.style.opacity = '0';
+    setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  };
+  var initial = (senderName[0] || '?').toUpperCase();
+  var safeName = typeof _esc === 'function' ? _esc(senderName) : senderName;
+  var safeText = typeof _esc === 'function' ? _esc(text) : text;
+  toast.innerHTML = '<div style="width:40px;height:40px;border-radius:50%;background:var(--brand-dim);'
+    + 'border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;'
+    + 'font-weight:800;color:var(--brand);font-size:15px;flex-shrink:0">' + initial + '</div>'
+    + '<div style="min-width:0;flex:1"><div style="font-weight:700;font-size:14px">' + safeName + '</div>'
+    + '<div style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + safeText + '</div></div>'
+    + '<span onclick="event.stopPropagation();var t=document.getElementById(\'msg-push-toast\');if(t)t.style.opacity=\'0\';" '
+    + 'style="color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0;padding:4px">&times;</span>';
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(function() {
+    toast.style.opacity = '0';
+    setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  }, 5000);
+}
+// ── PUSH END ──────────────────────────────────────────────────
+
 
 function loadUserChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
@@ -4442,6 +4512,15 @@ function openChatById(chatId) {
     layout.classList.add('chat-open');
   }
 
+  // Скинути лічильник непрочитаних для поточного юзера
+  if (window._db && currentUser && currentUser.uid) {
+    var resetUpd = {};
+    resetUpd['unread_' + currentUser.uid] = 0;
+    window._db.collection('chats').doc(chatId).update(resetUpd).catch(function(){});
+    if (c) { c['unread_' + currentUser.uid] = 0; c.unread = 0; }
+    _updateChatBadge();
+  }
+
   var area = document.getElementById('messages-area');
   if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Завантаження...</div>';
 
@@ -4527,12 +4606,16 @@ function sendMessage() {
     createdAt: Date.now()
   };
 
-  // Одразу оновити локальний кеш — список чатів покаже свіжий preview без затримки
+  // Знайти отримувача
   var localChat = _fbChats.find(function(c){ return c.id === _activeChatId; });
+  var receiverUid = localChat && localChat.participants
+    ? localChat.participants.find(function(p){ return p !== currentUser.uid; })
+    : null;
+
+  // Одразу оновити локальний кеш
   if (localChat) {
     localChat.lastMessage   = text;
     localChat.lastMessageAt = { seconds: Math.floor(Date.now() / 1000) };
-    // Підняти чат на верх списку
     _fbChats = [localChat].concat(_fbChats.filter(function(c){ return c.id !== _activeChatId; }));
     renderChats();
   }
@@ -4546,8 +4629,17 @@ function sendMessage() {
     });
   }
 
-  // Оновити Firestore для списку чатів і для onSnapshot listener
-  if (window._db) {
+  // Оновити Firestore — lastMessage + unread лічильник для отримувача
+  if (window._db && receiverUid) {
+    var upd = {
+      lastMessage: text,
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastSenderUid: currentUser.uid
+    };
+    // Інкрементувати unread_{receiverUid} — окреме поле для кожного учасника
+    upd['unread_' + receiverUid] = firebase.firestore.FieldValue.increment(1);
+    window._db.collection('chats').doc(_activeChatId).update(upd).catch(function(){});
+  } else if (window._db) {
     window._db.collection('chats').doc(_activeChatId).update({
       lastMessage: text,
       lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()

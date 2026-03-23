@@ -3,11 +3,49 @@ document.addEventListener('DOMContentLoaded', function() {
   var searchEl = document.getElementById('headerSearch');
   if (searchEl) {
     searchEl.value = '';
-    // Додаткова перестраховка — очистити після того як браузер може вставити значення
     setTimeout(function() { if (searchEl.value && !searchEl.dataset.userTyped) searchEl.value = ''; }, 100);
     setTimeout(function() { if (searchEl.value && !searchEl.dataset.userTyped) searchEl.value = ''; }, 500);
     searchEl.addEventListener('input', function() { searchEl.dataset.userTyped = '1'; });
   }
+
+  // ── УНІКАЛЬНІ ВІДВІДУВАЧІ ────────────────────────────────
+  // Трекаємо унікальних по sessionId + дні — одна людина = 1 раз на добу
+  (function _trackUniqueVisitor() {
+    try {
+      var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      var storageKey = 'ridego_visited_' + today;
+      var alreadyCounted = localStorage.getItem(storageKey);
+      if (alreadyCounted) return; // вже рахували сьогодні
+
+      // Генеруємо стабільний анонімний ID для цього браузера
+      var browserId = localStorage.getItem('ridego_bid');
+      if (!browserId) {
+        browserId = 'b' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('ridego_bid', browserId);
+      }
+
+      // Чекаємо поки _db стане доступним (Firebase ініціалізується асинхронно)
+      var _waitForDb = setInterval(function() {
+        if (!window._db) return;
+        clearInterval(_waitForDb);
+
+        var docId = 'visitors_' + today;
+        // Використовуємо Set-like підхід — зберігаємо унікальні browser IDs
+        window._db.collection('analytics').doc(docId).set({
+          count: firebase.firestore.FieldValue.increment(1),
+          date: today,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).then(function() {
+          // Записати що сьогодні вже порахували
+          localStorage.setItem(storageKey, '1');
+        }).catch(function(){});
+      }, 500);
+
+      // Таймаут — не чекати більше 10 секунд
+      setTimeout(function(){ clearInterval(_waitForDb); }, 10000);
+    } catch(e) {}
+  })();
+  // ── ТРЕКЕР КІНЕЦЬ ────────────────────────────────────────
 
   // Показати skeleton заглушки поки грузяться дані
   if (typeof showSkeletons === 'function') showSkeletons();
@@ -456,6 +494,8 @@ function _subscribeChats() {
   // Відписатись від попереднього listener якщо є
   if (_chatsUnsubscribe) { _chatsUnsubscribe(); _chatsUnsubscribe = null; }
 
+  var _prevUnreadTotal = 0;
+
   _chatsUnsubscribe = window._db.collection('chats')
     .where('participants', 'array-contains', currentUser.uid)
     .limit(20)
@@ -466,19 +506,32 @@ function _subscribeChats() {
           ? data.participants.find(function(p) { return p !== currentUser.uid; })
           : null;
         if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
+        // unread для поточного юзера
+        data.unread = data['unread_' + currentUser.uid] || 0;
         return data;
       });
-      // Сортуємо на клієнті — новіші першими
       _fbChats.sort(function(a, b) {
         var ta = a.lastMessageAt && a.lastMessageAt.seconds ? a.lastMessageAt.seconds : 0;
         var tb = b.lastMessageAt && b.lastMessageAt.seconds ? b.lastMessageAt.seconds : 0;
         return tb - ta;
       });
+
+      // Push notification при нових непрочитаних
+      var totalUnread = _fbChats.reduce(function(s, c) { return s + (c.unread || 0); }, 0);
+      if (totalUnread > _prevUnreadTotal && _prevUnreadTotal >= 0) {
+        var newChat = _fbChats.find(function(c) {
+          return (c.unread || 0) > 0 && c.lastSenderUid !== currentUser.uid;
+        });
+        if (newChat && typeof _showMsgPush === 'function') {
+          _showMsgPush(newChat.otherName || 'Новий контакт', newChat.lastMessage || '...', newChat.id);
+        }
+      }
+      _prevUnreadTotal = totalUnread;
+
       renderChats();
       if (typeof _updateChatBadge === 'function') _updateChatBadge();
     }, function(e) {
       console.log('chats listener:', e.message);
-      // Fallback — одноразовий запит
       loadUserChats();
     });
 }
