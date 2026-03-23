@@ -33,15 +33,16 @@ var _userSlots = {
 
 // Загальна кількість доступних слотів
 function _totalSlots() {
-  var welcome = _userSlots.slotsWelcome || 0;
-  // Перевірити чи не протерміновані стартові
+  var welcome = Math.max(0, _userSlots.slotsWelcome || 0);
+  var bought  = Math.max(0, _userSlots.slots || 0);
   if (welcome > 0 && _userSlots.slotsWelcomeExpiry) {
-    var expiry = _userSlots.slotsWelcomeExpiry.seconds
-      ? new Date(_userSlots.slotsWelcomeExpiry.seconds * 1000)
-      : new Date(_userSlots.slotsWelcomeExpiry);
-    if (new Date() > expiry) welcome = 0;
+    var exp = _userSlots.slotsWelcomeExpiry;
+    var expDate = exp && exp.seconds ? new Date(exp.seconds * 1000)
+                : exp && exp.toDate  ? exp.toDate()
+                : new Date(exp);
+    if (!isNaN(expDate.getTime()) && new Date() > expDate) welcome = 0;
   }
-  return (_userSlots.slots || 0) + welcome;
+  return bought + welcome;
 }
 
 // Завантажити слоти з Firestore і нарахувати щомісячний якщо треба
@@ -50,15 +51,22 @@ function loadUserSlots() {
   window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
     if (!snap.exists) return;
     var d = snap.data();
-    _userSlots.slots             = d.slots || 0;
-    _userSlots.slotsWelcome      = d.slotsWelcome || 0;
+    // Math.max(0, ...) — захист від від'ємних значень в Firestore
+    _userSlots.slots             = Math.max(0, d.slots || 0);
+    _userSlots.slotsWelcome      = Math.max(0, d.slotsWelcome || 0);
     _userSlots.slotsWelcomeExpiry= d.slotsWelcomeExpiry || null;
     _userSlots.lastFreeSlotAt    = d.lastFreeSlotAt || null;
     _userSlots.loaded            = true;
 
-    // Нарахувати щомісячний безкоштовний слот якщо минув місяць
+    // Якщо в Firestore від'ємне значення — виправити
+    var fixUpdate = {};
+    if ((d.slots || 0) < 0)        { fixUpdate.slots = 0; }
+    if ((d.slotsWelcome || 0) < 0) { fixUpdate.slotsWelcome = 0; }
+    if (Object.keys(fixUpdate).length > 0) {
+      window._db.collection('users').doc(currentUser.uid).update(fixUpdate).catch(function(){});
+    }
+
     _checkMonthlyFreeSlot();
-    // Оновити UI
     _renderSlotsUI();
   }).catch(function(e){ console.log('slots load:', e.message); });
 }
@@ -113,18 +121,40 @@ function _consumeSlot() {
   if (_totalSlots() <= 0) return Promise.resolve(false);
 
   var now = new Date();
-  var welcomeValid = (_userSlots.slotsWelcome || 0) > 0 &&
-    (_userSlots.slotsWelcomeExpiry
-      ? now < new Date(_userSlots.slotsWelcomeExpiry.seconds * 1000)
-      : true);
+  var welcomeCount = _userSlots.slotsWelcome || 0;
+  var welcomeValid = false;
+
+  if (welcomeCount > 0) {
+    if (!_userSlots.slotsWelcomeExpiry) {
+      // Немає дати — вважаємо дійсними
+      welcomeValid = true;
+    } else {
+      // Підтримка різних форматів Firestore Timestamp
+      var expiry = _userSlots.slotsWelcomeExpiry;
+      var expiryDate;
+      if (expiry && expiry.seconds) {
+        expiryDate = new Date(expiry.seconds * 1000);
+      } else if (expiry && expiry.toDate) {
+        expiryDate = expiry.toDate();
+      } else if (expiry instanceof Date) {
+        expiryDate = expiry;
+      } else {
+        expiryDate = new Date(expiry);
+      }
+      welcomeValid = !isNaN(expiryDate.getTime()) && now < expiryDate;
+    }
+  }
 
   var update = {};
-  if (welcomeValid) {
+  if (welcomeValid && welcomeCount > 0) {
     update.slotsWelcome = firebase.firestore.FieldValue.increment(-1);
-    _userSlots.slotsWelcome = Math.max(0, (_userSlots.slotsWelcome || 1) - 1);
-  } else {
+    _userSlots.slotsWelcome = Math.max(0, welcomeCount - 1);
+  } else if ((_userSlots.slots || 0) > 0) {
     update.slots = firebase.firestore.FieldValue.increment(-1);
-    _userSlots.slots = Math.max(0, (_userSlots.slots || 1) - 1);
+    _userSlots.slots = Math.max(0, (_userSlots.slots || 0) - 1);
+  } else {
+    // Немає слотів — не декрементувати
+    return Promise.resolve(false);
   }
   update.totalListingsPublished = firebase.firestore.FieldValue.increment(1);
 
@@ -165,9 +195,9 @@ function buySlotPackage(count, price) {
 
 // Рендер балансу слотів в UI
 function _renderSlotsUI() {
-  var total = _totalSlots();
-  var welcome = Math.min(_userSlots.slotsWelcome || 0, total);
-  var bought  = _userSlots.slots || 0;
+  var total   = Math.max(0, _totalSlots());
+  var welcome = Math.max(0, Math.min(_userSlots.slotsWelcome || 0, total));
+  var bought  = Math.max(0, _userSlots.slots || 0);
 
   // Бейдж в хедері профілю
   var el = document.getElementById('profile-slots-badge');
