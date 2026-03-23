@@ -1165,7 +1165,10 @@ function createHomeSvcCard(s) {
     : "";
   return "<div class=\"home-svc-card\" onclick=\"showServiceDetail('"+s.id+"')\">"
     +"<div class=\"home-svc-card-top\">"
-    +"<div class=\"home-svc-icon\">"+s.icon+"</div>"
+    +(s.photoUrl
+      ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
+      : "<div class=\"home-svc-icon\">"+s.icon+"</div>"
+    )
     +"<div style=\"flex:1;min-width:0\">"
     +"<div style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">"
     +"<div class=\"home-svc-name\">"+s.name+"</div>"+badge+"</div>"
@@ -5680,8 +5683,10 @@ function createServiceCard(s){
   var addr=s.address?" \u00b7 "+s.address:"";
   var rating=s.rating>0?s.rating+" \u00b7 "+s.reviews+" \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432":"\u041d\u043e\u0432\u0438\u0439";
   return "<div class=\"service-card\" onclick=\"showServiceDetail('"+s.id+"')\">"+
-    "<div class=\"service-card-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\">"+
-    "<div class=\"service-card-cover-icon\">"+s.icon+"</div>"+badge+"</div>"+
+    (s.photoUrl
+      ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
+      : "<div class=\"service-card-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><div class=\"service-card-cover-icon\">"+s.icon+"</div>"+badge+"</div>"
+    )+
     "<div class=\"service-card-body\">"+
     "<div class=\"service-card-cats\">"+cats+"</div>"+
     "<div class=\"service-card-name\">"+s.name+"</div>"+
