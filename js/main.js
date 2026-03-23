@@ -7241,6 +7241,13 @@ var _recaptchaVerifier  = null;
 function _initRecaptcha() {
   if (_recaptchaVerifier) return;
   if (!window._auth) return;
+  // Переконатись що контейнер існує в DOM
+  var container = document.getElementById('recaptcha-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'recaptcha-container';
+    document.body.appendChild(container);
+  }
   try {
     _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
       size: 'invisible',
