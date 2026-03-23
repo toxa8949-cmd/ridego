@@ -3007,3 +3007,23 @@
   .ptab { font-size: 10px !important; padding: 9px 4px !important; }
   .seller-tab { font-size: 10px !important; padding: 9px 6px !important; }
 }
+
+/* ── SOLD BADGE ──────────────────────────────────────────────── */
+.promo-badge-sold {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  background: #16a34a; color: #fff;
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .4px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 5px;
+  box-shadow: 0 2px 8px rgba(22,163,74,.4);
+}
+.listing-card.is-sold {
+  opacity: 0.75;
+}
+.listing-card.is-sold .listing-img-wrap::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.25);
+  border-radius: inherit;
+}
