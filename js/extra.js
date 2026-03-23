@@ -80,6 +80,45 @@ document.addEventListener('DOMContentLoaded', function() {
     searchEl.addEventListener('input', function() { searchEl.dataset.userTyped = '1'; });
   }
 
+  // ── LAZY IMAGE BLUR-UP ───────────────────────────────────
+  if ('IntersectionObserver' in window) {
+    var _lazyObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        var img = entry.target;
+        var src = img.dataset.src;
+        if (!src) return;
+        var hi = new Image();
+        hi.onload = function() {
+          img.src = src;
+          img.style.filter = 'none';
+          delete img.dataset.src;
+        };
+        hi.src = src;
+        _lazyObserver.unobserve(img);
+      });
+    }, { rootMargin: '200px' });
+
+    // Спостерігати за новими зображеннями через MutationObserver
+    var _domObserver = new MutationObserver(function() {
+      document.querySelectorAll('img.lazy-img[data-src]').forEach(function(img) {
+        _lazyObserver.observe(img);
+      });
+    });
+    _domObserver.observe(document.body, { childList: true, subtree: true });
+    // Перший прохід
+    document.querySelectorAll('img.lazy-img[data-src]').forEach(function(img) {
+      _lazyObserver.observe(img);
+    });
+  } else {
+    // Fallback — просто підставити src
+    document.querySelectorAll('img.lazy-img[data-src]').forEach(function(img) {
+      img.src = img.dataset.src;
+      img.style.filter = 'none';
+    });
+  }
+  // ── LAZY IMAGE END ───────────────────────────────────────
+
   // ── УНІКАЛЬНІ ВІДВІДУВАЧІ ────────────────────────────────
   // Трекаємо унікальних по sessionId + дні — одна людина = 1 раз на добу
   (function _trackUniqueVisitor() {

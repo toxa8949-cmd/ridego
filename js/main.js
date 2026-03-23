@@ -824,6 +824,8 @@ function _cdnImg(url, opts) {
 
 // Thumbnail — для карток у списку (400px)
 function _cdnThumb(url) { return _cdnImg(url, { w: 400, q: 75, c: 'fill' }); }
+// Tiny placeholder — 20px розмита версія для blur-up ефекту
+function _cdnTiny(url) { return _cdnImg(url, { w: 20, q: 30, c: 'fill' }); }
 // Detail — для сторінки деталей (1200px)
 function _cdnDetail(url) { return _cdnImg(url, { w: 1200, q: 85, c: 'limit' }); }
 // OG — для соцмереж (1200px квадрат)
@@ -836,7 +838,7 @@ function createCard(l, backPage) {
   const isFav    = favorites.includes(l.id);
   const thumbSrc = _cdnThumb(l.img) || l.img;
   const imgHtml  = l.img
-    ? `<div class="listing-img-wrap"><img class="listing-img" src="${thumbSrc}" alt="${l.title}" loading="lazy" onerror="this.style.display='none'"></div>`
+    ? `<div class="listing-img-wrap"><img class="listing-img lazy-img" src="${_cdnTiny(l.img)||thumbSrc}" data-src="${thumbSrc}" alt="${l.title}" loading="lazy" decoding="async" onerror="this.style.display='none'" style="filter:blur(8px);transition:filter .4s ease"></div>`
     : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
   const badgeHtml = l.badge
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
@@ -998,6 +1000,26 @@ function loadFirebaseData(force) {
     return;
   }
 
+  // ── Кеш з sessionStorage — швидкий старт ─────────────────
+  if (!force) {
+    try {
+      var cached = sessionStorage.getItem('ridego_listings_cache');
+      var cachedTs = parseInt(sessionStorage.getItem('ridego_listings_cache_ts') || '0');
+      if (cached && (now - cachedTs) < 5 * 60 * 1000) { // 5 хвилин
+        var parsed = JSON.parse(cached);
+        if (parsed && parsed.length) {
+          _fbListings = parsed;
+          _fbDataLoadedAt = cachedTs;
+          renderHomeListings();
+          renderCatalog();
+          // Після рендеру — оновити у фоні
+          setTimeout(function() { loadFirebaseData(true); }, 3000);
+          return;
+        }
+      }
+    } catch(e) {}
+  }
+
   // Offline-перевірка
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     showToast('⚠️ Немає з\'єднання з інтернетом');
@@ -1009,6 +1031,12 @@ function loadFirebaseData(force) {
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
+
+      // Зберегти в sessionStorage
+      try {
+        sessionStorage.setItem('ridego_listings_cache', JSON.stringify(_fbListings));
+        sessionStorage.setItem('ridego_listings_cache_ts', String(_fbDataLoadedAt));
+      } catch(e) {}
 
       // Видалити з myListings все що вже є в _fbListings — головна причина дублів
       var fbIds = {};
@@ -1158,6 +1186,8 @@ function loadUserChats() {
 function renderHomeListings() {
   var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive' && l.status !== 'sold'; });
   _cleanExpiredPromos(all);
+  // WebSite schema — один раз
+  if (typeof _setHomeBreadcrumbSchema === 'function') _setHomeBreadcrumbSchema();
 
   // Оновити лічильники категорій
   var cats = {
@@ -2195,6 +2225,11 @@ function _renderSellerByUid(uid) {
           : '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
       }
 
+      // Schema.org для продавця
+      if (typeof _setSellerSchema === 'function') {
+        _setSellerSchema(Object.assign({ uid: uid }, d), cached);
+      }
+
       // Про нас
       var aboutEl = document.getElementById('seller-about-text');
       if (aboutEl) aboutEl.textContent = d.about || d.desc || '';
@@ -2247,6 +2282,9 @@ function _renderSellerByUid(uid) {
     if (urlEl) urlEl.textContent = 'https://ridego-sigma.vercel.app/seller/' + uid;
     _loadSellerReviews(uid);
     _initReviewForm(uid);
+    // Підписка і статистика підписників
+    if (typeof _initFollowBtn === 'function') _initFollowBtn(uid);
+    if (typeof _renderFollowersCount === 'function') _renderFollowersCount(uid);
     var svcTab = document.getElementById('seller-tab-service');
     var sellerSvc = _fbServices.concat(myServices).filter(function(s){ return s.uid === uid; })[0];
     if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
@@ -7913,4 +7951,209 @@ function openCompareModal() {
   document.body.appendChild(overlay);
 }
 // ── COMPARE END ───────────────────────────────────────────────
+
+
+// ── FOLLOW SELLER ─────────────────────────────────────────────
+var _currentSellerUid = null;
+
+function _initFollowBtn(sellerUid) {
+  _currentSellerUid = sellerUid;
+  var btn = document.getElementById('seller-follow-btn');
+  if (!btn) return;
+
+  // Ховаємо для своєї сторінки
+  if (!isLoggedIn || !currentUser || currentUser.uid === sellerUid) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+
+  // Перевірити чи вже підписані
+  _isFollowing(sellerUid, function(following) {
+    _renderFollowBtn(following);
+  });
+}
+
+function _isFollowing(sellerUid, cb) {
+  if (!window._db || !currentUser || !currentUser.uid) return cb(false);
+  window._db.collection('follows')
+    .where('followerUid', '==', currentUser.uid)
+    .where('sellerUid', '==', sellerUid)
+    .limit(1).get()
+    .then(function(snap) { cb(!snap.empty); })
+    .catch(function() { cb(false); });
+}
+
+function _renderFollowBtn(following) {
+  var icon  = document.getElementById('seller-follow-icon');
+  var label = document.getElementById('seller-follow-label');
+  var btn   = document.getElementById('seller-follow-btn');
+  if (!icon || !label || !btn) return;
+  if (following) {
+    icon.className  = 'fa-solid fa-bell';
+    label.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u0430\u043d\u0438\u0439';
+    btn.style.background = 'var(--brand-dim)';
+    btn.style.color = 'var(--brand)';
+    btn.style.borderColor = 'var(--brand)';
+  } else {
+    icon.className  = 'fa-regular fa-bell';
+    label.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u0430\u0442\u0438\u0441\u044c';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+}
+
+function toggleFollowSeller() {
+  if (!isLoggedIn) { showToast('\u26a0\ufe0f \u0423\u0432\u0456\u0439\u0434\u0456\u0442\u044c \u0449\u043e\u0431 \u043f\u0456\u0434\u043f\u0438\u0441\u0430\u0442\u0438\u0441\u044c'); showPage('profile'); return; }
+  if (!_currentSellerUid || !window._db) return;
+
+  var sellerUid = _currentSellerUid;
+  _isFollowing(sellerUid, function(following) {
+    if (following) {
+      // Відписатись
+      window._db.collection('follows')
+        .where('followerUid', '==', currentUser.uid)
+        .where('sellerUid', '==', sellerUid)
+        .get().then(function(snap) {
+          snap.docs.forEach(function(d) { d.ref.delete(); });
+          _renderFollowBtn(false);
+          showToast('\u0412\u0456\u0434\u043f\u0438\u0441\u0430\u043d\u043e');
+          // Декрементувати лічильник
+          window._db.collection('users').doc(sellerUid).update({
+            followers: firebase.firestore.FieldValue.increment(-1)
+          }).catch(function(){});
+        });
+    } else {
+      // Підписатись
+      window._db.collection('follows').add({
+        followerUid: currentUser.uid,
+        followerName: currentUser.name || currentUser.email || '',
+        sellerUid: sellerUid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function() {
+        _renderFollowBtn(true);
+        showToast('\u2705 \u041f\u0456\u0434\u043f\u0438\u0441\u0430\u043b\u0438\u0441\u044c! \u0411\u0443\u0434\u0435\u043c\u043e \u0441\u0441\u043f\u043e\u0432\u0456\u0449\u0430\u0442\u0438 \u043f\u0440\u043e \u043d\u043e\u0432\u0456 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f');
+        // Інкрементувати лічильник
+        window._db.collection('users').doc(sellerUid).update({
+          followers: firebase.firestore.FieldValue.increment(1)
+        }).catch(function(){});
+        // Сповістити підписника коли продавець додасть нове оголошення
+        // (реалізується через Cloud Functions або onSnapshot)
+      });
+    }
+  });
+}
+
+// Показати кількість підписників в статистиці продавця
+function _renderFollowersCount(sellerUid) {
+  if (!window._db) return;
+  window._db.collection('users').doc(sellerUid).get().then(function(snap) {
+    if (!snap.exists) return;
+    var followers = snap.data().followers || 0;
+    var el = document.getElementById('sp-stat-response');
+    if (el) {
+      el.textContent = followers;
+      var lbl = el.nextElementSibling;
+      if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
+    }
+  }).catch(function(){});
+}
+// ── FOLLOW SELLER END ─────────────────────────────────────────
+
+// ── SCHEMA.ORG ────────────────────────────────────────────────
+function _setListingSchema(l) {
+  var existing = document.getElementById('schema-listing');
+  if (existing) existing.remove();
+
+  if (!l) return;
+
+  var schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    'name': l.title || '',
+    'description': l.desc || '',
+    'offers': {
+      '@type': 'Offer',
+      'price': l.price || 0,
+      'priceCurrency': 'UAH',
+      'availability': l.status === 'active'
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      'seller': {
+        '@type': 'Person',
+        'name': l.sellerName || l.seller || ''
+      }
+    },
+    'category': l.cat || '',
+    'brand': l.brand ? { '@type': 'Brand', 'name': l.brand } : undefined,
+    'model': l.model || undefined,
+    'image': l.photos && l.photos.length ? l.photos : (l.img ? [l.img] : undefined),
+    'itemCondition': l.condition === '\u041d\u043e\u0432\u0438\u0439'
+      ? 'https://schema.org/NewCondition'
+      : 'https://schema.org/UsedCondition',
+    'url': 'https://ridego-sigma.vercel.app/listing/' + l.id
+  };
+
+  // Прибрати undefined поля
+  Object.keys(schema).forEach(function(k) { if (schema[k] === undefined) delete schema[k]; });
+  if (schema.offers) Object.keys(schema.offers).forEach(function(k) { if (schema.offers[k] === undefined) delete schema.offers[k]; });
+
+  var script = document.createElement('script');
+  script.id = 'schema-listing';
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(schema);
+  document.head.appendChild(script);
+}
+
+function _setSellerSchema(d, listings) {
+  var existing = document.getElementById('schema-seller');
+  if (existing) existing.remove();
+
+  if (!d) return;
+
+  var schema = {
+    '@context': 'https://schema.org',
+    '@type': d.type === 'business' ? 'Store' : 'Person',
+    'name': d.name || '',
+    'description': d.about || d.desc || '',
+    'address': d.city ? { '@type': 'PostalAddress', 'addressLocality': d.city, 'addressCountry': 'UA' } : undefined,
+    'telephone': d.phone || undefined,
+    'url': 'https://ridego-sigma.vercel.app/seller/' + (d.uid || ''),
+    'image': d.photoUrl || undefined,
+    'numberOfItems': listings ? listings.length : undefined
+  };
+
+  Object.keys(schema).forEach(function(k) { if (schema[k] === undefined) delete schema[k]; });
+
+  var script = document.createElement('script');
+  script.id = 'schema-seller';
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(schema);
+  document.head.appendChild(script);
+}
+
+// Breadcrumb schema для головної
+function _setHomeBreadcrumbSchema() {
+  var existing = document.getElementById('schema-breadcrumb');
+  if (existing) return;
+  var schema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    'name': 'RideGO',
+    'url': 'https://ridego-sigma.vercel.app',
+    'description': '\u041c\u0430\u0440\u043a\u0435\u0442\u043f\u043b\u0435\u0439\u0441 \u0435\u043b\u0435\u043a\u0442\u0440\u043e\u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u0443 \u0423\u043a\u0440\u0430\u0457\u043d\u0438',
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': 'https://ridego-sigma.vercel.app/catalog?q={search_term_string}',
+      'query-input': 'required name=search_term_string'
+    }
+  };
+  var script = document.createElement('script');
+  script.id = 'schema-breadcrumb';
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(schema);
+  document.head.appendChild(script);
+}
+// ── SCHEMA.ORG END ────────────────────────────────────────────
 
