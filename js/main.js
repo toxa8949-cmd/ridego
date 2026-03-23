@@ -2108,6 +2108,20 @@ function _renderSellerByUid(uid) {
       if (d.city) document.getElementById('seller-page-city').innerHTML =
         '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + _esc(d.city);
 
+      // Бейдж верифікованого телефону
+      if (d.phoneVerified) {
+        var metaEl = document.getElementById('seller-page-since');
+        if (metaEl) {
+          var phoneTag = document.createElement('span');
+          phoneTag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#16a34a20;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:8px';
+          phoneTag.innerHTML = '<i class="fa-solid fa-phone"></i> Верифіковано';
+          if (!metaEl.querySelector('.phone-verified-tag')) {
+            phoneTag.className = 'phone-verified-tag';
+            metaEl.parentNode && metaEl.parentNode.appendChild(phoneTag);
+          }
+        }
+      }
+
       // Фото аватара
       var avEl = document.getElementById('seller-page-avatar');
       if (avEl) {
@@ -4184,6 +4198,8 @@ function renderProfile() {
       fill('set-address',   d.address);
       fill('set-hours',     d.hours);
       fill('set-about',     d.about || d.desc);
+      // Показати бейдж верифікації телефону якщо є
+      if (typeof _checkPhoneVerified === 'function') _checkPhoneVerified(d);
       // Заповнити категорії
       if (d.cats && d.cats.length && typeof _fillProfileCats === 'function') {
         _fillProfileCats(d.cats);
@@ -7216,4 +7232,116 @@ function _statBox(icon, value, label, color) {
     + '</div>';
 }
 // ── VIEWS STATS END ───────────────────────────────────────────
+
+
+// ── PHONE VERIFICATION ───────────────────────────────────────
+var _phoneConfirmResult = null;
+var _recaptchaVerifier  = null;
+
+function _initRecaptcha() {
+  if (_recaptchaVerifier) return;
+  if (!window._auth) return;
+  try {
+    _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'invisible',
+      callback: function() {}
+    });
+  } catch(e) {
+    console.error('recaptcha init:', e);
+  }
+}
+
+function startPhoneVerification() {
+  if (!isLoggedIn) { showToast('\u26a0\ufe0f \u0423\u0432\u0456\u0439\u0434\u0456\u0442\u044c \u0432 \u0430\u043a\u0430\u0443\u043d\u0442'); return; }
+
+  var phone = document.getElementById('set-phone')?.value.trim();
+  if (!phone) { showToast('\u26a0\ufe0f \u0412\u0432\u0435\u0434\u0456\u0442\u044c \u043d\u043e\u043c\u0435\u0440 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443'); return; }
+
+  // Normalize phone — add +380 if needed
+  var normalized = phone.replace(/\s/g, '');
+  if (normalized.startsWith('0')) normalized = '+38' + normalized;
+  if (!normalized.startsWith('+')) normalized = '+' + normalized;
+  if (!/^\+\d{10,15}$/.test(normalized)) {
+    showToast('\u26a0\ufe0f \u041d\u0435\u0432\u0456\u0440\u043d\u0438\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443 (\u043f\u0440\u0438\u043a\u043b\u0430\u0434: +380671234567)');
+    return;
+  }
+
+  _initRecaptcha();
+  if (!_recaptchaVerifier) {
+    showToast('\u26a0\ufe0f reCAPTCHA \u043d\u0435 \u0456\u043d\u0456\u0446\u0456\u0430\u043b\u0456\u0437\u043e\u0432\u0430\u043d\u0430');
+    return;
+  }
+
+  var btn = document.getElementById('phone-verify-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> \u0412\u0456\u0434\u043f\u0440\u0430\u0432\u043a\u0430...'; }
+
+  window._auth.signInWithPhoneNumber(normalized, _recaptchaVerifier)
+    .then(function(confirmResult) {
+      _phoneConfirmResult = confirmResult;
+      document.getElementById('phone-sms-wrap').style.display = '';
+      document.getElementById('phone-sms-code').focus();
+      showToast('\uD83D\uDCF1 SMS \u0432\u0456\u0434\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e \u043d\u0430 ' + normalized);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-halved" style="margin-right:5px"></i>\u0412\u0456\u0434\u043f\u0440\u0430\u0432\u0438\u0442\u0438 \u0449\u0435 \u0440\u0430\u0437'; }
+    })
+    .catch(function(e) {
+      console.error('phone auth:', e);
+      var msg = e.code === 'auth/invalid-phone-number' ? '\u041d\u0435\u0432\u0456\u0440\u043d\u0438\u0439 \u043d\u043e\u043c\u0435\u0440 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443'
+              : e.code === 'auth/too-many-requests' ? '\u0417\u0430\u0431\u0430\u0433\u0430\u0442\u043e \u0441\u043f\u0440\u043e\u0431. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u0456\u0437\u043d\u0456\u0448\u0435'
+              : e.message;
+      showToast('\u26a0\ufe0f ' + msg);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-halved" style="margin-right:5px"></i>\u0412\u0435\u0440\u0438\u0444\u0456\u043a\u0443\u0432\u0430\u0442\u0438'; }
+      // Reset recaptcha
+      _recaptchaVerifier = null;
+    });
+}
+
+function confirmPhoneCode() {
+  if (!_phoneConfirmResult) return;
+  var code = (document.getElementById('phone-sms-code')?.value || '').trim();
+  if (!code || code.length < 6) { showToast('\u26a0\ufe0f \u0412\u0432\u0435\u0434\u0456\u0442\u044c 6-\u0437\u043d\u0430\u0447\u043d\u0438\u0439 \u043a\u043e\u0434'); return; }
+
+  _phoneConfirmResult.confirm(code)
+    .then(function(result) {
+      // Phone verified! Save to Firestore
+      var phone = document.getElementById('set-phone')?.value.trim() || '';
+      if (window._db && currentUser && currentUser.uid) {
+        window._db.collection('users').doc(currentUser.uid).update({
+          phone: phone,
+          phoneVerified: true,
+          phoneVerifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(function(){});
+      }
+      // Show verified badge
+      var badge = document.getElementById('phone-verified-badge');
+      if (badge) badge.style.display = 'inline';
+      var btn = document.getElementById('phone-verify-btn');
+      if (btn) { btn.style.display = 'none'; }
+      cancelPhoneVerification();
+      showToast('\u2705 \u0422\u0435\u043b\u0435\u0444\u043e\u043d \u0432\u0435\u0440\u0438\u0444\u0456\u043a\u043e\u0432\u0430\u043d\u043e!');
+    })
+    .catch(function(e) {
+      var msg = e.code === 'auth/invalid-verification-code' ? '\u041d\u0435\u0432\u0456\u0440\u043d\u0438\u0439 \u043a\u043e\u0434 SMS'
+              : e.code === 'auth/code-expired' ? '\u041a\u043e\u0434 \u0432\u0438\u0439\u0448\u043e\u0432 \u2014 \u0432\u0456\u0434\u043f\u0440\u0430\u0432\u0442\u0435 \u0449\u0435 \u0440\u0430\u0437'
+              : e.message;
+      showToast('\u26a0\ufe0f ' + msg);
+    });
+}
+
+function cancelPhoneVerification() {
+  _phoneConfirmResult = null;
+  var wrap = document.getElementById('phone-sms-wrap');
+  if (wrap) wrap.style.display = 'none';
+  var codeEl = document.getElementById('phone-sms-code');
+  if (codeEl) codeEl.value = '';
+}
+
+// При завантаженні профілю — показати бейдж якщо вже верифіковано
+function _checkPhoneVerified(d) {
+  if (!d || !d.phoneVerified) return;
+  var badge = document.getElementById('phone-verified-badge');
+  if (badge) badge.style.display = 'inline';
+  var btn = document.getElementById('phone-verify-btn');
+  if (btn) btn.style.display = 'none';
+}
+// ── PHONE VERIFICATION END ────────────────────────────────────
 
