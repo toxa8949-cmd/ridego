@@ -601,7 +601,15 @@ function _renderRoute(route) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (page === 'home')     renderHomeListings();
-  if (page === 'messages') renderChats();
+  if (page === 'messages') {
+    // Захист — тільки для залогінених
+    if (window._authInitialized && !isLoggedIn) {
+      showToast('⚠️ Увійдіть щоб переглянути повідомлення');
+      _renderRoute({ page: 'profile' });
+      return;
+    }
+    renderChats();
+  }
   if (page === 'profile') {
     // Якщо auth ще не завершився — показати loading skeleton замість форми логіну
     var _authLoading = document.getElementById('auth-loading');
@@ -4430,9 +4438,25 @@ function renderChats() {
     return;
   }
   if (!isLoggedIn) {
-    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Увійдіть щоб переглянути повідомлення</div>';
+    list.innerHTML = '<div style="text-align:center;padding:48px 24px;color:var(--text-muted)">'
+      + '<i class="fa-solid fa-lock" style="font-size:36px;display:block;margin-bottom:16px;color:var(--brand)"></i>'
+      + '<div style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Вхід для повідомлень</div>'
+      + '<p style="margin-bottom:20px;font-size:14px">Увійдіть в акаунт щоб переглянути та відправляти повідомлення</p>'
+      + '<button class="btn-primary" onclick="showPage(\'profile\')" style="padding:11px 28px">'
+      + '<i class="fa-solid fa-user" style="margin-right:8px"></i>Увійти</button>'
+      + '</div>';
+    // Заблокувати поле вводу
+    var inp = document.getElementById('chat-input');
+    var sendBtn = document.querySelector('.send-btn');
+    if (inp) { inp.disabled = true; inp.placeholder = 'Увійдіть щоб писати...'; }
+    if (sendBtn) sendBtn.disabled = true;
     return;
   }
+  // Розблокувати поле вводу
+  var inp2 = document.getElementById('chat-input');
+  var sendBtn2 = document.querySelector('.send-btn');
+  if (inp2) { inp2.disabled = false; inp2.placeholder = 'Написати повідомлення...'; }
+  if (sendBtn2) sendBtn2.disabled = false;
   if (!_fbChats.length) {
     list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)"><i class="fa-regular fa-comment-dots" style="font-size:32px;display:block;margin-bottom:12px"></i>Повідомлень поки немає</div>';
     return;
@@ -4580,7 +4604,15 @@ function _renderMessages(msgs, chat) {
   }
 
   html += msgs.map(function(m) {
-    var mine = m.senderUid === currentUser.uid;
+    // "mine" якщо senderUid = поточний юзер
+    // Також перевіряємо chat.participants щоб визначити otherId
+    var myUid = currentUser && currentUser.uid;
+    var mine = myUid && m.senderUid && m.senderUid === myUid;
+    // Якщо senderUid відсутній — fallback по senderName
+    if (!mine && !m.senderUid && myUid && m.senderName) {
+      mine = m.senderName === (currentUser.name || currentUser.email);
+    }
+    // Якщо senderUid === otherId (не наш uid і не порожній) — theirs
     var time = m.createdAt ? _formatChatTime(typeof m.createdAt === 'object' ? m.createdAt.seconds : m.createdAt/1000) : '';
     return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
       + '<div class="msg-bubble">' + _esc(m.text || '') + '</div>'
