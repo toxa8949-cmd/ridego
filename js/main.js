@@ -8362,33 +8362,48 @@ function _setHomeBreadcrumbSchema() {
 // ── SCHEMA.ORG END ────────────────────────────────────────────
 
 
-// ── QR CODE FOR LISTING ───────────────────────────────────────
+// ── QR CODE FOR LISTING ───────────────────────────────────────────
 function showListingQR() {
   var id = currentDetailId;
   if (!id) return;
   var l = _allListings().find(function(x){ return x && x.id === id; });
   var url = 'https://ridego-sigma.vercel.app/listing/' + id;
-  var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&format=png&color=000000&bgcolor=ffffff&data=' + encodeURIComponent(url);
 
   var overlay = document.createElement('div');
   overlay.id = 'qr-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
 
-  overlay.innerHTML = '<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;width:100%;text-align:center;color:#111">'
-    + '<div style="font-size:18px;font-weight:800;margin-bottom:4px;color:#111">QR-код оголошення</div>'
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;width:100%;text-align:center;color:#111';
+  box.innerHTML = '<div style="font-size:18px;font-weight:800;margin-bottom:4px;color:#111">QR-код оголошення</div>'
     + '<div style="font-size:13px;color:#666;margin-bottom:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (l ? l.title : '') + '</div>'
-    + '<div style="background:#f5f5f5;border-radius:12px;padding:16px;margin-bottom:16px;display:flex;justify-content:center">'
-    + '<img src="' + qrUrl + '" width="200" height="200" alt="QR код" style="border-radius:8px">'
-    + '</div>'
+    + '<div id="qr-canvas-wrap" style="background:#f5f5f5;border-radius:12px;padding:20px;margin-bottom:16px;display:inline-flex;justify-content:center"></div>'
     + '<div style="font-size:11px;color:#888;margin-bottom:20px;word-break:break-all">' + url + '</div>'
-    + '<div style="display:flex;gap:10px">'
-    + '<button onclick="_closeQR()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">\u0417\u0430\u043a\u0440\u0438\u0442\u0438</button>'
-    + '<button onclick="_downloadQR(\'' + qrUrl + '\',\'' + id + '\')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#00c853;color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"><i class="fa-solid fa-download" style="margin-right:6px"></i>\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0438\u0442\u0438</button>'
-    + '<button onclick="_printQR(\'' + qrUrl + '\')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#333;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"><i class="fa-solid fa-print" style="margin-right:6px"></i>\u0414\u0440\u0443\u043a\u0443\u0432\u0430\u0442\u0438</button>'
-    + '</div></div>';
-
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="_closeQR()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Закрити</button>'
+    + '<button onclick="_downloadQR()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#00c853;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⇩ Завантажити</button>'
+    + '<button onclick="_printQR()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#333;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⎙ Друкувати</button>'
+    + '</div>';
+  overlay.appendChild(box);
   document.body.appendChild(overlay);
+
+  // Генерувати QR локально
+  function _generateQR() {
+    var wrap = document.getElementById('qr-canvas-wrap');
+    if (!wrap) return;
+    if (typeof QRCode !== 'undefined') {
+      wrap.innerHTML = '';
+      new QRCode(wrap, { text: url, width: 200, height: 200, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+    } else {
+      wrap.innerHTML = '<div style="color:#aaa;font-size:12px;padding:20px">Завантаження...</div>';
+      var t = setInterval(function(){
+        if (typeof QRCode !== 'undefined') { clearInterval(t); _generateQR(); }
+      }, 200);
+      setTimeout(function(){ clearInterval(t); }, 8000);
+    }
+  }
+  setTimeout(_generateQR, 50);
 }
 
 function _closeQR() {
@@ -8396,35 +8411,41 @@ function _closeQR() {
   if (o) o.remove();
 }
 
-function _downloadQR(qrUrl, id) {
+function _downloadQR() {
+  var id = currentDetailId;
+  var wrap = document.getElementById('qr-canvas-wrap');
+  if (!wrap) return;
+  var canvas = wrap.querySelector('canvas');
+  if (!canvas) { showToast('⚠️ QR ще генерується'); return; }
   var a = document.createElement('a');
-  a.href = qrUrl;
   a.download = 'ridego-qr-' + id + '.png';
-  a.target = '_blank';
+  a.href = canvas.toDataURL('image/png');
   a.click();
 }
 
-function _printQR(qrUrl) {
+function _printQR() {
+  var id = currentDetailId;
   var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
-  var win = window.open('', '_blank', 'width=400,height=500');
-  win.document.write('<!DOCTYPE html><html><head><title>QR \u043a\u043e\u0434 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f</title>'
-    + '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#111}'
-    + 'h2{font-size:18px;margin-bottom:8px}.price{font-size:24px;font-weight:800;color:#00c853;margin-bottom:20px}'
-    + '.url{font-size:10px;color:#888;margin-top:16px;word-break:break-all}'
-    + '.brand{font-size:13px;color:#666;margin-bottom:6px}'
-    + '</style></head><body>'
-    + '<div class="brand">RideGO \u2014 \u041c\u0430\u0440\u043a\u0435\u0442\u043f\u043b\u0435\u0439\u0441 \u0435\u043b\u0435\u043a\u0442\u0440\u043e\u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u0443</div>'
+  var wrap = document.getElementById('qr-canvas-wrap');
+  var canvas = wrap ? wrap.querySelector('canvas') : null;
+  var qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
+  var win = window.open('', '_blank', 'width=420,height=560');
+  win.document.write('<!DOCTYPE html><html><head><title>QR код</title>'
+    + '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#111;margin:0}'
+    + 'h2{font-size:17px;margin-bottom:6px}.price{font-size:22px;font-weight:800;color:#00c853;margin-bottom:18px}'
+    + '.url{font-size:10px;color:#888;margin-top:14px;word-break:break-all}.brand{font-size:12px;color:#888;margin-bottom:4px}'
+    + '@media print{button{display:none}}</style></head><body>'
+    + '<div class="brand">RideGO</div>'
     + '<h2>' + (l ? l.title : '') + '</h2>'
-    + '<div class="price">' + (l ? l.price.toLocaleString('uk') + ' \u0433\u0440\u043d' : '') + '</div>'
-    + '<img src="' + qrUrl + '" width="220" height="220"><br>'
-    + '<div style="font-size:13px;color:#444;margin-top:12px">\u0432\u0456\u0434\u0441\u043a\u0430\u043d\u0443\u0439\u0442\u0435 QR-\u043a\u043e\u0434, \u0449\u043e\u0431 \u043f\u0435\u0440\u0435\u0439\u0442\u0438 \u0434\u043e \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f</div>'
+    + '<div class="price">' + (l && l.price ? l.price.toLocaleString('uk') + ' грн' : '') + '</div>'
+    + (qrDataUrl ? '<img src="' + qrDataUrl + '" width="220" height="220">' : '<p>QR-код</p>')
+    + '<div style="font-size:13px;color:#444;margin-top:10px">відскануйте для переходу до оголошення</div>'
     + '<div class="url">ridego-sigma.vercel.app/listing/' + currentDetailId + '</div>'
+    + '<br><button onclick="window.print()" style="margin-top:16px;padding:10px 28px;background:#333;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">Друкувати</button>'
     + '</body></html>');
   win.document.close();
-  setTimeout(function(){ win.print(); }, 500);
 }
-// ── QR CODE END ───────────────────────────────────────────────
-
+// ── QR CODE END ─────────────────────────────────────────────
 // ── REPORT REVIEW ─────────────────────────────────────────────
 function reportReview(reviewId, reviewText) {
   if (!isLoggedIn) { showToast('\u26a0\ufe0f \u0423\u0432\u0456\u0439\u0434\u0456\u0442\u044c \u0449\u043e\u0431 \u043f\u043e\u0441\u043a\u0430\u0440\u0436\u0438\u0442\u0438\u0441\u044c'); return; }
