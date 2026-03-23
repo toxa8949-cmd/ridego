@@ -1,3 +1,75 @@
+
+function _closeSoldOverlay() {
+  var o = document.getElementById('sold-overlay');
+  if (o) o.remove();
+}
+
+function markAsSold(id) {
+  if (!id || !isLoggedIn) return;
+  var l = typeof _allListings === 'function'
+    ? _allListings().find(function(x){ return x && x.id === id; })
+    : null;
+  var titleText = l ? l.title : '';
+
+  var overlay = document.createElement('div');
+  overlay.id = 'sold-overlay';
+  overlay.dataset.listingId = id;
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  var d = document.createElement('div');
+  d.style.cssText = 'background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:380px;width:100%;text-align:center';
+  d.innerHTML = '<div style="font-size:48px;margin-bottom:12px">&#127881;</div>'
+    + '<div style="font-size:18px;font-weight:700;margin-bottom:8px">&#1055;&#1086;&#1079;&#1085;&#1072;&#1095;&#1080;&#1090;&#1080; &#1103;&#1082; &#1087;&#1088;&#1086;&#1076;&#1072;&#1085;&#1077;?</div>'
+    + '<div style="font-size:14px;color:var(--text-muted);margin-bottom:24px">'
+    + (titleText ? '&laquo;' + titleText + '&raquo; ' : '')
+    + '&#1073;&#1091;&#1076;&#1077; &#1087;&#1086;&#1079;&#1085;&#1072;&#1095;&#1077;&#1085;&#1086; &#1103;&#1082; &#1087;&#1088;&#1086;&#1076;&#1072;&#1085;&#1077; &#1110; &#1087;&#1088;&#1080;&#1093;&#1086;&#1074;&#1072;&#1085;&#1086; &#1079; &#1082;&#1072;&#1090;&#1072;&#1083;&#1086;&#1075;&#1091;</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button class="btn-outline" style="flex:1;padding:11px" onclick="_closeSoldOverlay()">&#1057;&#1082;&#1072;&#1089;&#1091;&#1074;&#1072;&#1090;&#1080;</button>'
+    + '<button class="btn-primary" style="flex:1;padding:11px;background:#16a34a" onclick="_confirmSold()">'
+    + '<i class="fa-solid fa-circle-check" style="margin-right:6px"></i>&#1058;&#1072;&#1082;, &#1087;&#1088;&#1086;&#1076;&#1072;&#1085;&#1086;!</button>'
+    + '</div>';
+  overlay.appendChild(d);
+  document.body.appendChild(overlay);
+}
+
+function _confirmSold() {
+  var overlay = document.getElementById('sold-overlay');
+  var id = overlay ? overlay.dataset.listingId : null;
+  if (overlay) overlay.remove();
+  if (!id || !window._db) return;
+
+  window._db.collection('listings').doc(id).update({
+    status: 'sold',
+    soldAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    // Update local cache
+    if (typeof _fbListings !== 'undefined') {
+      var l = _fbListings.find(function(x){ return x && x.id === id; });
+      if (l) l.status = 'sold';
+    }
+    if (typeof myListings !== 'undefined') {
+      var l2 = myListings.find(function(x){ return x && x.id === id; });
+      if (l2) l2.status = 'sold';
+    }
+    // Update sold counter in profile
+    var uid = currentUser && currentUser.uid;
+    var soldCount = (typeof _allListings === 'function' ? _allListings() : [])
+      .filter(function(x){ return x && x.uid === uid && x.status === 'sold'; }).length;
+    var soldEl = document.getElementById('pstat-sold');
+    if (soldEl) soldEl.textContent = soldCount;
+    if (window._db && uid) {
+      window._db.collection('users').doc(uid).update({
+        sold: firebase.firestore.FieldValue.increment(1)
+      }).catch(function(){});
+    }
+    if (typeof renderMyListings === 'function') renderMyListings();
+    if (typeof renderHomeListings === 'function') renderHomeListings();
+    showToast('\u2705 \u041e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f \u043f\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u043e \u044f\u043a \u043f\u0440\u043e\u0434\u0430\u043d\u0435!');
+  }).catch(function(e) {
+    showToast('\u26a0\ufe0f \u041f\u043e\u043c\u0438\u043b\u043a\u0430: ' + e.message);
+  });
+}
+
 // Завантажити дані після повного завантаження DOM
 document.addEventListener('DOMContentLoaded', function() {
   var searchEl = document.getElementById('headerSearch');

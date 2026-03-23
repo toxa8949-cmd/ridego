@@ -846,7 +846,12 @@ function createCard(l, backPage) {
   let promoClass = '';
   let promoBadge = '';
   const activePromo = _isPromoActive(l) ? l.promo : null;
-  if (activePromo === 'top') {
+
+  // Проданий товар — показуємо оверлей
+  if (l.status === 'sold') {
+    promoClass = 'is-sold';
+    promoBadge = `<div class="promo-badge-sold"><i class="fa-solid fa-circle-check"></i> ПРОДАНО</div>`;
+  } else if (activePromo === 'top') {
     promoClass = 'is-top';
     promoBadge = `<div class="promo-badge-top"><i class="fa-solid fa-arrow-up"></i> TOP</div>`;
   } else if (activePromo === 'highlight') {
@@ -1144,7 +1149,7 @@ function loadUserChats() {
 }
 
 function renderHomeListings() {
-  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive'; });
+  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive' && l.status !== 'sold'; });
   _cleanExpiredPromos(all);
 
   // Оновити лічильники категорій
@@ -1778,7 +1783,7 @@ function clearFilters() {
 }
 
 function getFilteredData() {
-  let data = _allListings().filter(l => l && l.cat && l.price != null && l.status !== 'deleted');
+  let data = _allListings().filter(l => l && l.cat && l.price != null && l.status !== 'deleted' && l.status !== 'sold');
   if (selectedCat) data = data.filter(l => l.cat === selectedCat);
   const oblast = document.getElementById('fp-oblast')?.value;
   const city   = document.getElementById('fp-city')?.value;
@@ -2211,7 +2216,7 @@ function _renderSellerByUid(uid) {
       .then(function(snap) {
         var listings = snap.docs
           .map(function(d){ return Object.assign({id: d.id}, d.data()); })
-          .filter(function(l){ return l.status !== 'inactive' && l.status !== 'deleted'; });
+          .filter(function(l){ return l.status !== 'inactive' && l.status !== 'deleted' && l.status !== 'sold'; });
         // Сортуємо на клієнті
         listings.sort(function(a,b){
           var ta=a.createdAt&&a.createdAt.seconds?a.createdAt.seconds:0;
@@ -6055,6 +6060,15 @@ function createMyCard(l) {
           onclick="event.stopPropagation(); deleteListing('${l.id}')">
           <i class="fa-solid fa-trash"></i> Видалити
         </button>
+        ${l.status === 'sold'
+          ? `<button class="promo-manage-btn no-promo" style="background:#e8f5e9;color:#2e7d32;cursor:default">
+               <i class="fa-solid fa-circle-check"></i> Продано
+             </button>`
+          : `<button class="promo-manage-btn no-promo" style="background:var(--brand-dim);color:var(--brand)"
+               onclick="event.stopPropagation(); markAsSold('${l.id}')">
+               <i class="fa-solid fa-circle-check"></i> Продано
+             </button>`
+        }
         <button class="promo-manage-btn no-promo" style="background:var(--brand-dim);color:var(--brand)"
           onclick="event.stopPropagation(); openEditListing('${l.id}')">
           <i class="fa-solid fa-pen"></i> Редагувати
@@ -6063,11 +6077,13 @@ function createMyCard(l) {
           ? `<button class="promo-manage-btn has-promo" onclick="event.stopPropagation(); renewListing('${l.id}')">
                <i class="fa-solid fa-rotate-right"></i> Поновити (1 слот)
              </button>`
-          : `<button class="promo-manage-btn ${hasPromo ? 'has-promo' : 'no-promo'}"
-               onclick="event.stopPropagation(); openPromoModal('${l.id}', false)">
-               <i class="fa-solid fa-${hasPromo ? 'pen' : 'rocket'}"></i>
-               ${hasPromo ? 'Змінити' : 'Просувати'}
-             </button>`
+          : (l.status !== 'sold'
+            ? `<button class="promo-manage-btn ${hasPromo ? 'has-promo' : 'no-promo'}"
+                 onclick="event.stopPropagation(); openPromoModal('${l.id}', false)">
+                 <i class="fa-solid fa-${hasPromo ? 'pen' : 'rocket'}"></i>
+                 ${hasPromo ? 'Змінити' : 'Просувати'}
+               </button>`
+            : '')
         }
       </div>
     </div>`;
