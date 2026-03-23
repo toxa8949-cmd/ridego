@@ -1540,8 +1540,34 @@
               <input type="email" class="form-input" id="set-email" placeholder="email@example.com">
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label>Телефон</label>
-              <input type="tel" class="form-input" id="set-phone" placeholder="+380 XX XXX XX XX">
+              <label>Телефон
+                <span id="phone-verified-badge" style="display:none;background:#16a34a;color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;margin-left:6px;vertical-align:middle">
+                  <i class="fa-solid fa-circle-check" style="margin-right:3px"></i>Верифіковано
+                </span>
+              </label>
+              <div style="display:flex;gap:8px;align-items:stretch">
+                <input type="tel" class="form-input" id="set-phone" placeholder="+380 XX XXX XX XX" style="flex:1">
+                <button id="phone-verify-btn" onclick="startPhoneVerification()" style="padding:0 16px;border-radius:12px;border:1px solid var(--brand);background:var(--brand-dim);color:var(--brand);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .2s" onmouseover="this.style.background='var(--brand)';this.style.color='#000'" onmouseout="this.style.background='var(--brand-dim)';this.style.color='var(--brand)'">
+                  <i class="fa-solid fa-shield-halved" style="margin-right:5px"></i>Верифікувати
+                </button>
+              </div>
+              <!-- SMS код -->
+              <div id="phone-sms-wrap" style="display:none;margin-top:10px">
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">
+                  <i class="fa-solid fa-message" style="color:var(--brand);margin-right:5px"></i>
+                  Введіть код з SMS:
+                </div>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="phone-sms-code" maxlength="6" placeholder="000000"
+                    style="flex:1;text-align:center;letter-spacing:8px;font-size:20px;font-weight:700;padding:10px;border:1px solid var(--brand);border-radius:10px;background:var(--dark3);color:var(--text);outline:none;font-family:monospace">
+                  <button onclick="confirmPhoneCode()" style="padding:0 16px;border-radius:10px;background:var(--brand);border:none;color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                    <i class="fa-solid fa-check"></i> OK
+                  </button>
+                </div>
+                <button onclick="cancelPhoneVerification()" style="margin-top:8px;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:0;font-family:inherit">Скасувати</button>
+              </div>
+              <!-- reCAPTCHA контейнер (невидимий) -->
+              <div id="recaptcha-container"></div>
             </div>
           </div>
           <!-- Location cascade -->
