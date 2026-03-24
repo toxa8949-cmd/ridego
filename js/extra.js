@@ -123,10 +123,18 @@ document.addEventListener('DOMContentLoaded', function() {
   // Трекаємо унікальних по sessionId + дні — одна людина = 1 раз на добу
   (function _trackUniqueVisitor() {
     try {
-      var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      var today = new Date().toISOString().slice(0, 10);
       var storageKey = 'ridego_visited_' + today;
-      var alreadyCounted = localStorage.getItem(storageKey);
-      if (alreadyCounted) return; // вже рахували сьогодні
+
+      // sessionStorage — не рахуємо в одній вкладці двічі
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(storageKey)) return;
+
+      // localStorage — не рахуємо в одному браузері двічі за день
+      if (localStorage.getItem(storageKey)) {
+        // Але скидаємо session щоб при новій вкладці не рахувалось
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
+        return;
+      }
 
       // Генеруємо стабільний анонімний ID для цього браузера
       var browserId = localStorage.getItem('ridego_bid');
@@ -135,24 +143,34 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('ridego_bid', browserId);
       }
 
-      // Чекаємо поки _db стане доступним (Firebase ініціалізується асинхронно)
       var _waitForDb = setInterval(function() {
         if (!window._db) return;
         clearInterval(_waitForDb);
 
         var docId = 'visitors_' + today;
-        // Використовуємо Set-like підхід — зберігаємо унікальні browser IDs
-        window._db.collection('analytics').doc(docId).set({
-          count: firebase.firestore.FieldValue.increment(1),
-          date: today,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).then(function() {
-          // Записати що сьогодні вже порахували
-          localStorage.setItem(storageKey, '1');
+        // Перевіряємо чи цей browserId вже рахувався сьогодні через Firestore
+        window._db.collection('analytics').doc(docId).get().then(function(snap) {
+          var data = snap.exists ? snap.data() : {};
+          var ids = data.browserIds || [];
+          if (ids.indexOf(browserId) >= 0) {
+            // Вже рахували цей браузер — тільки записати в localStorage
+            localStorage.setItem(storageKey, '1');
+            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
+            return;
+          }
+          // Новий браузер — інкрементувати
+          window._db.collection('analytics').doc(docId).set({
+            count: firebase.firestore.FieldValue.increment(1),
+            browserIds: firebase.firestore.FieldValue.arrayUnion(browserId),
+            date: today,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }).then(function() {
+            localStorage.setItem(storageKey, '1');
+            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
+          }).catch(function(){});
         }).catch(function(){});
       }, 500);
 
-      // Таймаут — не чекати більше 10 секунд
       setTimeout(function(){ clearInterval(_waitForDb); }, 10000);
     } catch(e) {}
   })();
