@@ -943,7 +943,8 @@ function loadFirebaseData(force) {
   if (!force) {
     _idbGet('listings', 10 * 60 * 1000, function(cached) {
       if (cached && cached.length) {
-        _fbListings = cached;
+        // Фільтруємо видалені з кешу
+        _fbListings = cached.filter(function(l){ return l && l.status !== 'deleted'; });
         _fbDataLoadedAt = Date.now();
         _idbGet('services', 15 * 60 * 1000, function(svcs) {
           if (svcs) _fbServices = svcs;
@@ -954,7 +955,8 @@ function loadFirebaseData(force) {
             if (typeof renderServices === 'function') renderServices();
           }
         });
-        setTimeout(function() { loadFirebaseData(true); }, 3000);
+        // Завжди оновлюємо з Firestore у фоні через 2 сек
+        setTimeout(function() { loadFirebaseData(true); }, 2000);
         return;
       }
       _loadFirebaseFromNetwork(force);
@@ -5660,10 +5662,15 @@ function deleteListing(id) {
     .then(function() {
       // Видалити з локальних масивів
       myListings = myListings.filter(function(x){ return x.id !== id; });
-      var fl = _fbListings.find(function(x){ return x && x.id === id; });
-      if (fl) fl.status = 'deleted';
-      // Видалити з IDB кешу
+      _fbListings = _fbListings.filter(function(x){ return !x || x.id !== id; });
+
+      // Інвалідувати кеш — примусово
+      try {
+        sessionStorage.removeItem('ridego_listings_cache');
+        sessionStorage.removeItem('ridego_listings_cache_ts');
+      } catch(e) {}
       _idbSet('listings', _fbListings);
+
       // Оновити UI
       renderMyListings();
       renderHomeListings();
