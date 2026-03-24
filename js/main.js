@@ -5658,7 +5658,10 @@ function deleteListing(id) {
 
   if (!confirm('Видалити «' + title + '»?\nВитрачений слот не повертається.')) return;
 
-  window._db.collection('listings').doc(id).update({ status: 'deleted' })
+  window._db.collection('listings').doc(id).update({
+      status: 'deleted',
+      uid: currentUser.uid
+    })
     .then(function() {
       // Видалити з локальних масивів
       myListings = myListings.filter(function(x){ return x.id !== id; });
