@@ -6,6 +6,12 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00c853">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RideGO">
+<meta name="mobile-web-app-capable" content="yes">
 <title>RideGO — Маркетплейс електротранспорту України</title>
 <meta name="description" content="RideGO — найбільший маркетплейс електротранспорту в Україні. Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.">
 <meta name="keywords" content="електросамокат, велосипед, електровелосипед, електроскутер, купити, продати, маркетплейс, Україна">
@@ -2112,5 +2118,104 @@
 
   <script src="/js/main.js"></script>
   <script src="/js/extra.js"></script>
+<!-- PWA Install Banner (Android/Desktop) -->
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:70px;left:0;right:0;z-index:8000;padding:0 16px">
+  <div style="background:var(--card-bg);border:1px solid var(--brand);border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,200,83,.2);max-width:480px;margin:0 auto">
+    <img src="/favicon.svg" width="40" height="40" style="border-radius:8px;flex-shrink:0">
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:14px">Встановити RideGO</div>
+      <div style="font-size:12px;color:var(--text-muted)">Додайте на головний екран</div>
+    </div>
+    <button id="pwa-install-btn" style="background:var(--brand);border:none;color:#000;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Додати</button>
+    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa-banner-dismissed','1')" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0;flex-shrink:0">&times;</button>
+  </div>
+</div>
+
+<!-- PWA Install Banner (iOS Safari) -->
+<div id="pwa-ios-banner" style="display:none;position:fixed;bottom:70px;left:0;right:0;z-index:8000;padding:0 16px">
+  <div style="background:var(--card-bg);border:1px solid var(--brand);border-radius:16px;padding:16px 18px;box-shadow:0 8px 32px rgba(0,200,83,.2);max-width:480px;margin:0 auto;position:relative">
+    <button onclick="document.getElementById('pwa-ios-banner').style.display='none';localStorage.setItem('pwa-ios-dismissed','1')" style="position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0">&times;</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <img src="/favicon.svg" width="36" height="36" style="border-radius:8px">
+      <div>
+        <div style="font-weight:700;font-size:14px">Встановити RideGO</div>
+        <div style="font-size:12px;color:var(--text-muted)">Додайте на головний екран iPhone</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
+      1. Натисніть <b style="color:var(--text)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin:0 2px"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+        Поділитись</b> внизу Safari<br>
+      2. Оберіть <b style="color:var(--text)">«На екран Домівки»</b>
+    </div>
+    <!-- Стрілка вниз що вказує на кнопку Share -->
+    <div style="text-align:center;margin-top:10px;color:var(--brand);font-size:22px">↓</div>
+  </div>
+</div>
+
+<script>
+// Service Worker реєстрація
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      console.log('[SW] Registered:', reg.scope);
+    }).catch(function(err) {
+      console.warn('[SW] Registration failed:', err);
+    });
+  });
+}
+
+// Перевірка чи вже встановлено як PWA
+var _isPWA = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
+// Android/Desktop — стандартний beforeinstallprompt
+var _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _pwaPrompt = e;
+  if (_isPWA) return;
+  if (localStorage.getItem('pwa-banner-dismissed')) return;
+  if (localStorage.getItem('pwa-installed')) return;
+  setTimeout(function() {
+    var banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.style.display = '';
+  }, 3000);
+});
+
+var _installBtn = document.getElementById('pwa-install-btn');
+if (_installBtn) {
+  _installBtn.addEventListener('click', function() {
+    if (!_pwaPrompt) return;
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(function(result) {
+      if (result.outcome === 'accepted') {
+        localStorage.setItem('pwa-installed', '1');
+        document.getElementById('pwa-install-banner').style.display = 'none';
+      }
+      _pwaPrompt = null;
+    });
+  });
+}
+
+window.addEventListener('appinstalled', function() {
+  localStorage.setItem('pwa-installed', '1');
+  var b = document.getElementById('pwa-install-banner');
+  if (b) b.style.display = 'none';
+});
+
+// iOS Safari — немає beforeinstallprompt, показуємо інструкцію вручну
+var _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+var _isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+if (_isIOS && _isSafari && !_isPWA
+    && !localStorage.getItem('pwa-ios-dismissed')
+    && !localStorage.getItem('pwa-installed')) {
+  setTimeout(function() {
+    var banner = document.getElementById('pwa-ios-banner');
+    if (banner) banner.style.display = '';
+  }, 5000);
+}
+</script>
+
 </body>
 </html>
