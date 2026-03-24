@@ -779,13 +779,25 @@ function createCard(l, backPage) {
     promoClass = 'is-urgent';
     promoBadge = `<div class="promo-badge-urgent"><i class="fa-solid fa-fire"></i> Терміново</div>`;
   }
-  const hasSpecs = l.battery && l.battery !== '—';
-  const specsHtml = hasSpecs ? `
+  // Нормалізація specs — завжди однакові одиниці
+  function _specVal(v, unit) {
+    if (!v || v === '—') return null;
+    var s = String(v).trim();
+    if (!s) return null;
+    // Якщо одиниця вже є — не дублювати
+    if (unit && !s.includes(unit.trim())) return s + ' ' + unit.trim();
+    return s;
+  }
+  const specBattery = _specVal(l.battery, 'Ah');
+  const specSpeed   = _specVal(l.speed, 'км/год');
+  const specRange   = _specVal(l.range, 'км');
+
+  const specsHtml = (specBattery || specSpeed || specRange) ? `
     <div class="listing-specs">
-      <div class="spec"><i class="fa-solid fa-battery-full"></i>${l.battery}</div>
-      <div class="spec"><i class="fa-solid fa-gauge-high"></i>${l.speed}</div>
-      ${l.range && l.range !== '—' ? `<div class="spec"><i class="fa-solid fa-road"></i>${l.range}</div>` : ''}
-    </div>` : '';
+      ${specBattery ? `<div class="spec"><i class="fa-solid fa-battery-full"></i>${specBattery}</div>` : ''}
+      ${specSpeed   ? `<div class="spec"><i class="fa-solid fa-gauge-high"></i>${specSpeed}</div>`   : ''}
+      ${specRange   ? `<div class="spec"><i class="fa-solid fa-road"></i>${specRange}</div>`         : ''}
+    </div>` : '<div class="listing-specs-empty"></div>';
 
   const yearHtml = l.year ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${l.year} р.</span>` : '';
   const condHtml = l.condition && l.condition !== 'Хороший'
