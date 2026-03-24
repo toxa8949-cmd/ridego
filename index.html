@@ -1495,6 +1495,16 @@
           <div style="font-size:13px;color:var(--text-muted)">Завантаження балансу...</div>
         </div>
 
+        <!-- Кнопка масового імпорту -->
+        <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+          <button onclick="showPage('add')" class="btn-primary" style="flex:1;min-width:140px;padding:11px">
+            <i class="fa-solid fa-plus" style="margin-right:7px"></i>Додати оголошення
+          </button>
+          <button onclick="openImportModal()" class="btn-outline" style="flex:1;min-width:140px;padding:11px">
+            <i class="fa-solid fa-file-import" style="margin-right:7px"></i>Імпорт CSV/Excel
+          </button>
+        </div>
+
         <!-- Панель статистики переглядів -->
         <div id="views-stats-panel" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
