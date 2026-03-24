@@ -3076,3 +3076,40 @@
 .price-preset:hover, .price-preset.active {
   background: var(--brand-dim); border-color: var(--brand); color: var(--brand);
 }
+
+/* ── CORE WEB VITALS OPTIMIZATIONS ──────────────────────────── */
+
+/* CLS prevention — резервуємо місце для зображень */
+.listing-img-wrap {
+  aspect-ratio: 4/3;
+  overflow: hidden;
+}
+.listing-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* LCP — критичний текст рендериться одразу */
+.hero h1, .detail-title, .listing-card .listing-title {
+  font-display: swap;
+}
+
+/* INP — прибираємо важкі анімації на слабких пристроях */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* content-visibility для секцій нижче fold */
+.site-footer {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 300px;
+}
+
+/* Font display swap для системних шрифтів як fallback */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
