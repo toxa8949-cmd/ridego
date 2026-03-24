@@ -2636,12 +2636,39 @@ function _convertSpecs(specs) {
 }
 
 function buildSpecTable(l) {
-  if (!l.specs) { document.getElementById('detail-specs-full').innerHTML = '<p style="color:var(--text-muted);padding:20px">Детальні характеристики відсутні</p>'; return; }
+  var specsEl = document.getElementById('detail-specs-full');
+  if (!specsEl) return;
+
+  // Базові характеристики з окремих полів (battery, speed, range, weight)
+  var basicRows = '';
+  if (l.battery && l.battery !== '—') basicRows += '<tr><td>АКБ</td><td class="spec-val-green">' + l.battery + '</td></tr>';
+  if (l.speed   && l.speed   !== '—') basicRows += '<tr><td>Макс. швидкість</td><td class="spec-val-green">' + l.speed + '</td></tr>';
+  if (l.range   && l.range   !== '—') basicRows += '<tr><td>Запас ходу</td><td class="spec-val-green">' + l.range + '</td></tr>';
+  if (l.weight  && l.weight  !== '—') basicRows += '<tr><td>Вага</td><td>' + l.weight + '</td></tr>';
+  if (l.year    && l.year    !== '—') basicRows += '<tr><td>Рік випуску</td><td>' + l.year + '</td></tr>';
+  if (l.condition) basicRows += '<tr><td>Стан</td><td>' + l.condition + '</td></tr>';
+
+  // Якщо немає specs — показуємо тільки базові
+  if (!l.specs || !Object.keys(l.specs).length) {
+    if (basicRows) {
+      specsEl.innerHTML = '<div class="spec-section"><div class="spec-section-title"><i class="fa-solid fa-list-check"></i>Основні характеристики</div><table class="spec-table">' + basicRows + '</table></div>';
+    } else {
+      specsEl.innerHTML = '<p style="color:var(--text-muted);padding:20px">Детальні характеристики відсутні</p>';
+    }
+    return;
+  }
+
   var specs = _convertSpecs(l.specs);
   const order = ['general','motor','battery','performance','physical','extras'];
 
   Object.keys(specs).forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
   let html = '<div class="spec-section">';
+
+  // Додаємо базові поля якщо вони є і ще не в specs
+  if (basicRows) {
+    html += '<div class="spec-section-title"><i class="fa-solid fa-bolt"></i>Основні</div><table class="spec-table">' + basicRows + '</table>';
+  }
+
   order.forEach(key => {
     if (!specs[key] || !specs[key].length) return;
     const meta = SPEC_SECTION_META[key] || { label: key, icon: 'fa-circle' };
@@ -2656,7 +2683,7 @@ function buildSpecTable(l) {
       </table>`;
   });
   html += '</div>';
-  document.getElementById('detail-specs-full').innerHTML = html;
+  specsEl.innerHTML = html;
 }
 
 function isHighlight(key, val) {
@@ -5620,6 +5647,30 @@ function renderMyListings() {
   grid.innerHTML = mine.map(function(l){ return createMyCard(l); }).join('');
 
   if (uid) loadViewsStats('7');
+}
+
+function deleteListing(id) {
+  if (!window._db || !currentUser) return;
+  var l = _allListings().find(function(x){ return x && x.id === id; });
+  var title = l ? l.title : 'це оголошення';
+
+  if (!confirm('Видалити «' + title + '»?\nВитрачений слот не повертається.')) return;
+
+  window._db.collection('listings').doc(id).update({ status: 'deleted' })
+    .then(function() {
+      // Видалити з локальних масивів
+      myListings = myListings.filter(function(x){ return x.id !== id; });
+      var fl = _fbListings.find(function(x){ return x && x.id === id; });
+      if (fl) fl.status = 'deleted';
+      // Видалити з IDB кешу
+      _idbSet('listings', _fbListings);
+      // Оновити UI
+      renderMyListings();
+      renderHomeListings();
+      renderCatalog();
+      showToast('🗑 Оголошення видалено');
+    })
+    .catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
 }
 
 function renewListing(id) {
