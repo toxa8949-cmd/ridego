@@ -2074,6 +2074,9 @@
       <a onclick="showPage('services')">Сервісні центри</a>
       <a onclick="showPage('profile')">Мій профіль</a>
       <a href="https://t.me/ridego_support" target="_blank">Підтримка</a>
+      <a id="footer-install-btn" onclick="triggerPWAInstall()" style="display:none;cursor:pointer;color:var(--brand);font-weight:600">
+        <i class="fa-solid fa-download" style="margin-right:6px"></i>Встановити додаток
+      </a>
     </div>
     <div class="footer-col">
       <div class="footer-col-title">Інформація</div>
@@ -2175,6 +2178,9 @@ window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   _pwaPrompt = e;
   if (_isPWA) return;
+  // Показати кнопку у футері
+  var footerBtn = document.getElementById('footer-install-btn');
+  if (footerBtn) footerBtn.style.display = '';
   if (localStorage.getItem('pwa-banner-dismissed')) return;
   if (localStorage.getItem('pwa-installed')) return;
   setTimeout(function() {
@@ -2202,7 +2208,32 @@ window.addEventListener('appinstalled', function() {
   localStorage.setItem('pwa-installed', '1');
   var b = document.getElementById('pwa-install-banner');
   if (b) b.style.display = 'none';
+  var fb = document.getElementById('footer-install-btn');
+  if (fb) fb.style.display = 'none';
 });
+
+function triggerPWAInstall() {
+  if (_pwaPrompt) {
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(function(result) {
+      if (result.outcome === 'accepted') {
+        localStorage.setItem('pwa-installed', '1');
+        var b = document.getElementById('pwa-install-banner');
+        if (b) b.style.display = 'none';
+        var fb = document.getElementById('footer-install-btn');
+        if (fb) fb.style.display = 'none';
+      }
+      _pwaPrompt = null;
+    });
+  } else if (_isIOS && _isSafari) {
+    // iOS — показати інструкцію
+    var banner = document.getElementById('pwa-ios-banner');
+    if (banner) banner.style.display = '';
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  } else {
+    showToast('ℹ️ Відкрийте сайт в Chrome для встановлення');
+  }
+}
 
 // iOS Safari — немає beforeinstallprompt, показуємо інструкцію вручну
 var _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -2210,6 +2241,11 @@ var _isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 if (_isIOS && _isSafari && !_isPWA
     && !localStorage.getItem('pwa-ios-dismissed')
     && !localStorage.getItem('pwa-installed')) {
+  // Показати кнопку у футері для iOS
+  setTimeout(function() {
+    var footerBtn = document.getElementById('footer-install-btn');
+    if (footerBtn) footerBtn.style.display = '';
+  }, 1000);
   setTimeout(function() {
     var banner = document.getElementById('pwa-ios-banner');
     if (banner) banner.style.display = '';
