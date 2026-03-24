@@ -810,17 +810,15 @@ function createCard(l, backPage) {
   return `
   <div class="listing-card ${promoClass}" onclick="showDetail('${l.id}')">
 
-    <!-- Photo -->
-    <div style="position:relative;flex-shrink:0">${imgHtml}${badgeHtml}${promoBadge}</div>
+    <!-- Photo — тільки promo badges (TOP/Хіт/Терміново) -->
+    <div style="position:relative;flex-shrink:0">${imgHtml}${promoBadge}</div>
 
     <!-- Body -->
     <div class="listing-body">
 
       <!-- LIST MODE top row: category + price -->
       <div class="lv-top-row">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="tag tag-blue" style="font-size:11px">${l.cat}</span>
-        </div>
+        <span class="tag tag-blue" style="font-size:11px">${l.cat}</span>
         <div class="listing-price" style="font-size:20px;margin:0;white-space:nowrap">
           ${l.price.toLocaleString('uk')} грн
         </div>
@@ -829,28 +827,36 @@ function createCard(l, backPage) {
       <!-- Title -->
       <div class="listing-title">${l.title}</div>
 
-      <!-- Condition + year pill row -->
+      <!-- Condition + year -->
       <div class="card-pills-row">
         ${l.condition ? `<span class="card-pill card-pill-${l.condition==='Новий'?'new':l.condition==='Хороший'?'good':'used'}">${l.condition}</span>` : ''}
         ${l.year ? `<span class="card-pill card-pill-year"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${l.year}</span>` : ''}
       </div>
 
-      <!-- Grid price -->
-      <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
+      <!-- Price + ТОРГ/ОБМІН -->
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
+        ${l.bargain==='Торг' ? `<span class="card-pill card-pill-bargain">Торг</span>` : ''}
+        ${l.bargain==='Обмін' ? `<span class="card-pill card-pill-exchange">Обмін</span>` : ''}
+        ${l.bargain==='Торг+Обмін' ? `<span class="card-pill card-pill-bargain">Торг</span><span class="card-pill card-pill-exchange">Обмін</span>` : ''}
+      </div>
 
       <!-- Specs -->
       ${specsHtml}
 
-      <!-- GRID MODE footer -->
+      <!-- Footer: продавець + кнопки -->
       <div class="listing-footer">
-        <button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
-          class="card-seller-btn">
-          <i class="fa-solid fa-user-circle"></i>${l.sellerName || l.seller || 'Продавець'}
-        </button>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+          <button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
+            class="card-seller-btn">
+            <i class="fa-solid fa-user-circle"></i>${l.sellerName || l.seller || 'Продавець'}
+          </button>
+          <span class="loc"><i class="fa-solid fa-location-dot"></i>${l.city}</span>
+        </div>
         <div style="display:flex;gap:4px;align-items:center">
-          <button class="fav-btn compare-btn-card" id="cmp-btn-${l.id}" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438"
+          <button class="fav-btn compare-btn-card" id="cmp-btn-${l.id}"
             onclick="event.stopPropagation();toggleCompare('${l.id}',this)"
-            style="font-size:13px;opacity:.5">
+            style="font-size:13px;opacity:.5" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438">
             <i class="fa-solid fa-scale-balanced"></i>
           </button>
           <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)">
