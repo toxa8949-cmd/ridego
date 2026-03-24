@@ -53,12 +53,24 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Шрифти з font-display=swap — не блокує рендер -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+<!-- Leaflet CSS — критичний тільки для карт -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"></noscript>
+<!-- Font Awesome — defer через preload trick -->
+<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+<!-- Leaflet JS — defer -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+<!-- QRCode — defer, завантажується лише при потребі -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <link rel="stylesheet" href="/css/main.css">
+  <!-- Preload критичних ресурсів -->
+  <link rel="preload" href="/js/main.js" as="script">
+  <link rel="preload" href="/css/main.css" as="style">
+  <link rel="preload" href="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" as="script" crossorigin>
 <!-- Тема: виконується СИНХРОННО до рендеру body — усуває flash темної теми -->
 <script>
 (function(){
@@ -2119,8 +2131,8 @@
   </div>
 </div>
 
-  <script src="/js/main.js"></script>
-  <script src="/js/extra.js"></script>
+  <script src="/js/main.js" defer></script>
+  <script src="/js/extra.js" defer></script>
 <!-- PWA Install Banner (Android/Desktop) -->
 <div id="pwa-install-banner" style="display:none;position:fixed;bottom:70px;left:0;right:0;z-index:8000;padding:0 16px">
   <div style="background:var(--card-bg);border:1px solid var(--brand);border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,200,83,.2);max-width:480px;margin:0 auto">
