@@ -42,7 +42,7 @@ function _confirmSold() {
     status: 'sold',
     soldAt: firebase.firestore.FieldValue.serverTimestamp()
   }).then(function() {
-    // Update local cache
+
     if (typeof _fbListings !== 'undefined') {
       var l = _fbListings.find(function(x){ return x && x.id === id; });
       if (l) l.status = 'sold';
@@ -51,7 +51,7 @@ function _confirmSold() {
       var l2 = myListings.find(function(x){ return x && x.id === id; });
       if (l2) l2.status = 'sold';
     }
-    // Update sold counter in profile
+
     var uid = currentUser && currentUser.uid;
     var soldCount = (typeof _allListings === 'function' ? _allListings() : [])
       .filter(function(x){ return x && x.uid === uid && x.status === 'sold'; }).length;
@@ -70,7 +70,6 @@ function _confirmSold() {
   });
 }
 
-// Завантажити дані після повного завантаження DOM
 document.addEventListener('DOMContentLoaded', function() {
   var searchEl = document.getElementById('headerSearch');
   if (searchEl) {
@@ -80,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
     searchEl.addEventListener('input', function() { searchEl.dataset.userTyped = '1'; });
   }
 
-  // ── LAZY IMAGE BLUR-UP ───────────────────────────────────
+
   if ('IntersectionObserver' in window) {
     var _lazyObserver = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
@@ -99,44 +98,44 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }, { rootMargin: '200px' });
 
-    // Спостерігати за новими зображеннями через MutationObserver
+
     var _domObserver = new MutationObserver(function() {
       document.querySelectorAll('img.lazy-img[data-src]').forEach(function(img) {
         _lazyObserver.observe(img);
       });
     });
     _domObserver.observe(document.body, { childList: true, subtree: true });
-    // Перший прохід
+
     document.querySelectorAll('img.lazy-img[data-src]').forEach(function(img) {
       _lazyObserver.observe(img);
     });
   } else {
-    // Fallback — просто підставити src
+
     document.querySelectorAll('img.lazy-img[data-src]').forEach(function(img) {
       img.src = img.dataset.src;
       img.style.filter = 'none';
     });
   }
-  // ── LAZY IMAGE END ───────────────────────────────────────
 
-  // ── УНІКАЛЬНІ ВІДВІДУВАЧІ ────────────────────────────────
-  // Трекаємо унікальних по sessionId + дні — одна людина = 1 раз на добу
+
+
+
   (function _trackUniqueVisitor() {
     try {
       var today = new Date().toISOString().slice(0, 10);
       var storageKey = 'ridego_visited_' + today;
 
-      // sessionStorage — не рахуємо в одній вкладці двічі
+
       if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(storageKey)) return;
 
-      // localStorage — не рахуємо в одному браузері двічі за день
+
       if (localStorage.getItem(storageKey)) {
-        // Але скидаємо session щоб при новій вкладці не рахувалось
+
         if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
         return;
       }
 
-      // Генеруємо стабільний анонімний ID для цього браузера
+
       var browserId = localStorage.getItem('ridego_bid');
       if (!browserId) {
         browserId = 'b' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -148,17 +147,17 @@ document.addEventListener('DOMContentLoaded', function() {
         clearInterval(_waitForDb);
 
         var docId = 'visitors_' + today;
-        // Перевіряємо чи цей browserId вже рахувався сьогодні через Firestore
+
         window._db.collection('analytics').doc(docId).get().then(function(snap) {
           var data = snap.exists ? snap.data() : {};
           var ids = data.browserIds || [];
           if (ids.indexOf(browserId) >= 0) {
-            // Вже рахували цей браузер — тільки записати в localStorage
+
             localStorage.setItem(storageKey, '1');
             if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
             return;
           }
-          // Новий браузер — інкрементувати
+
           window._db.collection('analytics').doc(docId).set({
             count: firebase.firestore.FieldValue.increment(1),
             browserIds: firebase.firestore.FieldValue.arrayUnion(browserId),
@@ -174,12 +173,12 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(function(){ clearInterval(_waitForDb); }, 10000);
     } catch(e) {}
   })();
-  // ── ТРЕКЕР КІНЕЦЬ ────────────────────────────────────────
 
-  // Показати skeleton заглушки поки грузяться дані
+
+
   if (typeof showSkeletons === 'function') showSkeletons();
 
-  // Skeleton для новин
+
   var homeNewsEl = document.getElementById('home-news-grid');
   if (homeNewsEl) homeNewsEl.innerHTML = [1,2,3].map(function() {
     return '<div class="skel-card"><div class="skeleton skel-img"></div>'
@@ -191,13 +190,13 @@ document.addEventListener('DOMContentLoaded', function() {
       + '</div></div>';
   }).join('');
 
-  // Offline listener — показувати toast при втраті з'єднання
+
   window.addEventListener('offline', function() {
     if (typeof showToast === 'function') showToast('⚠️ З\'єднання з інтернетом втрачено');
   });
   window.addEventListener('online', function() {
     if (typeof showToast === 'function') showToast('✅ З\'єднання відновлено');
-    // Перезавантажити дані якщо кеш порожній
+
     if (typeof loadFirebaseData === 'function' && typeof _fbListings !== 'undefined' && !_fbListings.length) {
       loadFirebaseData();
     }
@@ -207,7 +206,6 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(loadSiteNews, 800);
 });
 
-// ── REVIEWS ──────────────────────────────────────────────────────
 var _reviewStar = 0;
 var _reviewSellerUid = null;
 
@@ -231,21 +229,21 @@ function _initReviewForm(sellerUid) {
   var loginEl    = document.getElementById('review-login-prompt');
   if (!formWrap) return;
 
-  // Якщо не залогінений
+
   if (!isLoggedIn || !currentUser || !currentUser.uid) {
     formWrap.style.display  = 'none';
     alreadyEl.style.display = 'none';
     loginEl.style.display   = '';
     return;
   }
-  // Якщо це свій профіль — не показувати форму
+
   if (currentUser.uid === sellerUid) {
     formWrap.style.display  = 'none';
     alreadyEl.style.display = 'none';
     loginEl.style.display   = 'none';
     return;
   }
-  // Перевірити чи вже залишив відгук
+
   loginEl.style.display = 'none';
   if (!window._db) { formWrap.style.display = ''; return; }
   window._db.collection('reviews')
@@ -288,7 +286,7 @@ function submitReview() {
     showToast('✅ Відгук опубліковано!');
     document.getElementById('review-form-wrap').style.display  = 'none';
     document.getElementById('review-already-done').style.display = '';
-    // Оновити список відгуків
+
     _loadSellerReviews(_reviewSellerUid);
   }).catch(function(e) {
     showToast('⚠️ Помилка: ' + e.message);
@@ -302,7 +300,7 @@ function _loadSellerReviews(sellerUid) {
     .limit(50)
     .get().then(function(snap) {
       var revs = snap.docs.map(function(d){ return d.data(); });
-      // Сортуємо на клієнті — новіші першими
+
       revs.sort(function(a, b) {
         var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
         var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
@@ -348,9 +346,8 @@ function _loadSellerReviews(sellerUid) {
     }).catch(function(e){ console.error('reviews load:', e); });
 }
 
-// ── DELETE & REPORT LISTING ──────────────────────────────────────
 function deleteListing(id) {
-  // Показати модалку з причиною видалення
+
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML = `
@@ -380,7 +377,7 @@ function _confirmDelete(id, btn) {
   var overlay = btn.closest('[style*=fixed]');
   if (overlay) overlay.remove();
 
-  // Видалити з Firestore
+
   if (window._db && id) {
     window._db.collection('listings').doc(id).update({
       status: 'deleted',
@@ -388,7 +385,7 @@ function _confirmDelete(id, btn) {
       deletedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).catch(function(e){ console.error('delete error:', e); });
   }
-  // Прибрати з локальних масивів
+
   myListings = myListings.filter(function(l){ return l.id !== id; });
   _fbListings = _fbListings.filter(function(l){ return l.id !== id; });
   if (typeof renderMyListings === 'function') renderMyListings();
@@ -439,7 +436,6 @@ function _confirmReport(id, btn) {
   showToast('✅ Скаргу надіслано. Дякуємо!');
 }
 
-// ── SEARCH ──────────────────────────────────────────────────────
 var _searchTimeout = null;
 
 function handleSearch(query, immediate) {
@@ -463,7 +459,7 @@ function doSearch(query) {
            (l.badge && l.badge.toLowerCase().includes(q));
   });
 
-  // Перейти в каталог і показати результати
+
   showPage('catalog');
   setTimeout(function() {
     var el = document.getElementById('catalog-listings') || document.getElementById('catalog-list') || document.getElementById('listings-grid');
@@ -482,12 +478,11 @@ function doSearch(query) {
   }, 100);
 }
 
-// ── NEWS ─────────────────────────────────────────
 var _allNews = [];
 
 function loadSiteNews() {
   if (!window._db) return;
-  // Skeleton для news-grid поки грузиться
+
   var newsGridEl = document.getElementById('news-grid');
   if (newsGridEl && !_allNews.length) {
     newsGridEl.innerHTML = [1,2,3,4,5,6].map(function() {
@@ -544,7 +539,7 @@ function createNewsCard(n) {
 function showNewsDetail(id) {
   var n = _allNews.find(function(x){ return x.id === id; });
   if (!n) {
-    // Новини ще не завантажились — завантажити напряму з Firestore
+
     if (window._db && id) {
       document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
       var detailPage = document.getElementById('page-news-detail');
@@ -569,12 +564,12 @@ function showNewsDetail(id) {
     return;
   }
 
-  // Оновити URL правильно:
-  // Якщо прийшли НЕ зі сторінки /news — спочатку додати /news в history,
-  // щоб кнопка "Назад" браузера повертала на список новин
+
+
+
   var _fromNews = (window.location.pathname === '/news' || window.location.pathname.startsWith('/news/'));
   if (!_fromNews && typeof _setPath === 'function') {
-    history.pushState(null, '', '/news'); // тихо додаємо /news в history
+    history.pushState(null, '', '/news');
   }
   if (typeof _setPath === 'function') _setPath('/news/' + id);
   document.title = n.title + ' — RideGO';
@@ -600,7 +595,7 @@ function showNewsDetail(id) {
     + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+(n.excerpt||'')+'</div>'
     + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'')+'</div>';
 
-  // Показати сторінку БЕЗ виклику showPage — щоб не перетерти URL /news/ID
+
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   var _ndPage = document.getElementById('page-news-detail');
   if (_ndPage) _ndPage.classList.add('active');
@@ -614,13 +609,12 @@ function filterNewsCat(cat, btn) {
   renderNewsGrid(filtered);
 }
 
-// ── REAL-TIME CHAT LIST LISTENER ─────────────────────────────────────
 var _chatsUnsubscribe = null;
 
 function _subscribeChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
 
-  // Відписатись від попереднього listener якщо є
+
   if (_chatsUnsubscribe) { _chatsUnsubscribe(); _chatsUnsubscribe = null; }
 
   var _prevUnreadTotal = 0;
@@ -635,7 +629,7 @@ function _subscribeChats() {
           ? data.participants.find(function(p) { return p !== currentUser.uid; })
           : null;
         if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
-        // unread для поточного юзера
+
         data.unread = data['unread_' + currentUser.uid] || 0;
         return data;
       });
@@ -645,7 +639,7 @@ function _subscribeChats() {
         return tb - ta;
       });
 
-      // Push notification при нових непрочитаних
+
       var totalUnread = _fbChats.reduce(function(s, c) { return s + (c.unread || 0); }, 0);
       if (totalUnread > _prevUnreadTotal && _prevUnreadTotal >= 0) {
         var newChat = _fbChats.find(function(c) {
@@ -665,7 +659,6 @@ function _subscribeChats() {
     });
 }
 
-// ── SEO: динамічні meta теги ─────────────────────
 function _updateSEO(opts) {
   var title = opts.title ? opts.title + ' — RideGO' : 'RideGO — Маркетплейс електротранспорту України';
   var desc = opts.desc || 'Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.';
@@ -699,7 +692,6 @@ function _setOG(prop, content) {
   el.setAttribute('content', content);
 }
 
-// Schema.org для оголошення
 function _setListingSchema(l) {
   var existing = document.getElementById('schema-listing');
   if (existing) existing.remove();
@@ -726,7 +718,6 @@ function _setListingSchema(l) {
   document.head.appendChild(s);
 }
 
-// Schema.org для новини
 function _setNewsSchema(n) {
   var existing = document.getElementById('schema-news');
   if (existing) existing.remove();

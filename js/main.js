@@ -1,8 +1,5 @@
-// ============================================================
-// DATA
-// ============================================================
 
-// XSS-захист: екранувати user-generated контент перед innerHTML
+
 function _esc(str) {
   if (!str) return '';
   return String(str)
@@ -13,25 +10,14 @@ function _esc(str) {
     .replace(/'/g, '&#39;');
 }
 
-// ============================================================
-// SLOT SYSTEM
-// ============================================================
-// Структура в Firestore users/{uid}:
-//   slots: number           — куплені слоти (не згорають)
-//   slotsWelcome: number    — стартові 10 слотів (згорають через 30 днів)
-//   slotsWelcomeExpiry: timestamp — коли згорають стартові
-//   lastFreeSlotAt: timestamp  — коли останній раз нараховували щомісячний безкоштовний
-//   totalListingsPublished: number — лічильник усіх опублікованих
-
 var _userSlots = {
-  slots: 0,          // куплені
-  slotsWelcome: 0,   // стартові (згорають)
+  slots: 0,
+  slotsWelcome: 0,
   slotsWelcomeExpiry: null,
   lastFreeSlotAt: null,
   loaded: false
 };
 
-// Загальна кількість доступних слотів
 function _totalSlots() {
   var welcome = Math.max(0, _userSlots.slotsWelcome || 0);
   var bought  = Math.max(0, _userSlots.slots || 0);
@@ -45,20 +31,18 @@ function _totalSlots() {
   return bought + welcome;
 }
 
-// Завантажити слоти з Firestore і нарахувати щомісячний якщо треба
 function loadUserSlots() {
   if (!window._db || !currentUser || !currentUser.uid) return;
   window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
     if (!snap.exists) return;
     var d = snap.data();
-    // Math.max(0, ...) — захист від від'ємних значень в Firestore
+
     _userSlots.slots             = Math.max(0, d.slots || 0);
     _userSlots.slotsWelcome      = Math.max(0, d.slotsWelcome || 0);
     _userSlots.slotsWelcomeExpiry= d.slotsWelcomeExpiry || null;
     _userSlots.lastFreeSlotAt    = d.lastFreeSlotAt || null;
     _userSlots.loaded            = true;
 
-    // Якщо в Firestore від'ємне значення — виправити
     var fixUpdate = {};
     if ((d.slots || 0) < 0)        { fixUpdate.slots = 0; }
     if ((d.slotsWelcome || 0) < 0) { fixUpdate.slotsWelcome = 0; }
@@ -79,12 +63,12 @@ function _checkMonthlyFreeSlot() {
         ? new Date(_userSlots.lastFreeSlotAt.seconds * 1000)
         : new Date(_userSlots.lastFreeSlotAt))
     : null;
-  // Якщо ще жодного разу або минув місяць — нарахувати
+
   var shouldGive = !lastDate || (now - lastDate) >= 30 * 24 * 60 * 60 * 1000;
   if (!shouldGive) return;
-  // Перший раз (реєстрація) — вже дали 10 стартових, не давати ще 1
+
   if (!lastDate) return;
-  // Нарахувати +1 безкоштовний купений слот (не стартовий — не згорає)
+
   _userSlots.slots = (_userSlots.slots || 0) + 1;
   window._db.collection('users').doc(currentUser.uid).update({
     slots: firebase.firestore.FieldValue.increment(1),
@@ -96,7 +80,6 @@ function _checkMonthlyFreeSlot() {
   }).catch(function(e){ console.log('monthly slot:', e.message); });
 }
 
-// Ініціалізувати слоти при першій реєстрації (викликається при створенні нового юзера)
 function _initNewUserSlots(uid) {
   if (!window._db || !uid) return;
   var expiry = new Date();
@@ -114,8 +97,6 @@ function _initNewUserSlots(uid) {
   _userSlots.loaded = true;
 }
 
-// Списати 1 слот (спочатку стартові, потім куплені)
-// Повертає Promise<bool> — true якщо успішно
 function _consumeSlot() {
   if (!window._db || !currentUser || !currentUser.uid) return Promise.resolve(false);
   if (_totalSlots() <= 0) return Promise.resolve(false);
@@ -126,10 +107,10 @@ function _consumeSlot() {
 
   if (welcomeCount > 0) {
     if (!_userSlots.slotsWelcomeExpiry) {
-      // Немає дати — вважаємо дійсними
+
       welcomeValid = true;
     } else {
-      // Підтримка різних форматів Firestore Timestamp
+
       var expiry = _userSlots.slotsWelcomeExpiry;
       var expiryDate;
       if (expiry && expiry.seconds) {
@@ -153,7 +134,7 @@ function _consumeSlot() {
     update.slots = firebase.firestore.FieldValue.increment(-1);
     _userSlots.slots = Math.max(0, (_userSlots.slots || 0) - 1);
   } else {
-    // Немає слотів — не декрементувати
+
     return Promise.resolve(false);
   }
   update.totalListingsPublished = firebase.firestore.FieldValue.increment(1);
@@ -163,7 +144,6 @@ function _consumeSlot() {
     .catch(function(e) { console.log('consume slot:', e.message); return false; });
 }
 
-// Пакети покупки слотів
 var SLOT_PACKAGES = [
   { count: 1,  price: 15,  label: '1 слот',    discount: 0   },
   { count: 3,  price: 43,  label: '3 слоти',   discount: 5   },
@@ -173,13 +153,11 @@ var SLOT_PACKAGES = [
   { count: 50, price: 525, label: '50 слотів', discount: 30  },
 ];
 
-// Купити пакет (симуляція — в реальності тут буде платіжний шлюз)
 function buySlotPackage(count, price) {
   if (!window._db || !currentUser || !currentUser.uid) {
     showToast('⚠️ Увійдіть в акаунт'); return;
   }
-  // TODO: інтегрувати платіжний шлюз (LiqPay, WayForPay)
-  // Поки що — симуляція успішної оплати
+
   var confirmed = confirm('Купити ' + count + ' слот(ів) за ' + price + ' грн?\n(Тестовий режим — оплата не стягується)');
   if (!confirmed) return;
 
@@ -193,20 +171,17 @@ function buySlotPackage(count, price) {
   }).catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
 }
 
-// Рендер балансу слотів в UI
 function _renderSlotsUI() {
   var total   = Math.max(0, _totalSlots());
   var welcome = Math.max(0, Math.min(_userSlots.slotsWelcome || 0, total));
   var bought  = Math.max(0, _userSlots.slots || 0);
 
-  // Бейдж в хедері профілю
   var el = document.getElementById('profile-slots-badge');
   if (el) {
     el.textContent = total + ' слот' + (total === 1 ? '' : total < 5 ? 'и' : 'ів');
     el.style.color = total > 0 ? 'var(--brand)' : '#ff5252';
   }
 
-  // Детальна панель
   var panel = document.getElementById('slots-panel');
   if (!panel) return;
 
@@ -229,7 +204,6 @@ function _renderSlotsUI() {
     + (total === 0 ? '<div style="font-size:13px;color:#ff5252;margin-bottom:8px">⚠️ Слотів немає — купіть щоб публікувати оголошення</div>' : '');
 }
 
-// Відкрити/закрити модалку покупки
 function openBuySlots() {
   var overlay = document.getElementById('buy-slots-overlay');
   if (overlay) { overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
@@ -249,12 +223,8 @@ let currentUser = { name:'', email:'', initial:'' };
 
 const chats = [];
 
-// ============================================================
-// SELLERS DATA
-// ============================================================
 const SELLERS = [];
 
-// map listings to sellers
 function getSellerById(name) {
   const map = {
     'Олег К.': 'oleg-k', 'Марія В.': 'maria-v', 'Auto-Market': 'auto-market',
@@ -264,8 +234,6 @@ function getSellerById(name) {
   return _fbSellers.find(s => s.id === (map[name] || ''));
 }
 
-// ── FAQ TOGGLE ───────────────────────────────────────────────
-// ── PROFILE CATS ─────────────────────────────────────────────
 function updateProfileCats() {
   var checked = [];
   document.querySelectorAll('#set-cats-wrap input[type=checkbox]:checked').forEach(function(cb) {
@@ -281,17 +249,16 @@ function _fillProfileCats(cats) {
   });
   updateProfileCats();
 }
-// ── PROFILE CATS END ──────────────────────────────────────────
 
 function toggleFaq(el) {
   var isOpen = el.classList.contains('open');
-  // Закрити всі
+
   document.querySelectorAll('.faq-q').forEach(function(q) {
     q.classList.remove('open');
     var a = q.nextElementSibling;
     if (a) a.classList.remove('open');
   });
-  // Відкрити поточний якщо був закритий
+
   if (!isOpen) {
     el.classList.add('open');
     var answer = el.nextElementSibling;
@@ -299,24 +266,21 @@ function toggleFaq(el) {
   }
 }
 
-// ── PROMO HELPERS ─────────────────────────────────────────────
-// Перевіряє чи активний промо юзера (не протермінований)
 function _isPromoActive(l) {
   if (!l || !l.promo) return false;
-  if (!l.promoUntil) return true; // старі записи без дати — вважаємо активними
+  if (!l.promoUntil) return true;
   return new Date(l.promoUntil) > new Date();
 }
 
-// Очистити протерміновані промо — викликати після завантаження даних
 function _cleanExpiredPromos(listings) {
   var expired = [];
   var now = new Date();
   listings.forEach(function(l) {
     if (!l || !l.promo) return;
-    // Якщо promoUntil не вказаний — не чіпаємо (старі записи без дати)
+
     if (!l.promoUntil) return;
     var until = new Date(l.promoUntil);
-    // Якщо дата некоректна — не чіпаємо
+
     if (isNaN(until.getTime())) return;
     if (until <= now) {
       expired.push(l.id);
@@ -325,7 +289,7 @@ function _cleanExpiredPromos(listings) {
       delete l.promoDays;
     }
   });
-  // Оновити в Firestore асинхронно
+
   if (window._db && expired.length) {
     expired.forEach(function(id) {
       if (!id) return;
@@ -339,15 +303,10 @@ function _cleanExpiredPromos(listings) {
   return listings;
 }
 
-// Відсортувати масив з промо-логікою:
-// 1. TOP — ротація (не більше MAX_TOP підряд, потім regular, потім знову TOP)
-// 2. highlight — перемішані з regular але підняті вище
-// 3. urgent — підняті але позначені
-// 4. regular — за датою (новіші першими)
-var MAX_TOP_IN_ROW = 4; // не більше 4 TOP підряд без regular між ними
+var MAX_TOP_IN_ROW = 4;
 
 function _sortWithPromo(data, sortType) {
-  // Спочатку фільтруємо тільки активні промо
+
   data.forEach(function(l) {
     if (l.promo && !_isPromoActive(l)) {
       delete l.promo;
@@ -359,7 +318,6 @@ function _sortWithPromo(data, sortType) {
   var urgents   = data.filter(function(l){ return l.promo === 'urgent'; });
   var regulars  = data.filter(function(l){ return !l.promo || l.promo === 'banner'; });
 
-  // Сортувати кожну групу
   var byDate = function(a, b) {
     var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
     var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
@@ -367,8 +325,6 @@ function _sortWithPromo(data, sortType) {
   };
   var byDateAsc = function(a, b) { return byDate(b, a); };
 
-  // TOP ротується — щоб не було 100 TOP підряд
-  // Алгоритм: показуємо по MAX_TOP_IN_ROW TOP, потім MAX_TOP_IN_ROW regular, і так чергуємо
   tops.sort(byDate);
   highlights.sort(byDate);
   urgents.sort(byDate);
@@ -381,35 +337,32 @@ function _sortWithPromo(data, sortType) {
     regulars.sort(byDate);
   }
 
-  // Urgent і highlight — підняті над regular але не займають весь екран
-  // Вставляємо по 1 urgent/highlight на кожні 3 regular
   var mixed = [];
   var urgIdx = 0, hlIdx = 0, regIdx = 0;
   var regBatch = 3;
 
-  // 1. Спочатку MAX_TOP_IN_ROW * чергування
   var topIdx = 0;
   var totalItems = data.length;
   var inserted = 0;
 
   while (topIdx < tops.length || regIdx < regulars.length || urgIdx < urgents.length || hlIdx < highlights.length) {
-    // Вставити до MAX_TOP_IN_ROW TOP
+
     var topBatch = Math.min(MAX_TOP_IN_ROW, tops.length - topIdx);
     for (var i = 0; i < topBatch; i++) {
       mixed.push(tops[topIdx++]);
     }
-    // Вставити 1 urgent якщо є
+
     if (urgIdx < urgents.length) mixed.push(urgents[urgIdx++]);
-    // Вставити 1 highlight якщо є
+
     if (hlIdx < highlights.length) mixed.push(highlights[hlIdx++]);
-    // Вставити regBatch regular
+
     for (var j = 0; j < regBatch && regIdx < regulars.length; j++) {
       mixed.push(regulars[regIdx++]);
     }
-    // Якщо нічого не додали — виходимо
+
     if (topBatch === 0 && urgIdx >= urgents.length && hlIdx >= highlights.length && regIdx >= regulars.length) break;
     if (topBatch === 0 && tops.length === 0) {
-      // Тільки regular залишились
+
       while (regIdx < regulars.length) mixed.push(regulars[regIdx++]);
       while (urgIdx < urgents.length) mixed.push(urgents[urgIdx++]);
       while (hlIdx < highlights.length) mixed.push(highlights[hlIdx++]);
@@ -419,9 +372,6 @@ function _sortWithPromo(data, sortType) {
   return mixed;
 }
 
-// ── PROMO HELPERS END ────────────────────────────────────────
-
-// Дедублікація — прибрати повтори по id (myListings може перетинатись з _fbListings)
 function _allListings() {
   var seen = {};
   return _fbListings.concat(myListings).filter(function(l) {
@@ -432,7 +382,6 @@ function _allListings() {
   });
 }
 
-// ── CITY AUTOCOMPLETE (Nominatim / OpenStreetMap) ────────────
 var _citySearchTimer = null;
 var _citySearchCache = {};
 
@@ -443,7 +392,7 @@ function onCityInput(val) {
   if (val.length < 2) { sugEl.style.display = 'none'; return; }
   clearTimeout(_citySearchTimer);
   _citySearchTimer = setTimeout(function() { _searchCityNominatim(val); }, 350);
-  // Також оновити карту з debounce 800ms при ручному введенні
+
   clearTimeout(_cityMapTimer);
   _cityMapTimer = setTimeout(function() {
     if (document.getElementById('new-city').value.trim().length >= 2) {
@@ -461,7 +410,6 @@ function _searchCityNominatim(q) {
   sugEl.style.display = '';
   sugEl.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">Пошук...</div>';
 
-  // Два запити паралельно: по назві населеного пункту і по громаді
   var url = 'https://nominatim.openstreetmap.org/search'
     + '?q=' + encodeURIComponent(q + ' Україна')
     + '&countrycodes=ua'
@@ -477,12 +425,12 @@ function _searchCityNominatim(q) {
       var seen = {};
       data.forEach(function(p) {
         var addr = p.address || {};
-        // Беремо будь-який тип населеного пункту
+
         var name = addr.village || addr.hamlet || addr.city || addr.town
                 || addr.suburb || addr.municipality || addr.county
                 || p.display_name.split(',')[0];
         if (!name) return;
-        // Прибираємо суфікс " громада" якщо є окремий без нього
+
         var cleanName = name.replace(/ громада$/i, '').replace(/ рада$/i, '');
         var oblast = (addr.state || '').replace(' область', ' обл.');
         var raion  = (addr.county || '').replace(' район', ' р-н');
@@ -520,7 +468,7 @@ function selectCitySuggestion(name) {
   var inp = document.getElementById('new-city');
   if (inp) inp.value = name;
   closeCitySuggestions();
-  // Оновити карту одразу після вибору
+
   setTimeout(onCityChange, 50);
 }
 
@@ -528,7 +476,6 @@ function closeCitySuggestions() {
   var s = document.getElementById('city-suggestions');
   if (s) s.style.display = 'none';
 }
-// ── CITY AUTOCOMPLETE END ─────────────────────────────────────
 
 function toggleMobileSearch() {
   var bar = document.getElementById('mobileSearchBar');
@@ -541,22 +488,14 @@ function toggleMobileSearch() {
   }
 }
 
-// ============================================================
-// NAVIGATION
-// ============================================================
-// ============================================================
-// HASH ROUTER
-// ============================================================
-let _routerLock = false; // prevent infinite loop between showPage ↔ hashchange
+let _routerLock = false;
 
-// ── HISTORY API ROUTER ──────────────────────────────
 function _setPath(path) {
   if (location.pathname !== path) {
     history.pushState(null, '', path);
   }
 }
 
-// Маппінг URL категорій → slug → назва
 var CAT_SLUGS = {
   'elektrosamokaty':   'Електросамокати',
   'velosypedy':        'Велосипеди',
@@ -579,25 +518,24 @@ function _parsePath(path) {
   if (p === '/faq')       return { page: 'faq' };
   if (p === '/terms')     return { page: 'terms' };
   if (p === '/privacy')   return { page: 'privacy' };
-  // /listing/ID
+
   var listingMatch = p.match(/^\/listing\/(.+)$/);
   if (listingMatch) return { page: 'detail', id: listingMatch[1] };
-  // /service/ID
+
   var serviceMatch = p.match(/^\/service\/(.+)$/);
   if (serviceMatch) return { page: 'service-detail', id: serviceMatch[1] };
-  // /seller/UID
+
   var sellerMatch = p.match(/^\/seller\/(.+)$/);
   if (sellerMatch) return { page: 'seller', id: 'uid:' + sellerMatch[1] };
-  // /category/slug
+
   var catMatch = p.match(/^\/category\/(.+)$/);
   if (catMatch && CAT_SLUGS[catMatch[1]]) return { page: 'catalog', cat: CAT_SLUGS[catMatch[1]] };
-  // /news/ID
+
   var newsMatch = p.match(/^\/news\/(.+)$/);
   if (newsMatch) return { page: 'news-detail', id: newsMatch[1] };
   return { page: 'home' };
 }
 
-// Зворотна сумісність — старі # посилання
 function _setHash(hash) {
   var pathMap = {
     '': '/', 'home': '/', 'catalog': '/catalog', 'add': '/add',
@@ -611,10 +549,8 @@ function _setHash(hash) {
   _setPath('/' + hash);
 }
 
-// Зворотна сумісність
 function _parseHash(hash) { return _parsePath(); }
 
-// Navigate from router (no pushState — already set by caller or hashchange)
 function _renderRoute(route) {
   _routerLock = true;
   const { page, id, cat } = route;
@@ -632,7 +568,7 @@ function _renderRoute(route) {
 
   if (page === 'home')     renderHomeListings();
   if (page === 'messages') {
-    // Захист — тільки для залогінених
+
     if (window._authInitialized && !isLoggedIn) {
       showToast('⚠️ Увійдіть щоб переглянути повідомлення');
       _renderRoute({ page: 'profile' });
@@ -641,7 +577,7 @@ function _renderRoute(route) {
     renderChats();
   }
   if (page === 'profile') {
-    // Якщо auth ще не завершився — показати loading skeleton замість форми логіну
+
     var _authLoading = document.getElementById('auth-loading');
     var _authWall    = document.getElementById('auth-wall');
     var _profileWall = document.getElementById('profile-wall');
@@ -654,7 +590,7 @@ function _renderRoute(route) {
     }
   }
   if (page === 'catalog') {
-    // Якщо немає категорії в URL — скинути вибір
+
     if (!route.cat) {
       selectedCat = null;
       document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); });
@@ -670,7 +606,7 @@ function _renderRoute(route) {
   if (page === 'services')       renderServices();
   if (page === 'service-detail' && id) showServiceDetail(id);
   if (page === 'add') {
-    // Якщо auth вже завершився і юзер не залогінений — редірект на профіль
+
     if (window._authInitialized && !isLoggedIn) {
       showToast('⚠️ Увійдіть щоб подати оголошення');
       setTimeout(function(){ showPage('profile'); }, 100);
@@ -679,13 +615,13 @@ function _renderRoute(route) {
     setTimeout(initOblastSelect, 50);
   }
   if (page === 'seller' && id) renderSellerPage(id);
-  if (page === 'detail' && id) showDetail(id, true); // true = skip pushState
+  if (page === 'detail' && id) showDetail(id, true);
   if (page === 'news-detail' && id) {
-    // Викликати showNewsDetail після завантаження новин
+
     if (typeof showNewsDetail === 'function') {
       showNewsDetail(id);
     } else {
-      // showNewsDetail ще не готова — чекаємо
+
       setTimeout(function(){ if (typeof showNewsDetail === 'function') showNewsDetail(id); }, 500);
     }
   }
@@ -716,13 +652,11 @@ function _pageTitle(page, id) {
   return base;
 }
 
-// React to browser back/forward
 window.addEventListener('popstate', function() {
   if (_routerLock) return;
   _renderRoute(_parsePath());
 });
 
-// ── Override showPage to update URL ──────────────────────────────────
 function showPage(page, sellerId) {
   var pageSEO = {
     home:    { title: 'Головна', desc: 'Купуй та продавай електросамокати, велосипеди, скутери в Україні.' },
@@ -743,18 +677,15 @@ function showPage(page, sellerId) {
   if (page === 'seller' && sellerId) {
     _setHash('seller/' + sellerId);
   } else if (page === 'detail') {
-    // handled inside showDetail
+
   } else {
     _setHash(page === 'home' ? '' : page);
   }
   _renderRoute({ page, id: sellerId || null });
 }
 
-// ── showDetail with URL ───────────────────────────────────────────────
 const _origShowDetail = showDetail;
-// redefine below; keep reference if needed
 
-// ── showSeller with URL ───────────────────────────────────────────────
 function showSeller(sellerName) {
   const s = getSellerById(sellerName);
   if (s) {
@@ -771,17 +702,11 @@ function showSellerByUid(uid) {
   _renderRoute({ page: 'seller', id: 'uid:' + uid });
 }
 
-// ── Init: read hash on first load ─────────────────────────────────────
 function _initRouter() {
   var route = _parsePath();
   _renderRoute(route);
 }
 
-
-
-// ============================================================
-// SKELETON LOADERS
-// ============================================================
 function _skeletonCards(count) {
   count = count || 4;
   var card = '<div class="skel-card">'
@@ -804,36 +729,28 @@ function showSkeletons() {
   if (svcEl     && !svcEl.children.length)     svcEl.innerHTML     = _skeletonCards(3);
 }
 
-// ============================================================
-// CLOUDINARY IMAGE OPTIMIZATION
-// ============================================================
 var _CLOUDINARY_BASE = 'https://res.cloudinary.com/dxgtpo5dq/image/upload';
 
-// Генерує оптимізований Cloudinary URL з автоматичним WebP та стисненням
 function _cdnImg(url, opts) {
   if (!url || !url.includes('cloudinary.com')) return url;
   opts = opts || {};
   var w = opts.w || 600;
   var q = opts.q || 'auto';
-  var f = opts.f || 'auto'; // auto = WebP/AVIF де підтримується браузером
+  var f = opts.f || 'auto';
   var c = opts.c || 'fill';
-  // g_auto (smart gravity) — платна фіча, не використовуємо
+
   var transforms = 'w_' + w + ',q_' + q + ',f_' + f + ',c_' + c;
   return url.replace('/upload/', '/upload/' + transforms + '/');
 }
 
-// Thumbnail — для карток у списку (400px)
 function _cdnThumb(url) { return _cdnImg(url, { w: 400, q: 75, c: 'fill' }); }
-// Tiny placeholder — 20px розмита версія для blur-up ефекту
+
 function _cdnTiny(url) { return _cdnImg(url, { w: 20, q: 30, c: 'fill' }); }
-// Detail — для сторінки деталей (1200px)
+
 function _cdnDetail(url) { return _cdnImg(url, { w: 1200, q: 85, c: 'limit' }); }
-// OG — для соцмереж (1200px квадрат)
+
 function _cdnOg(url) { return _cdnImg(url, { w: 1200, q: 80, c: 'fill' }); }
 
-// ============================================================
-// LISTINGS RENDER
-// ============================================================
 function createCard(l, backPage) {
   const isFav    = favorites.includes(l.id);
   const thumbSrc = _cdnThumb(l.img) || l.img;
@@ -844,12 +761,10 @@ function createCard(l, backPage) {
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
     : '';
 
-  // ── Платні формати ──────────────────────────────────────────
   let promoClass = '';
   let promoBadge = '';
   const activePromo = _isPromoActive(l) ? l.promo : null;
 
-  // Проданий товар — показуємо оверлей
   if (l.status === 'sold') {
     promoClass = 'is-sold';
     promoBadge = `<div class="promo-badge-sold"><i class="fa-solid fa-circle-check"></i> ПРОДАНО</div>`;
@@ -873,7 +788,7 @@ function createCard(l, backPage) {
 
   const yearHtml = l.year ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${l.year} р.</span>` : '';
   const condHtml = `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition || 'Хороший'}</span>`;
-  // Якщо є uid — переходимо по uid (надійно), інакше по імені (fallback)
+
   const _sellerUid = l.uid || '';
   const sellerBtn = `<button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
     style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);
@@ -959,14 +874,12 @@ function createCard(l, backPage) {
 const SERVICES = [];
 let myServices=[],currentServiceFilter="",currentServiceId=null,_svcRowId=0;
 
-// ── Firebase кеші ──
-let _fbListings = [];   // всі оголошення з Firestore
-let _fbSellers  = [];   // всі продавці (users з type='shop')
-let _fbServices = [];   // всі сервіси з Firestore
-let _fbChats    = [];   // чати поточного юзера
+let _fbListings = [];
+let _fbSellers  = [];
+let _fbServices = [];
+let _fbChats    = [];
 let _fbLoaded   = false;
 
-// Завантажити всі публічні дані з Firebase
 function _loadUserServices(uid) {
   if (!window._db || !uid) return;
   window._db.collection('services').where('uid','==',uid).get()
@@ -974,10 +887,10 @@ function _loadUserServices(uid) {
       var loaded = snap.docs.map(function(d){
         return Object.assign({id:d.id, _isOwn:true}, d.data());
       });
-      // Прибрати старі локальні сервіси цього юзера і замінити на Firebase
+
       myServices = myServices.filter(function(s){ return !s._isOwn; });
       myServices = loaded.concat(myServices);
-      // Прибрати з _fbServices сервіси що тепер є в myServices (уникнути дублів)
+
       var myIds = loaded.map(function(s){ return s.id; });
       _fbServices = _fbServices.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderMyServiceTab();
@@ -986,33 +899,42 @@ function _loadUserServices(uid) {
     }).catch(function(e){ console.log('services load:', e.message); });
 }
 
-// Кеш-мітка — не перезапитувати Firebase частіше ніж раз на 5 хв
 var _fbDataLoadedAt = 0;
-var _FB_CACHE_TTL   = 5 * 60 * 1000; // 5 хвилин
+var _FB_CACHE_TTL   = 10 * 60 * 1000;
 
 function loadFirebaseData(force) {
   if (!window._db) return;
   var now = Date.now();
-  // Якщо дані вже є і не застаріли — не робити зайвий запит
+
   if (!force && _fbListings.length && (now - _fbDataLoadedAt) < _FB_CACHE_TTL) {
     renderHomeListings();
     renderCatalog();
     return;
   }
 
-  // ── Кеш з sessionStorage — швидкий старт ─────────────────
   if (!force) {
     try {
       var cached = sessionStorage.getItem('ridego_listings_cache');
       var cachedTs = parseInt(sessionStorage.getItem('ridego_listings_cache_ts') || '0');
-      if (cached && (now - cachedTs) < 5 * 60 * 1000) { // 5 хвилин
+      if (cached && (now - cachedTs) < 5 * 60 * 1000) {
         var parsed = JSON.parse(cached);
         if (parsed && parsed.length) {
           _fbListings = parsed;
           _fbDataLoadedAt = cachedTs;
+          // Також відновити сервіси з кешу
+          try {
+            var svcsCache = sessionStorage.getItem('ridego_services_cache');
+            var svcsCacheTs = parseInt(sessionStorage.getItem('ridego_services_cache_ts') || '0');
+            if (svcsCache && (now - svcsCacheTs) < 10 * 60 * 1000) {
+              _fbServices = JSON.parse(svcsCache);
+            }
+          } catch(e2) {}
           renderHomeListings();
           renderCatalog();
-          // Після рендеру — оновити у фоні
+          if (_fbServices.length) {
+            renderHomeServices();
+            if (typeof renderServices === 'function') renderServices();
+          }
           setTimeout(function() { loadFirebaseData(true); }, 3000);
           return;
         }
@@ -1020,39 +942,35 @@ function loadFirebaseData(force) {
     } catch(e) {}
   }
 
-  // Offline-перевірка
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     showToast('⚠️ Немає з\'єднання з інтернетом');
     return;
   }
 
-  // Оголошення
   window._db.collection('listings').orderBy('createdAt','desc').limit(50).get()
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
 
-      // Зберегти в sessionStorage
       try {
         sessionStorage.setItem('ridego_listings_cache', JSON.stringify(_fbListings));
         sessionStorage.setItem('ridego_listings_cache_ts', String(_fbDataLoadedAt));
       } catch(e) {}
 
-      // Видалити з myListings все що вже є в _fbListings — головна причина дублів
       var fbIds = {};
       _fbListings.forEach(function(l){ if (l.id) fbIds[l.id] = true; });
       myListings = myListings.filter(function(l){ return l && l.id && !fbIds[l.id]; });
 
       renderHomeListings();
       renderCatalog();
-      // Перевірити зниження цін в обраних
+
       setTimeout(function() {
         if (typeof _trackFavPrices === 'function') _trackFavPrices();
       }, 1500);
-      // Якщо поточний URL — /listing/ID, показати після завантаження
+
       var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
       if (_lstPath) showDetail(_lstPath[1], true);
-      // Якщо /category/slug — вибрати категорію
+
       var _catPath = window.location.pathname.match(/^\/category\/(.+)$/);
       if (_catPath && CAT_SLUGS[_catPath[1]]) {
         var _catName = CAT_SLUGS[_catPath[1]];
@@ -1063,20 +981,21 @@ function loadFirebaseData(force) {
       if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
     });
 
-  // Сервіси
   window._db.collection('services').orderBy('rating','desc').limit(30).get()
     .then(function(snap) {
       var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       var myIds = myServices.map(function(s){ return s.id; });
       _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
+      try {
+        sessionStorage.setItem('ridego_services_cache', JSON.stringify(_fbServices));
+        sessionStorage.setItem('ridego_services_cache_ts', String(Date.now()));
+      } catch(e) {}
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
       var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
       if (_svcPath) showServiceDetail(_svcPath[1]);
     }).catch(function(e){ console.log('services:', e.message); });
 }
-
-// Завантажити чати для поточного юзера
 
 function _updateChatBadge() {
   var unread = _fbChats.reduce(function(s, c){ return s + (c.unread || 0); }, 0);
@@ -1097,7 +1016,6 @@ function _updateChatBadge() {
   }
 }
 
-// ── PUSH NOTIFICATIONS ────────────────────────────────────────
 function _requestNotifPermission() {
   if (typeof Notification === 'undefined') return;
   if (Notification.permission === 'default') {
@@ -1106,7 +1024,7 @@ function _requestNotifPermission() {
 }
 
 function _showMsgPush(senderName, text, chatId) {
-  // Браузерний push якщо вкладка не активна
+
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
     try {
       var n = new Notification('💬 ' + senderName + ' — RideGO', {
@@ -1121,7 +1039,7 @@ function _showMsgPush(senderName, text, chatId) {
       };
     } catch(e) {}
   }
-  // In-app toast (якщо не відкритий цей чат)
+
   if (_activeChatId === chatId) return;
   var toast = document.getElementById('msg-push-toast');
   if (!toast) {
@@ -1160,8 +1078,6 @@ function _showMsgPush(senderName, text, chatId) {
     setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
   }, 5000);
 }
-// ── PUSH END ──────────────────────────────────────────────────
-
 
 function loadUserChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
@@ -1171,12 +1087,12 @@ function loadUserChats() {
     .then(function(snap) {
       _fbChats = snap.docs.map(function(d){
         var data = Object.assign({id:d.id}, d.data());
-        // Знайти ім'я співрозмовника
+
         var otherId = data.participants ? data.participants.find(function(p){ return p !== currentUser.uid; }) : null;
         if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
         return data;
       });
-      // Сортуємо на клієнті
+
       _fbChats.sort(function(a,b){
         var ta=a.lastMessageAt&&a.lastMessageAt.seconds?a.lastMessageAt.seconds:0;
         var tb=b.lastMessageAt&&b.lastMessageAt.seconds?b.lastMessageAt.seconds:0;
@@ -1190,10 +1106,9 @@ function loadUserChats() {
 function renderHomeListings() {
   var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive' && l.status !== 'sold'; });
   _cleanExpiredPromos(all);
-  // WebSite schema — один раз
+
   if (typeof _setHomeBreadcrumbSchema === 'function') _setHomeBreadcrumbSchema();
 
-  // Оновити лічильники категорій
   var cats = {
     'Електросамокати': 'cnt-scooters',
     'Велосипеди': 'cnt-bikes',
@@ -1207,11 +1122,10 @@ function renderHomeListings() {
     if (el) el.textContent = cnt > 0 ? cnt + ' пропозицій' : 'Скоро буде';
   });
 
-  // ТОП оголошення — ротація, не більше 4 за раз
   var topEl = document.getElementById('home-top-listings');
   var topEmpty = document.getElementById('home-top-empty');
   var topList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'top'; });
-  // Ротація: показуємо різні TOP кожного завантаження (зсув по createdAt)
+
   topList.sort(function(a, b) {
     var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
     var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
@@ -1228,7 +1142,6 @@ function renderHomeListings() {
     }
   }
 
-  // Гарячі пропозиції (urgent)
   var urgentEl = document.getElementById('home-urgent-listings');
   var urgentEmpty = document.getElementById('home-urgent-empty');
   var urgentList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'urgent'; });
@@ -1244,7 +1157,6 @@ function renderHomeListings() {
     }
   }
 
-  // Нові оголошення (без промо, найновіші)
   var newEl = document.getElementById('home-listings');
   var regular = all.filter(function(l){ return !_isPromoActive(l); });
   regular.sort(function(a, b) {
@@ -1260,7 +1172,6 @@ function renderHomeListings() {
     }
   }
 
-  // Магазини
   _renderHomeShops();
   renderHomeServices();
 }
@@ -1289,7 +1200,7 @@ function renderHomeServices() {
   var grid = document.getElementById("home-services-grid");
   if (!grid) return;
   var all = _fbServices.concat(myServices);
-  // Показати 3 топ сервіси (офіційні першими)
+
   var sorted = all.slice().sort(function(a,b) {
     var wa = a.badge==="official"?0:a.badge==="verified"?1:2;
     var wb = b.badge==="official"?0:b.badge==="verified"?1:2;
@@ -1300,7 +1211,7 @@ function renderHomeServices() {
 }
 
 function createHomeSvcCard(s) {
-  // Зібрати перші 2 послуги з усіх категорій
+
   var allCats = _normalizeSvcs(s.services);
   var items = [];
   allCats.forEach(function(cat){ (cat.items||[]).forEach(function(i){ items.push(i); }); });
@@ -1334,9 +1245,6 @@ function createHomeSvcCard(s) {
     +"</div>";
 }
 
-// ============================================================
-// CATALOG v2 — AutoRIA-style stepwise filters
-// ============================================================
 const BRANDS = {
   'Електросамокати': [
     'Acer',
@@ -1679,7 +1587,7 @@ function selectTransport(btn) {
   }
   btn.classList.add('selected');
   selectedCat = btn.dataset.cat;
-  // Оновити URL
+
   var slug = CAT_TO_SLUG[selectedCat];
   if (slug) _setPath('/category/' + slug);
   openFilterPanel(selectedCat);
@@ -1702,7 +1610,6 @@ function onFilterOblastChange() {
   citySel.disabled = !oblast;
   if (!oblast) { updateActiveFilters(); return; }
 
-  // Collect all cities from all raions of this oblast
   const raions = UA_GEO[oblast]?.raions || {};
   const allCities = [...new Set(Object.values(raions).flatMap(r => r.cities))].sort((a,b)=>a.localeCompare(b,'uk'));
   allCities.forEach(c => {
@@ -1739,7 +1646,7 @@ function openFilterPanel(cat) {
   const brandSel = document.getElementById('fp-brand');
   brandSel.innerHTML = '<option value="">Будь-який</option>';
   (BRANDS[cat] || []).forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; brandSel.appendChild(o); });
-  // Reset model select
+
   const modelSel = document.getElementById('fp-model');
   if (modelSel) { modelSel.innerHTML = '<option value="">Будь-яка</option>'; modelSel.disabled = true; }
   document.getElementById('fp-title').textContent = 'Фільтри: ' + cat;
@@ -1750,7 +1657,7 @@ function openFilterPanel(cat) {
   if (divider) divider.style.display = '';
   conditionFilter = '';
   document.querySelectorAll('#fp-condition .pill').forEach((p,i) => p.classList.toggle('active', i===0));
-  // Ініціалізувати price slider
+
   setTimeout(function() { if (typeof _initPriceSlider === 'function') _initPriceSlider(); }, 50);
   setTimeout(() => {
     const divEl = document.getElementById('catalog-divider');
@@ -1773,7 +1680,6 @@ function updateResultCount() {
   if(el) el.textContent = count;
 }
 
-// Debounce helper — щоб не спамити при кожному натисканні клавіші
 var _debounceTimers = {};
 function _debounce(key, fn, delay) {
   clearTimeout(_debounceTimers[key]);
@@ -1805,7 +1711,7 @@ function updateActiveFilters() {
   ];
   document.getElementById('active-filters').innerHTML = chips.map(c =>
     `<div class="af-chip">${c.label}<button onclick="window._filterChipActions[${c.i}]()">×</button></div>`).join('');
-  // Запустити пошук з debounce — не спамимо при кожній зміні фільтру
+
   _debounce('runSearch', function() {
     if (document.getElementById('catalog-results-wrap').style.display !== 'none') {
       runSearch();
@@ -1819,7 +1725,7 @@ function clearFilters() {
     if (el) { el.value=''; if(id==='fp-model') el.disabled=true; }
   });
   ['fp-price-from','fp-price-to'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-  // Скинути слайдер
+
   var fromRange = document.getElementById('fp-price-from-range');
   var toRange   = document.getElementById('fp-price-to-range');
   if (fromRange) fromRange.value = 0;
@@ -1857,21 +1763,18 @@ function getFilteredData() {
   return data;
 }
 
-// ── PAGINATION ───────────────────────────────────────────────
-const PAGE_SIZE = 20;          // карток на одну сторінку
-var _catalogData  = [];        // весь відфільтрований масив
-var _catalogPage  = 0;         // скільки сторінок вже показано
-var _catalogAllShown = false;  // чи показали все
+const PAGE_SIZE = 20;
+var _catalogData  = [];
+var _catalogPage  = 0;
+var _catalogAllShown = false;
 
 function runSearch() {
   var data = getFilteredData();
   _cleanExpiredPromos(data);
 
-  // Розділити TOP і решту
   var topData     = data.filter(function(l){ return _isPromoActive(l) && l.promo === 'top'; });
   var regularData = data.filter(function(l){ return !(l.promo === 'top' && _isPromoActive(l)); });
 
-  // Показати/сховати TOP секцію каталогу
   var topSec = document.getElementById('catalog-top-section');
   var topEl  = document.getElementById('catalog-top-listings');
   var allLbl = document.getElementById('catalog-all-label');
@@ -1886,7 +1789,6 @@ function runSearch() {
   }
   if (allLbl) allLbl.style.display = topData.length > 0 ? '' : 'none';
 
-  // Сортувати regular з урахуванням highlight/urgent
   regularData = _sortWithPromo(regularData, currentSort);
 
   _catalogData     = regularData;
@@ -1922,26 +1824,26 @@ function _appendCatalogPage() {
   const slice = _catalogData.slice(start, start + PAGE_SIZE);
   if (!slice.length) return;
 
-  const BANNER_INTERVAL = 8; // між кожними 8 звичайними картками — shop banner
+  const BANNER_INTERVAL = 8;
   const shopBanners = _fbSellers.filter(s => s.type === 'shop' && s.banner);
   let html = '';
   let shopBannerIdx = Math.floor(start / BANNER_INTERVAL);
-  let regularCount = 0; // лічильник НЕ-banner карток для вставки shop banners
+  let regularCount = 0;
 
   slice.forEach((l, i) => {
     if (_isPromoActive(l) && l.promo === 'banner') {
-      // Промо-банер від продавця — рендеримо як широкий блок
+
       var seller = _fbSellers.find(function(s){ return s.uid === l.uid; });
       if (seller) {
         html += createShopBanner(seller);
       } else {
-        html += createCard(l, 'catalog'); // fallback якщо продавець не знайдений
+        html += createCard(l, 'catalog');
       }
     } else {
       html += createCard(l, 'catalog');
       regularCount++;
       const globalIdx = start + i;
-      // Вставити shop banner кожні BANNER_INTERVAL звичайних карток
+
       if (regularCount % BANNER_INTERVAL === 0 && shopBannerIdx < shopBanners.length) {
         html += createShopBanner(shopBanners[shopBannerIdx++]);
       }
@@ -1978,7 +1880,7 @@ function _updatePaginationUI() {
     document.getElementById('catalog-listings').after(div);
     _attachInfiniteScroll();
   }
-  // Оновити лічильник що залишилось
+
   var remEl = document.getElementById('catalog-remaining-count');
   if (remEl) {
     var remaining = _catalogData.length - _catalogPage * PAGE_SIZE;
@@ -1992,7 +1894,6 @@ function _removePaginationUI() {
   _detachInfiniteScroll();
 }
 
-// Infinite scroll — підвантажує наступну сторінку коли юзер майже внизу
 var _infiniteScrollObserver = null;
 function _attachInfiniteScroll() {
   if (_infiniteScrollObserver || typeof IntersectionObserver === 'undefined') return;
@@ -2026,7 +1927,7 @@ function setLayout(mode) {
   document.getElementById('lt-list').classList.toggle('active', mode === 'list');
   const grid = document.getElementById('catalog-listings');
   if (grid) grid.className = 'listing-grid' + (mode === 'list' ? ' list-view' : '');
-  // Перемалювати з тими самими даними але новим layout
+
   if (_catalogData.length) {
     grid.innerHTML = '';
     _catalogPage = 0;
@@ -2037,7 +1938,7 @@ function setLayout(mode) {
 }
 
 function filterCatalog(cat) {
-  // Оновити URL на /category/slug
+
   var slug = CAT_TO_SLUG[cat];
   if (slug) _setPath('/category/' + slug);
   else _setPath('/catalog');
@@ -2058,7 +1959,6 @@ function renderCatalog(catFilter) {
 
   var all = _allListings().filter(function(l){ return l && l.status !== 'deleted'; });
 
-  // Фільтр по категорії
   if (catFilter) all = all.filter(function(l){ return l.cat === catFilter; });
 
   if (all.length === 0) {
@@ -2067,18 +1967,15 @@ function renderCatalog(catFilter) {
     return;
   }
 
-  // Розділити TOP і звичайні
   var topListings = all.filter(function(l){ return l.promo === 'top'; });
   var regular = all.filter(function(l){ return l.promo !== 'top'; });
 
-  // Сортувати regular — новіші першими
   regular.sort(function(a, b){
     var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
     var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
     return tb - ta;
   });
 
-  // Показати TOP секцію
   if (topEl && topSec) {
     if (topListings.length > 0) {
       topSec.style.display = '';
@@ -2088,7 +1985,6 @@ function renderCatalog(catFilter) {
     }
   }
 
-  // Показати всі
   if (allLbl) allLbl.style.display = topListings.length > 0 ? '' : 'none';
   allEl.innerHTML = regular.map(function(l){ return createCard(l,'catalog'); }).join('');
 }
@@ -2128,10 +2024,6 @@ function createShopBanner(s) {
   </div>`;
 }
 
-// ============================================================
-// ============================================================
-// SELLER PAGE
-// ============================================================
 let currentSellerId = null;
 
 function showSeller(sellerName) {
@@ -2143,7 +2035,6 @@ function showSeller(sellerName) {
 function _renderSellerByUid(uid) {
   if (!window._db) return;
 
-  // Скелетон поки грузяться дані
   var av = document.getElementById('seller-page-avatar');
   if (av) { av.textContent = '?'; av.className = 'seller-avatar-big'; }
   var nameEl = document.getElementById('seller-page-name');
@@ -2151,7 +2042,6 @@ function _renderSellerByUid(uid) {
   var gridEl = document.getElementById('seller-listings-grid');
   if (gridEl) gridEl.innerHTML = _skeletonCards ? _skeletonCards(4) : '';
 
-  // Функція що рендерить після того як дані є
   function _doRender(listings) {
     var sellerName = listings.length ? (listings[0].sellerName || listings[0].seller || 'Продавець') : 'Продавець';
     var initial = sellerName[0] ? sellerName[0].toUpperCase() : '?';
@@ -2169,20 +2059,17 @@ function _renderSellerByUid(uid) {
     document.getElementById('seller-page-desc').textContent = '';
     document.getElementById('seller-page-city').innerHTML = '';
 
-    // Завантажити повний профіль з Firestore — ім'я, about, контакти, категорії
     window._db.collection('users').doc(uid).get().then(function(snap) {
       if (!snap.exists) return;
       var d = snap.data();
       var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
 
-      // Ім'я, рік, місто
       document.getElementById('seller-page-name').textContent = d.name || sellerName;
       if (year) document.getElementById('seller-page-since').innerHTML =
         '<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ' + year;
       if (d.city) document.getElementById('seller-page-city').innerHTML =
         '<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>' + _esc(d.city);
 
-      // Бейдж верифікованого телефону
       if (d.phoneVerified) {
         var metaEl = document.getElementById('seller-page-since');
         if (metaEl) {
@@ -2196,7 +2083,6 @@ function _renderSellerByUid(uid) {
         }
       }
 
-      // Фото аватара
       var avEl = document.getElementById('seller-page-avatar');
       if (avEl) {
         if (d.photoUrl) {
@@ -2206,7 +2092,6 @@ function _renderSellerByUid(uid) {
         }
       }
 
-      // Обкладинка — колір на основі типу
       if (d.type === 'business') {
         document.getElementById('seller-page-type-badge').innerHTML =
           '<span class="seller-shop-badge"><i class="fa-solid fa-store" style="margin-right:4px"></i>Офіційний магазин</span>';
@@ -2215,13 +2100,11 @@ function _renderSellerByUid(uid) {
           'linear-gradient(160deg, #0a2a1a 0%, ' + (isDarkNow ? '#1a2e1a' : '#d4edda') + ' 100%)';
       }
 
-      // Опис у header
       var descEl = document.getElementById('seller-page-desc');
       if (descEl && (d.about || d.desc)) {
         descEl.textContent = d.about || d.desc;
       }
 
-      // Тип бейдж
       var typeBadgeEl = document.getElementById('seller-page-type-badge');
       if (typeBadgeEl) {
         typeBadgeEl.innerHTML = d.type === 'business'
@@ -2229,29 +2112,13 @@ function _renderSellerByUid(uid) {
           : '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Продавець</span>';
       }
 
-      // Бейдж "Надійний продавець" якщо вже є в профілі
-      if (d.trustedSeller) {
-        var metaEl = document.querySelector('.seller-meta');
-        if (metaEl && !document.getElementById('trusted-badge')) {
-          var tb = document.createElement('span');
-          tb.id = 'trusted-badge';
-          tb.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#f59e0b20,#f59e0b10);border:1px solid #f59e0b50;color:#f59e0b;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:help';
-          tb.title = '\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c \u0437 5+ \u0443\u0433\u043e\u0434\u0430\u043c\u0438 \u0456 \u0440\u0435\u0439\u0442\u0438\u043d\u0433\u043e\u043c 4.0+';
-          tb.innerHTML = '<i class="fa-solid fa-shield-halved"></i> \u041d\u0430\u0434\u0456\u0439\u043d\u0438\u0439 \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c';
-          metaEl.appendChild(tb);
-        }
-      }
-
-      // Schema.org для продавця
       if (typeof _setSellerSchema === 'function') {
         _setSellerSchema(Object.assign({ uid: uid }, d), cached);
       }
 
-      // Про нас
       var aboutEl = document.getElementById('seller-about-text');
       if (aboutEl) aboutEl.textContent = d.about || d.desc || '';
 
-      // Категорії
       var catsEl = document.getElementById('seller-cats-list');
       if (catsEl) {
         var cats = d.cats || [];
@@ -2260,7 +2127,6 @@ function _renderSellerByUid(uid) {
         }).join('');
       }
 
-      // Контакти
       var contactsEl = document.getElementById('seller-contacts');
       if (contactsEl) {
         var lines = [];
@@ -2270,7 +2136,6 @@ function _renderSellerByUid(uid) {
         contactsEl.innerHTML = lines.join('') || '<span style="font-size:13px;color:var(--text-muted)">Контакти не вказані</span>';
       }
 
-      // Соцмережі
       var socialsEl = document.getElementById('seller-socials');
       if (socialsEl) {
         var soc = [];
@@ -2281,13 +2146,11 @@ function _renderSellerByUid(uid) {
         socialsEl.innerHTML = soc.join('') || '<span style="font-size:13px;color:var(--text-muted)">Соцмережі не вказані</span>';
       }
 
-      // Опис в header
       var descEl = document.getElementById('seller-page-desc');
       if (descEl) descEl.textContent = d.desc || d.about || '';
 
     }).catch(function(){});
 
-    // Статистика і оголошення (не чекаємо профілю)
     var adsEl = document.getElementById('sp-stat-ads');
     if (adsEl) adsEl.textContent = listings.length;
     ['sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid){
@@ -2299,11 +2162,9 @@ function _renderSellerByUid(uid) {
     if (urlEl) urlEl.textContent = 'https://ridego-sigma.vercel.app/seller/' + uid;
     _loadSellerReviews(uid);
     _initReviewForm(uid);
-    // Підписка і статистика підписників
+
     if (typeof _initFollowBtn === 'function') _initFollowBtn(uid);
     if (typeof _renderFollowersCount === 'function') _renderFollowersCount(uid);
-    // Бейдж "Надійний продавець"
-    if (typeof _renderTrustedBadge === 'function') _renderTrustedBadge(uid, listings);
     var svcTab = document.getElementById('seller-tab-service');
     var sellerSvc = _fbServices.concat(myServices).filter(function(s){ return s.uid === uid; })[0];
     if (svcTab) svcTab.style.display = sellerSvc ? '' : 'none';
@@ -2314,13 +2175,12 @@ function _renderSellerByUid(uid) {
     switchSellerTab('listings', document.querySelector('.seller-tab'));
   }
 
-  // Якщо _fbListings вже завантажений — використати кеш
   var cached = _fbListings.filter(function(x){ return x && x.uid === uid; });
   if (cached.length > 0 || _fbListings.length > 0) {
-    // Дані є — рендеримо одразу
+
     _doRender(cached);
   } else {
-    // Прямий перехід — завантажити оголошення цього продавця напряму
+
     window._db.collection('listings')
       .where('uid', '==', uid)
       .get()
@@ -2328,13 +2188,13 @@ function _renderSellerByUid(uid) {
         var listings = snap.docs
           .map(function(d){ return Object.assign({id: d.id}, d.data()); })
           .filter(function(l){ return l.status !== 'inactive' && l.status !== 'deleted' && l.status !== 'sold'; });
-        // Сортуємо на клієнті
+
         listings.sort(function(a,b){
           var ta=a.createdAt&&a.createdAt.seconds?a.createdAt.seconds:0;
           var tb=b.createdAt&&b.createdAt.seconds?b.createdAt.seconds:0;
           return tb-ta;
         });
-        // Додати в кеш
+
         listings.forEach(function(l) {
           if (!_fbListings.find(function(x){ return x.id === l.id; })) {
             _fbListings.push(l);
@@ -2351,7 +2211,6 @@ function _renderSellerByUid(uid) {
 function renderSellerPage(id) {
   currentSellerId = id;
 
-  // Підтримка uid: префікс
   if (id && id.startsWith('uid:')) {
     var uid = id.replace('uid:', '');
     _renderSellerByUid(uid);
@@ -2420,7 +2279,6 @@ function renderSellerPage(id) {
     }
   }
 
-  // reset to listings tab
   switchSellerTab('listings', document.querySelector('.seller-tab'));
   } catch(err) {
     console.error('renderSellerPage error:', err);
@@ -2429,7 +2287,7 @@ function renderSellerPage(id) {
 }
 
 function renderSellerListings(listings, s) {
-  // category filter chips
+
   const cats = [...new Set(listings.map(l => l.cat))];
   const filterEl = document.getElementById('seller-cat-filters');
   filterEl.innerHTML = [
@@ -2453,7 +2311,7 @@ function renderSellerListings(listings, s) {
 function filterSellerCat(cat, el, sellerId) {
   document.querySelectorAll('#seller-cat-filters .filter-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  // Підтримка uid: префікс
+
   var uid = sellerId && sellerId.startsWith('uid:') ? sellerId.replace('uid:', '') : null;
   var listings;
   if (uid) {
@@ -2474,7 +2332,6 @@ function renderSellerReviews(s) {
   document.getElementById('rev-stars').textContent = avg > 0 ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg))) : '☆☆☆☆☆';
   document.getElementById('rev-count').textContent = revs.length ? `на основі ${revs.length} відгуків` : 'Відгуків поки немає';
 
-  // rating bars
   const bars = [5,4,3,2,1];
   document.getElementById('rev-bars').innerHTML = bars.map(star => {
     const cnt = revs.filter(r => r.rating === star).length;
@@ -2489,28 +2346,18 @@ function renderSellerReviews(s) {
     </div>`;
   }).join('');
 
-  // review cards — improved
   const colors = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#22c55e','#f97316'];
   document.getElementById('reviews-list').innerHTML = revs.length ? revs.map((r, i) => {
     const initials = r.author.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const color = colors[i % colors.length];
     const stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
-    const reviewId = r.id || ('rev_' + i);
-    const safeText = _esc(r.text || '');
     return `<div class="review-card">
       <div style="display:flex;align-items:flex-start;gap:14px">
         <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
             <span style="font-weight:700;font-size:14px">${r.author}</span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:11px;color:var(--text-muted)">${r.date}</span>
-              <button onclick="reportReview('${reviewId}','${safeText.slice(0,100)}')" title="Поскаржитись на відгук"
-                style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;transition:color .15s"
-                onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">
-                <i class="fa-solid fa-flag"></i>
-              </button>
-            </div>
+            <span style="font-size:11px;color:var(--text-muted)">${r.date}</span>
           </div>
           <div style="color:#ffa726;font-size:13px;margin-bottom:8px;letter-spacing:1px">${stars}</div>
           <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">${r.text}</p>
@@ -2531,7 +2378,7 @@ function switchSellerTab(tab, el) {
 
 function copySellerLink() {
   var uid = currentSellerId ? currentSellerId.replace('uid:', '') : '';
-  // Визначити правильний шлях: uid: prefix → /seller/UID, інакше /seller/ID
+
   var path = currentSellerId && currentSellerId.startsWith('uid:')
     ? '/seller/' + uid
     : (currentSellerId ? '/seller/' + currentSellerId : '/');
@@ -2540,9 +2387,6 @@ function copySellerLink() {
   showToast('🔗 Посилання скопійовано!');
 }
 
-// ============================================================
-// DETAIL v2
-// ============================================================
 const SPEC_SECTION_META = {
   general:     { label: 'Загальне',          icon: 'fa-info-circle' },
   motor:       { label: 'Двигун',            icon: 'fa-bolt' },
@@ -2557,18 +2401,18 @@ let galleryImgs = [];
 let galleryIdx = 0;
 
 function showDetail(id, _skipPush) {
-  // Додати до історії переглядів
+
   if (id && typeof _addToHistory === 'function') _addToHistory(id);
 
   const l = _allListings().find(x => x && x.id === id);
   if (!l) {
-    // Дані ще не завантажені — показати skeleton і завантажити напряму з Firestore
+
     if (window._db && id) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       var detailPage = document.getElementById('page-detail');
       if (detailPage) detailPage.classList.add('active');
       window.scrollTo({ top: 0 });
-      // Skeleton для заголовку і фото
+
       var titleEl = document.getElementById('detail-title');
       if (titleEl) titleEl.innerHTML = '<span class="skeleton" style="display:inline-block;width:60%;height:22px;border-radius:6px"></span>';
       var imgWrap = document.getElementById('detail-main-img-wrap');
@@ -2591,12 +2435,12 @@ function showDetail(id, _skipPush) {
     return;
   }
   currentDetailId = id;
-  // Скинути кнопку телефону
+
   var _revBtn = document.getElementById('reveal-phone-btn');
   var _revDiv = document.getElementById('phone-revealed');
   if (_revBtn) { _revBtn.style.display = ''; _revBtn.disabled = false; _revBtn.innerHTML = '<i class="fa-solid fa-phone" style="margin-right:8px"></i>Показати номер'; }
   if (_revDiv) _revDiv.style.display = 'none';
-  // SEO
+
   _updateSEO({
     title: l.title,
     desc: l.desc ? l.desc.substring(0,160) : (l.title + ' — ' + (l.cat||'') + ' в ' + (l.city||'Україні')),
@@ -2604,7 +2448,7 @@ function showDetail(id, _skipPush) {
     url: 'https://ridego-sigma.vercel.app/listing/' + id
   });
   _setListingSchema(l);
-  // Рахувати перегляди — захист від накрутки через localStorage
+
   if (window._db && id && typeof id === 'string') {
     var today = new Date().toISOString().slice(0,10);
     var _viewKey = 'ridego_view_' + id + '_' + today;
@@ -2623,23 +2467,20 @@ function showDetail(id, _skipPush) {
     }
   }
 
-  // update URL + title
   document.title = 'RideGO — ' + l.title;
   if (!_skipPush) {
     _setPath('/listing/' + id);
   }
 
-  // breadcrumb + title
   document.getElementById('detail-breadcrumb').textContent = l.title;
   document.getElementById('detail-title').textContent = l.title;
 
-  // price
   document.getElementById('detail-price').textContent = l.price.toLocaleString('uk') + ' грн';
   var _usdEl = document.getElementById('detail-price-usd');
   if (_usdEl) {
     var _rate = window._usdRate || 41;
     _usdEl.textContent = '≈ $' + Math.round(l.price / _rate).toLocaleString('uk');
-    // Оновити курс якщо ще не завантажено (один раз на сесію)
+
     if (!window._usdRateFetched) {
       window._usdRateFetched = true;
       fetch('https://api.exchangerate-api.com/v4/latest/USD')
@@ -2647,7 +2488,7 @@ function showDetail(id, _skipPush) {
         .then(function(d){
           if (d && d.rates && d.rates.UAH) {
             window._usdRate = d.rates.UAH;
-            // Оновити відображення якщо ще на цій сторінці
+
             var el = document.getElementById('detail-price-usd');
             var pEl = document.getElementById('detail-price');
             if (el && pEl) {
@@ -2660,7 +2501,6 @@ function showDetail(id, _skipPush) {
     }
   }
 
-  // meta row
   const condColor = { 'Новий':'#00e676','Чудовий':'#69f0ae','Хороший':'#ffa726','Задовільний':'#ff5252' }[l.condition] || '#8b949e';
   document.getElementById('detail-meta').innerHTML = `
     <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-location-dot" style="color:var(--brand)"></i>${l.city}</span>
@@ -2669,20 +2509,15 @@ function showDetail(id, _skipPush) {
     <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-tag" style="color:var(--brand)"></i>${l.cat}</span>
   `;
 
-  // location card
-  // location + map
   renderDetailMap(l.city, l.fullLoc || `${l.city}, Україна`);
 
-  // badge
   document.getElementById('detail-badge-wrap').innerHTML = l.badge
     ? `<span class="tag ${l.badgeClass}" style="font-size:13px;padding:5px 12px">${l.badge}</span>` : '';
 
-  // gallery
   galleryImgs = (l.imgs && l.imgs.length) ? l.imgs : (l.img ? [l.img] : []);
   galleryIdx = 0;
   renderGalleryImage(l);
 
-  // thumbs
   const thumbs = document.getElementById('detail-thumbs');
   if (l.img) {
     thumbs.innerHTML = galleryImgs.map((src, i) => `
@@ -2690,12 +2525,11 @@ function showDetail(id, _skipPush) {
         style="background-image:url(${src});background-size:cover;background-position:center"></div>`).join('');
   } else { thumbs.innerHTML = ''; }
 
-  // seller — з даних оголошення + Firestore
   var sellerName = l.sellerName || l.seller || 'Продавець';
   var sellerInitial = sellerName[0] ? sellerName[0].toUpperCase() : '?';
   document.getElementById('detail-seller').textContent = sellerName;
   document.getElementById('detail-avatar').textContent = sellerInitial;
-  // Скинути рейтинг/дату
+
   var ratingEl = document.getElementById('detail-seller-rating');
   var sinceEl  = document.getElementById('detail-seller-since');
   var adsEl    = document.getElementById('seller-ads-count');
@@ -2703,12 +2537,12 @@ function showDetail(id, _skipPush) {
   if (ratingEl) ratingEl.innerHTML = '';
   if (sinceEl)  sinceEl.innerHTML  = '';
   if (rateEl)   rateEl.textContent = '—';
-  // Підрахувати оголошення продавця з _fbListings
+
   var sellerUid = l.uid || null;
   window._currentDetailUid = sellerUid;
   var sellerListings = _fbListings.filter(function(x){ return x && (sellerUid ? x.uid === sellerUid : x.seller === sellerName); });
   if (adsEl) adsEl.textContent = sellerListings.length || 1;
-  // Завантажити профіль продавця з Firestore
+
   if (window._db && sellerUid) {
     window._db.collection('users').doc(sellerUid).get().then(function(snap) {
       if (!snap.exists) return;
@@ -2719,24 +2553,19 @@ function showDetail(id, _skipPush) {
     }).catch(function(){});
   }
 
-  // description
   document.getElementById('detail-desc').textContent = l.desc || 'Опис не вказано';
 
-  // specs
   buildSpecTable(l);
 
-  // fav button
   updateFavBtn();
 
-  // similar
   const similar = _allListings().filter(x => x && x.cat === l.cat && x.id !== id).slice(0, 4);
   document.getElementById('similar-listings').innerHTML = similar.length
     ? similar.map(s => createCard(s, 'catalog')).join('')
     : '<p style="color:var(--text-muted);font-size:14px">Схожих оголошень не знайдено</p>';
 
-  // reset tabs
   switchDTab('specs', document.querySelector('.dtab'));
-  // activate detail page directly (URL already set above)
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-detail').classList.add('active');
   document.querySelectorAll('.mnav-item').forEach(b => b.classList.remove('active'));
@@ -2771,13 +2600,13 @@ function setGalleryIdx(i) {
 }
 
 function _convertSpecs(specs) {
-  // Конвертувати з Firestore об'єкту {k:v} назад в масив пар [[k,v]]
+
   if (!specs) return specs;
   var result = {};
   Object.keys(specs).forEach(function(key) {
     var val = specs[key];
     if (Array.isArray(val)) {
-      result[key] = val; // вже масив
+      result[key] = val;
     } else if (val && typeof val === 'object') {
       result[key] = Object.entries(val);
     } else {
@@ -2791,7 +2620,7 @@ function buildSpecTable(l) {
   if (!l.specs) { document.getElementById('detail-specs-full').innerHTML = '<p style="color:var(--text-muted);padding:20px">Детальні характеристики відсутні</p>'; return; }
   var specs = _convertSpecs(l.specs);
   const order = ['general','motor','battery','performance','physical','extras'];
-  // Додати будь-які інші секції що є в specs але не в order
+
   Object.keys(specs).forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
   let html = '<div class="spec-section">';
   order.forEach(key => {
@@ -2856,7 +2685,6 @@ function revealPhone() {
   var phoneEl = document.getElementById('phone-number');
   if (!btn || !revealed || !phoneEl) return;
 
-  // Знайти поточне оголошення
   var l = [..._fbListings, ...myListings].find(function(x){ return x && x.id === currentDetailId; });
   if (!l || !l.uid) {
     showToast('⚠️ Номер недоступний');
@@ -2866,7 +2694,6 @@ function revealPhone() {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Завантаження...';
   btn.disabled = true;
 
-  // Завантажити номер з профілю продавця
   window._db.collection('users').doc(l.uid).get().then(function(snap) {
     var phone = snap.exists ? snap.data().phone : '';
     if (phone) {
@@ -2886,11 +2713,6 @@ function revealPhone() {
   });
 }
 
-
-
-// ============================================================
-// FAVORITES
-// ============================================================
 function toggleFav(id, btn) {
   toggleFavById(id);
   const isFav = favorites.includes(id);
@@ -2904,15 +2726,11 @@ function toggleFavById(id) {
   if(idx>-1) favorites.splice(idx,1); else favorites.push(id);
 }
 
-// ============================================================
-// ============================================================
-// ADD LISTING WIZARD
-// ============================================================
 let nextId = 100;
 let addCurrentStep = 1;
 let addSelectedCat = null;
 let addSelectedIcon = '📦';
-let uploadedPhotos = []; // base64 or objectURL
+let uploadedPhotos = [];
 
 const ADD_BRANDS = {
   'Електросамокати': [
@@ -3165,7 +2983,7 @@ const ADD_BRANDS = {
 };
 
 const ADD_MODELS = {
-  // ── Електросамокати ──────────────────────────────────────────────
+
   'Xiaomi': [
     'Mi Electric Scooter 1S','Mi Electric Scooter 3','Mi Electric Scooter 3 Lite',
     'Mi Electric Scooter 4','Mi Electric Scooter 4 Lite','Mi Electric Scooter 4 Lite Gen2',
@@ -3271,7 +3089,6 @@ const ADD_MODELS = {
   'NAVEE': ['GT3','GT3 MAX','N40','N65','S40','S65','ST3','ST3 PRO','ZT3 Pro'],
   'W-TEC': ['eDirt W-8011','eSportway W-8000','eCity W-2000'],
 
-  // ── Велосипеди ───────────────────────────────────────────────────
   'Trek': [
     'Checkpoint ALR 4','Checkpoint ALR 5','Checkpoint SL 5','Checkpoint SL 6',
     'CrossRip 1','Domane AL 2','Domane AL 3','Domane AL 5',
@@ -3357,7 +3174,6 @@ const ADD_MODELS = {
   'Kinetic': ['Storm','Vesta'],
   'Winner': ['Fighter','Grace','Street'],
 
-  // ── Електровелосипеди ────────────────────────────────────────────
   'Fiido': [
     'Beast Pro','C11','C21','D2S','D3 Pro','D4s','D4s Plus',
     'D11','D21','L3','L3 Cargo','M1 Pro','M21','Q1S',
@@ -3423,7 +3239,6 @@ const ADD_MODELS = {
   'Ado': ['A20','A20 Air','A20F Beast','A28','E28 XE Pro'],
   'Bafang': ['BBSHD 1000W','BBS02 750W','M600','M620 Ultra'],
 
-  // ── Електроскутери ───────────────────────────────────────────────
   'NIU': [
     'EM215','EM215A','EM215N',
     'KQi2 Pro','KQi3','KQi3 Me','KQi3 Pro','KQi3 Max','KQi3 Sport',
@@ -3483,7 +3298,6 @@ const ADD_MODELS = {
   'Seev': ['Seev 1500W','Seev Pro'],
   'Eskooter': ['Eskooter City','Eskooter Pro'],
 
-  // ── Електромотоцикли ─────────────────────────────────────────────
   'Zero Motorcycles': [
     'DS ZF14.4','DSR ZF14.4','DSR Black Forest','DSR/X','DSR/X Premium',
     'FX ZF7.2','FX ZF14.4','FXE','FXS ZF3.6',
@@ -3612,7 +3426,7 @@ const ADD_MODELS = {
   'Gunai': ['CX10','CX20','MX03','MX10'],
   'Hitway': ['BK5','BK11','BK15','BK22'],
   'Jasion': ['EB5 Plus','EB7'],
-  
+
   'Electra': ['Electra 3000W','Electra City'],
 
   'Corso (scooter)': ['Hawk 1000W','Komodo 1000W','Komodo 1200W','Niro 800W','Nova 1000W','Raven 800W','SIG-8 Pro','Spider Box 1500W',],
@@ -3635,9 +3449,6 @@ const ADD_MODELS = {
 
 };
 
-
-
-
 function _fsel(id,label,opts,req){
   return {id,label:(req?label+' *':label),type:'select',opts:['',...opts]};
 }
@@ -3647,216 +3458,12 @@ function _finp(id,label,ph){
 function _fnum(id,label,ph){
   return {id,label,type:'number',ph};
 }
-// Числове поле з одиницею виміру справа (Вт, км/год, кг тощо)
+
 function _funit(id,label,unit,ph,req){
   return {id,label:(req?label+' *':label),type:'unit',unit,ph:ph||''};
 }
 
-const ADD_SPEC_FIELDS = {
-  'Електросамокати': [
-    { section:'⚡ Двигун', fields:[
-      _funit('sp-motor-w','Потужність двигуна','Вт','500',true),
-      _funit('sp-voltage','Напруга','В','48'),
-      _fsel('sp-motor-t','Тип мотора',['Заднє колесо (хаб)','Переднє колесо (хаб)','Подвійний привід']),
-    ]},
-    { section:'🔋 Акумулятор', fields:[
-      _funit('sp-battery-ah','Ємність батареї','Ah','10',true),
-      _fsel('sp-battery-t','Тип АКБ',['Літій-іонний (Li-ion)','LiFePO4','Samsung/LG клітини']),
-      _fsel('sp-charge-h','Час зарядки',['~2–3 год','~4–5 год','~5–6 год','~6–8 год']),
-    ]},
-    { section:'🏎 Характеристики руху', fields:[
-      _funit('sp-speed','Макс. швидкість','км/год','35',true),
-      _funit('sp-range','Запас ходу','км','45',true),
-      _fsel('sp-modes','Режими їзди',['Eco / Стандарт','Eco / Стандарт / Спорт','Пішохідний / Стандарт / Спорт']),
-      _fsel('sp-climb','Подолання підйомів',['до 10°','до 15°','до 20°','до 25°','до 30°']),
-    ]},
-    { section:'📐 Конструкція', fields:[
-      _funit('sp-wheel','Розмір коліс','дюйм','10',true),
-      _fsel('sp-tire-t','Тип шин',['Пневматичні','Безкамерні','Суцільні (Solid)','Самозаліковуючі']),
-      _fsel('sp-suspension','Підвіска',['Без підвіски','Передня амортизація','Повна (F+R)','Подвійна амортизація']),
-      _fsel('sp-deck','Матеріал деки',['Алюміній','Сталь','Карбон']),
-      _funit('sp-weight','Вага','кг','13'),
-      _fsel('sp-maxload','Макс. навантаження',['80 кг','100 кг','120 кг','150 кг']),
-      _fsel('sp-ip','IP-рейтинг (вологозахист)',['IPX4','IPX5','IPX6','IP67']),
-    ]},
-    { section:'✨ Оснащення', fields:[
-      _fsel('sp-brakes','Гальма',['Механічний диск','Гідравлічний диск','Диск + рекуперативне','E-ABS']),
-      _fsel('sp-light','Підсвітка',['Передня LED','Передня + задня LED','Повний комплект + бічна','Немає']),
-      _fsel('sp-display','Дисплей',['LED','LCD','Кольоровий TFT','Немає']),
-      _fsel('sp-app','Застосунок',['Є (Bluetooth)','Є (WiFi+BT)','Немає']),
-      _fsel('sp-lock','Блокування',['Через застосунок','Фізичний замок','Немає']),
-      _finp('sp-kit','Комплектація','Зарядник, чохол, сумка...'),
-    ]},
-  ],
-
-  'Велосипеди': [
-    { section:'🚲 Рама', fields:[
-      _fsel('sp-frame','Тип велосипеда',['Гірський (MTB)','Шосейний','Міський / Комфорт','Гравій','BMX','Дитячий','Туристичний / Турінг'],true),
-      _fsel('sp-frame-mat','Матеріал рами',['Алюміній','Сталь','Карбон','Хромолі','Титан']),
-      _funit('sp-frame-size','Розмір рами','дюйм','17'),
-    ]},
-    { section:'⚙️ Трансмісія', fields:[
-      _fsel('sp-gears','Кількість передач',['1 (сингл)','3','7','8','9','10','11','12','21','27'],true),
-      _fsel('sp-gears-brand','Бренд трансмісії',['Shimano','SRAM','Microshift','Без бренду']),
-      _fsel('sp-gears-type','Тип перемикача',['Задній','Передній + задній','Внутрішній (втулка)']),
-    ]},
-    { section:'🛞 Колеса', fields:[
-      _funit('sp-wheel','Діаметр коліс','дюйм','26',true),
-      _fsel('sp-tire-w','Ширина покришки',['1.5"','1.75"','1.95"','2.0"–2.2"','2.3"–2.6"','2.6"+']),
-      _fsel('sp-tire-t','Тип покришок',['Слик (шосе)','Напівслик','Блокові (MTB)','Гравійні']),
-    ]},
-    { section:'🛑 Гальма', fields:[
-      _fsel('sp-brakes','Тип гальм',['Обідні (V-brake)','Механічний диск','Гідравлічний диск','Барабанні'],true),
-      _fsel('sp-brake-size','Ротор (якщо диск)',['140 мм','160 мм','180 мм','203 мм']),
-    ]},
-    { section:'🌿 Підвіска', fields:[
-      _fsel('sp-suspension','Тип підвіски',['Жорстка (без вилки)','Хардтейл (передня вилка)','Повна підвіска (FS)']),
-      _fsel('sp-fork-travel','Хід вилки',['60–80 мм','80–100 мм','100–130 мм','130–160 мм','160+ мм']),
-    ]},
-    { section:'📐 Розміри', fields:[
-      _funit('sp-weight','Вага','кг','11'),
-      _fsel('sp-maxload','Макс. навантаження',['90 кг','100 кг','120 кг','150 кг']),
-    ]},
-    { section:'✨ Додатково', fields:[
-      _fsel('sp-fenders','Крила',['Є','Немає']),
-      _fsel('sp-rack','Багажник',['Є (задній)','Є (передній)','Є (обидва)','Немає']),
-      _fsel('sp-lights','Підсвітка',['Є (динамо)','Є (акумулятор)','Немає']),
-      _fsel('sp-kickstand','Підніжка',['Є','Немає']),
-    ]},
-  ],
-
-  'Електровелосипеди': [
-    { section:'⚡ Електросистема', fields:[
-      _funit('sp-motor-w','Потужність мотора','Вт','350',true),
-      _fsel('sp-motor-pos','Розташування мотора',['Задній хаб','Передній хаб','Середній (BB / каретка)'],true),
-      _fsel('sp-voltage','Напруга системи',['24 В','36 В','48 В','52 В']),
-      _funit('sp-battery-ah','Ємність батареї','Ah','14',true),
-      _fsel('sp-battery-t','Тип АКБ',['Літій-іонний','Samsung/LG клітини','Bosch PowerPack','LiFePO4']),
-      _fsel('sp-battery-loc','Розташування АКБ',['В рамі (знімний)','На трубі рами','На багажнику','Інтегрований']),
-      _fsel('sp-charge-h','Час зарядки',['~2–3 год','~3–5 год','~5–7 год','~7+ год']),
-    ]},
-    { section:'🏎 Їзда', fields:[
-      _funit('sp-speed','Макс. швидкість','км/год','25',true),
-      _funit('sp-range','Запас ходу','км','60',true),
-      _fsel('sp-pas','Рівні PAS',['1–3','1–5','1–9','Без PAS (лише газ)']),
-      _fsel('sp-throttle','Ручка газу',['Є','Немає']),
-    ]},
-    { section:'🚲 Рама і колеса', fields:[
-      _fsel('sp-frame','Тип рами',['Складний','Гірський (MTB)','Міський','Фет-байк (Fat)','Вантажний (Cargo)','Step-through'],true),
-      _fsel('sp-frame-mat','Матеріал рами',['Алюміній','Сталь','Карбон']),
-      _funit('sp-wheel','Розмір коліс','дюйм','27',true),
-      _fsel('sp-gears','Передачі',['Без передач','3','7','8','9','11','21']),
-    ]},
-    { section:'🛑 Гальма і підвіска', fields:[
-      _fsel('sp-brakes','Гальма',['Механічні дискові','Гідравлічні дискові','V-brake','Барабанні'],true),
-      _fsel('sp-suspension','Підвіска',['Жорстка','Хардтейл (передня вилка)','Повна']),
-    ]},
-    { section:'📐 Розміри', fields:[
-      _funit('sp-weight','Вага','кг','22'),
-      _fsel('sp-maxload','Макс. навантаження',['100 кг','120 кг','130 кг','150 кг','200 кг (Cargo)']),
-    ]},
-    { section:'✨ Оснащення', fields:[
-      _fsel('sp-display','Дисплей',['LCD','Кольоровий LCD','TFT','Немає']),
-      _fsel('sp-app','Застосунок',['Є (Bluetooth)','Немає']),
-      _fsel('sp-light','Підсвітка',['Від АКБ','Динамо','Немає']),
-      _fsel('sp-rack','Багажник',['Є задній','Є передній','Немає']),
-      _fsel('sp-fenders','Крила',['Є','Немає']),
-    ]},
-  ],
-
-  'Електроскутери': [
-    { section:'⚡ Двигун', fields:[
-      _funit('sp-motor-w','Потужність двигуна','Вт','1000',true),
-      _fsel('sp-motor-t','Тип двигуна',['Безколекторний AC','Безколекторний DC','Синхронний PMSM']),
-      _fsel('sp-voltage','Напруга',['36 В','48 В','60 В','72 В','96 В']),
-      _fnum('sp-torque','Крутний момент (Нм)','85'),
-    ]},
-    { section:'🔋 Акумулятор', fields:[
-      _funit('sp-battery-ah','Ємність АКБ','Ah','30',true),
-      _fsel('sp-battery-t','Тип АКБ',['Літій-іонний','LiFePO4 (2000+ циклів)','Свинцево-кислотний']),
-      _fsel('sp-charge-h','Час зарядки',['~3–4 год','~4–6 год','~6–8 год','~8+ год']),
-      _fsel('sp-battery-removable','АКБ знімний',['Так','Ні']),
-    ]},
-    { section:'🏎 Динаміка', fields:[
-      _funit('sp-speed','Макс. швидкість','км/год','60',true),
-      _funit('sp-range','Запас ходу','км','80',true),
-      _fsel('sp-climb','Підйом',['до 15°','до 20°','до 25°','до 30°']),
-    ]},
-    { section:'🛞 Колеса і ходова', fields:[
-      _fsel('sp-wheel','Розмір коліс',['10"','12"','14"','16"'],true),
-      _fsel('sp-wheel-t','Тип дисків',['Литі','Спицеві','Штамповані']),
-      _fsel('sp-tire-t','Тип шин',['Пневматичні','Безкамерні','Широкий профіль']),
-      _fsel('sp-suspension-f','Підвіска передня',['Телескопічна вилка','Перевернута вилка','Жорстка']),
-      _fsel('sp-suspension-r','Підвіска задня',['Пружинний амортизатор','Гідравлічний','Жорстка']),
-    ]},
-    { section:'🛑 Гальма', fields:[
-      _fsel('sp-brakes','Тип гальм',['Механічні дискові','Гідравлічні дискові F+R','Барабанні','Комбіновані + ABS'],true),
-    ]},
-    { section:'👤 Посадка і кузов', fields:[
-      _fsel('sp-seats','Місця',['1 місце','2 місця'],true),
-      _fsel('sp-seat-t','Тип сидіння',['Одиночне','Двомісне','Спортивне','Зі спинкою']),
-      _funit('sp-weight','Вага','кг','75'),
-      _fsel('sp-maxload','Макс. навантаження',['100 кг','120 кг','150 кг','200 кг']),
-    ]},
-    { section:'✨ Оснащення', fields:[
-      _fsel('sp-light','Підсвітка',['LED фара + стоп','LED повний комплект','Немає']),
-      _fsel('sp-alarm','Сигналізація',['Є вбудована','Встановлена окремо','Немає']),
-      _fsel('sp-lock','Замок',['Стрижневий','Електронний','Комбінований']),
-      _fsel('sp-usb','USB зарядка',['Є','Немає']),
-      _fsel('sp-cert','Документи',['Є, розмитнений','Є без розмитнення','Без документів']),
-      _fsel('sp-warr','Гарантія',['6 міс.','1 рік','2 роки','Немає']),
-    ]},
-  ],
-
-  'Електромотоцикли': [
-    { section:'⚡ Електросистема', fields:[
-      _funit('sp-motor-w','Пікова потужність','кВт','15',true),
-      _funit('sp-motor-cont','Номінальна потужність','кВт','7'),
-      _fsel('sp-motor-t','Тип мотора',['Синхронний PMSM','Асинхронний AC (IM)','Dual Motor (2 мотори)']),
-      _fnum('sp-torque','Крутний момент (Нм)','150'),
-    ]},
-    { section:'🔋 Акумулятор', fields:[
-      _fsel('sp-battery-kwh','Ємність (кВт·год)',['до 5','5–8','8–12','12–18','18–25','25+'],true),
-      _fsel('sp-battery-t','Хімія АКБ',['NMC (Li-ion)','LFP (LiFePO4)','NCA']),
-      _fsel('sp-charge-std','Стандарт зарядки',['AC (Type 2 / Type 1)','DC Fast (CHAdeMO)','DC Fast (CCS2)','Фірмовий']),
-      _fsel('sp-charge-h','Час зарядки (AC)',['~2–3 год','~3–5 год','~5–8 год','~8+ год']),
-      _fsel('sp-fast-charge','Швидка зарядка (DC)',['Так, є','Ні']),
-    ]},
-    { section:'🏎 Динаміка', fields:[
-      _funit('sp-speed','Макс. швидкість','км/год','60',true),
-      _funit('sp-range','Запас ходу','км','80',true),
-      _funit('sp-accel','Розгін 0–100','сек','5'),
-    ]},
-    { section:'🛞 Шасі', fields:[
-      _fsel('sp-frame-t','Тип рами',['Трубчаста сталь','Алюмінієва','Карбон','Хребтова'],true),
-      _fsel('sp-wheel-f','Переднє колесо',['17"','18"','19"','21"']),
-      _fsel('sp-wheel-r','Заднє колесо',['16"','17"','18"']),
-      _fsel('sp-tire-t','Тип шин',['Дорожні (Street)','Dual-sport','Off-road']),
-      _fsel('sp-suspension-f','Підвіска передня',['Телескопічна вилка','Перевернута (USD) вилка','Тощо']),
-      _fsel('sp-suspension-r','Підвіска задня',['Маятник + 1 амортизатор','Маятник + 2 амортизатори','Linkage моно-амортизатор']),
-    ]},
-    { section:'🛑 Гальма', fields:[
-      _fsel('sp-brakes','Тип гальм',['Гідравлічні дискові','Гідравлічні дискові + ABS','Комбіновані CBS','CBS + ABS'],true),
-      _fsel('sp-brake-regen','Рекуперативне гальмування',['Є (регульоване)','Є (фіксоване)','Немає']),
-    ]},
-    { section:'📟 Електроніка', fields:[
-      _fsel('sp-display','Дисплей',['ЖК (LCD)','Кольоровий TFT','Цифровий спідометр']),
-      _fsel('sp-conn','Підключення',['Bluetooth App','WiFi + BT','GPS трекер','Немає']),
-      _fsel('sp-modes','Їздові режими',['2 режими','3 режими','4+ режимів']),
-      _fsel('sp-heat','Підігрів рукояток',['Є','Немає']),
-    ]},
-    { section:'📐 Габарити', fields:[
-      _funit('sp-weight','Вага','кг','15'),
-      _fsel('sp-maxload','Макс. навантаження',['150 кг','180 кг','200 кг','220 кг']),
-      _fsel('sp-seat-h','Висота сидіння',['до 780 мм','780–820 мм','820–860 мм','860+ мм']),
-    ]},
-    { section:'📄 Документи', fields:[
-      _fsel('sp-cert','Реєстрація / документи',['Є, розмитнений','Є без розмитнення','Без документів'],true),
-      _fsel('sp-homolog','Омологація',['EU L3e (до 11 кВт)','EU L3e-A2 (до 35 кВт)','EU L3e-A3 (без обм.)','US / Канада','Без омологації']),
-      _fsel('sp-warr','Гарантія',['6 міс.','1 рік','2 роки','Немає']),
-    ]},
-  ],
-};
+var ADD_SPEC_FIELDS = window.ADD_SPEC_FIELDS || {};
 
 function onBrandChange() {
   const sel    = document.getElementById('new-brand');
@@ -3867,7 +3474,6 @@ function onBrandChange() {
 
   const brand = sel.value;
 
-  // custom brand input
   if (custom) {
     if (brand === 'Інший бренд') {
       custom.style.display = '';
@@ -3878,7 +3484,6 @@ function onBrandChange() {
     }
   }
 
-  // populate model select
   if (modelSel) {
     const models = ADD_MODELS[brand] || [];
     if (models.length) {
@@ -3917,7 +3522,7 @@ function addSelectType(btn) {
 }
 
 function addGoStep(step) {
-  // validations
+
   if (step === 2 && !addSelectedCat) {
     showToast('⚠️ Оберіть тип транспорту'); return;
   }
@@ -3932,16 +3537,14 @@ function addGoStep(step) {
     if (!city) { showToast('⚠️ Оберіть місто або село'); return; }
   }
   if (step === 4) {
-    // build preview summary
+
     buildPreviewSummary();
   }
 
-  // hide all steps
   [1,2,3,4].forEach(s => {
     document.getElementById('add-step-'+s).style.display = s===step ? '' : 'none';
   });
 
-  // update progress dots & lines
   [1,2,3,4].forEach(s => {
     const dot = document.getElementById('sdot-'+s);
     dot.classList.remove('active','done');
@@ -3955,7 +3558,6 @@ function addGoStep(step) {
 
   addCurrentStep = step;
 
-  // step 2: populate brand select
   if (step === 2) {
     const bs = document.getElementById('new-brand');
     bs.innerHTML = (ADD_BRANDS[addSelectedCat] || []).map(b => `<option>${b}</option>`).join('');
@@ -3963,7 +3565,6 @@ function addGoStep(step) {
     document.getElementById('add-type-label').textContent = addSelectedCat;
   }
 
-  // step 3: render dynamic spec fields
   if (step === 3) renderSpecFields();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4044,7 +3645,7 @@ function compressImage(file, maxWidth, maxHeight, quality) {
         if (h > maxHeight) { w = Math.round(w * maxHeight / h); h = maxHeight; }
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        // Спробувати WebP (швидше та менше), fallback на JPEG
+
         var supportsWebP = canvas.toDataURL('image/webp').startsWith('data:image/webp');
         var mimeType = supportsWebP ? 'image/webp' : 'image/jpeg';
         canvas.toBlob(function(blob) { resolve(blob); }, mimeType, quality);
@@ -4059,7 +3660,7 @@ function handlePhotoUpload(event) {
   var files = Array.from(event.target.files);
   var remaining = 10 - uploadedPhotos.length;
   files.slice(0, remaining).forEach(function(file) {
-    // 1600px — достатньо для Cloudinary, який далі стискає на льоту
+
     compressImage(file, 1600, 1600, 0.88).then(function(blob) {
       var url = URL.createObjectURL(blob);
       uploadedPhotos.push({ blob: blob, preview: url, uploaded: false, storageUrl: null });
@@ -4114,11 +3715,6 @@ function collectSpecs() {
   return result;
 }
 
-// [submitListing defined in promo block below]
-
-// ============================================================
-// AUTH
-// ============================================================
 function doLogin() {
   var email = document.getElementById('login-email').value.trim();
   var pass  = document.getElementById('login-pass').value;
@@ -4141,13 +3737,13 @@ function doSocialLogin(provider) {
       .then(function(result) {
         var user = result.user;
         isLoggedIn = true;
-        // Оновити currentUser з реальними даними Google
+
         currentUser = currentUser || {};
         currentUser.uid     = user.uid;
         currentUser.email   = user.email;
         currentUser.name    = user.displayName || user.email.split('@')[0];
         currentUser.initial = currentUser.name[0].toUpperCase();
-        // Зберегти або отримати профіль з Firestore
+
         window._db.collection('users').doc(user.uid).get().then(function(snap) {
           if (snap.exists) {
             var d = snap.data();
@@ -4236,18 +3832,14 @@ function doRegister() {
   }
 }
 
-// ============================================================
-// PROFILE RENDER
-// ============================================================
-// Profile state
-let profileType = 'personal'; // 'personal' | 'business'
+let profileType = 'personal';
 let profilePhotoUrl = null;
 
 function renderProfile() {
   const authLoading = document.getElementById('auth-loading');
   const authWall    = document.getElementById('auth-wall');
   const profileWall = document.getElementById('profile-wall');
-  // Завжди ховаємо loading після того як auth визначився
+
   if (authLoading) authLoading.style.display = 'none';
   if (!isLoggedIn) {
     authWall.style.display = '';
@@ -4257,7 +3849,6 @@ function renderProfile() {
   authWall.style.display = 'none';
   profileWall.style.display = '';
 
-  // name + photo
   const displayName = currentUser.name || currentUser.email || 'Користувач';
   const displayInitial = displayName[0].toUpperCase();
   document.getElementById('profile-name-text').textContent = displayName;
@@ -4266,19 +3857,17 @@ function renderProfile() {
   const settingsLetterEl = document.getElementById('settings-avatar-letter');
   if (settingsLetterEl) settingsLetterEl.textContent = currentUser.initial;
 
-  // stats
   document.getElementById('pstat-active').textContent = myListings.length;
   document.getElementById('pstat-sold').textContent   = 0;
   document.getElementById('pstat-favs').textContent   = favorites.length;
 
-  // meta — рік реєстрації з Firestore
   var metaEl = document.getElementById('profile-meta-text');
   if (metaEl && window._db && currentUser && currentUser.uid) {
     window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
       if (!snap.exists) return;
       var d = snap.data();
       var year = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : new Date().getFullYear();
-      // Завантажити відгуки для рейтингу
+
       window._db.collection('reviews').where('sellerUid','==',currentUser.uid).get()
         .then(function(revSnap) {
           var revs = revSnap.docs.map(function(r){ return r.data(); });
@@ -4291,7 +3880,6 @@ function renderProfile() {
           metaEl.innerHTML = 'На сайті з ' + year;
         });
 
-      // Заповнити форму налаштувань з Firestore
       var fill = function(id, val) {
         var el = document.getElementById(id);
         if (el && val) el.value = val;
@@ -4307,14 +3895,13 @@ function renderProfile() {
       fill('set-address',   d.address);
       fill('set-hours',     d.hours);
       fill('set-about',     d.about || d.desc);
-      // Показати бейдж верифікації телефону якщо є
+
       if (typeof _checkPhoneVerified === 'function') _checkPhoneVerified(d);
-      // Заповнити категорії
+
       if (d.cats && d.cats.length && typeof _fillProfileCats === 'function') {
         _fillProfileCats(d.cats);
       }
 
-      // Завантажити фото з Firestore якщо є
       if (d.photoUrl && !profilePhotoUrl) {
         profilePhotoUrl = d.photoUrl;
         ['profile-pic-el', 'settings-avatar-preview'].forEach(function(id) {
@@ -4327,13 +3914,11 @@ function renderProfile() {
     }).catch(function(){});
   }
 
-  // pre-fill settings (localStorage fallback)
   const nameEl  = document.getElementById('set-name');
   const emailEl = document.getElementById('set-email');
   if (nameEl && !nameEl.value)  nameEl.value  = currentUser.name;
   if (emailEl && !emailEl.value) emailEl.value = currentUser.email || '';
 
-  // init oblast select in settings
   initSettingsOblast();
 
   renderMyListings();
@@ -4356,7 +3941,7 @@ function onSettingsOblastChange() {
   citySel.innerHTML = '<option value="">Оберіть місто / село...</option>';
   citySel.disabled  = !oblast;
   if (!oblast) return;
-  // Якщо "Місто Київ" або "Місто Севастополь" — одразу вибрати місто
+
   const _cityOblasts3 = {'Місто Київ': 'Київ', 'Місто Севастополь': 'Севастополь'};
   if (_cityOblasts3[oblast]) {
     citySel.innerHTML = '<option value="' + _cityOblasts3[oblast] + '">' + _cityOblasts3[oblast] + '</option>';
@@ -4380,7 +3965,6 @@ function selectProfileType(type) {
   document.getElementById('type-card-business').classList.toggle('active', type === 'business');
   document.getElementById('settings-business-block').style.display = type === 'business' ? '' : 'none';
 
-  // Update badge in header
   const badge = document.getElementById('profile-type-badge-el');
   if (badge) {
     badge.className = `profile-type-badge ${type}`;
@@ -4395,14 +3979,14 @@ function onProfilePhotoChange(input) {
   if (!file) return;
   showToast('📸 Завантаження фото...');
   compressImage(file, 400, 400, 0.85).then(function(blob) {
-    // Показати прев'ю одразу
+
     var localUrl = URL.createObjectURL(blob);
     ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.innerHTML = '<img src="' + localUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     });
-    // Завантажити в Cloudinary
+
     var fd = new FormData();
     fd.append('file', blob, 'avatar.jpg');
     fd.append('upload_preset', 'ridego_unsigned');
@@ -4413,13 +3997,13 @@ function onProfilePhotoChange(input) {
     .then(function(data) {
       if (data.secure_url) {
         profilePhotoUrl = data.secure_url;
-        // Оновити відображення з постійним URL
+
         ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
           var el = document.getElementById(id);
           if (!el) return;
           el.innerHTML = '<img src="' + profilePhotoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
         });
-        // Зберегти URL в Firestore
+
         if (window._db && currentUser && currentUser.uid) {
           window._db.collection('users').doc(currentUser.uid).update({
             photoUrl: profilePhotoUrl
@@ -4429,7 +4013,7 @@ function onProfilePhotoChange(input) {
       } else {
         showToast('⚠️ Помилка завантаження фото');
       }
-    }).catch(function(e){ 
+    }).catch(function(e){
       console.error('photo upload:', e);
       showToast('⚠️ Помилка завантаження фото');
     });
@@ -4444,18 +4028,18 @@ function saveProfileSettings() {
   const city     = document.getElementById('set-city')?.value;
   const pass     = document.getElementById('set-pass')?.value;
   const pass2    = document.getElementById('set-pass2')?.value;
-  // Соцмережі
+
   const telegram  = document.getElementById('set-telegram')?.value.trim();
   const instagram = document.getElementById('set-instagram')?.value.trim();
   const youtube   = document.getElementById('set-youtube')?.value.trim();
   const tiktok    = document.getElementById('set-tiktok')?.value.trim();
-  // Бізнес
+
   const website  = document.getElementById('set-website')?.value.trim();
   const company  = document.getElementById('set-company')?.value.trim();
   const address  = document.getElementById('set-address')?.value.trim();
   const hours    = document.getElementById('set-hours')?.value.trim();
   const about    = document.getElementById('set-about')?.value.trim();
-  // Категорії
+
   var catsRaw = document.getElementById('set-cats-value')?.value;
   var profileCats = [];
   try { profileCats = catsRaw ? JSON.parse(catsRaw) : []; } catch(e) {}
@@ -4463,14 +4047,12 @@ function saveProfileSettings() {
   if (!name) { showToast("⚠️ Введіть ваше ім'я"); return; }
   if (pass && pass !== pass2) { showToast('⚠️ Паролі не збігаються'); return; }
 
-  // Save to currentUser
   currentUser.name    = name;
   currentUser.email   = email;
   currentUser.initial = name.trim()[0]?.toUpperCase() || 'A';
   if (city) currentUser.city = city;
   if (phone) currentUser.phone = phone;
 
-  // Update header
   document.getElementById('profile-name-text').textContent = name;
   const loc = [city, oblast].filter(Boolean).join(', ');
   if (loc) {
@@ -4482,10 +4064,8 @@ function saveProfileSettings() {
     if (l) l.textContent = currentUser.initial;
   }
 
-  // Persist to localStorage
   try { localStorage.setItem('eria-profile', JSON.stringify({ name, email, phone, city, oblast, profileType, profilePhotoUrl })); } catch(e) {}
 
-  // Зберегти в Firestore
   if (window._db && currentUser && currentUser.uid) {
     var profileData = {
       name:      name,
@@ -4511,7 +4091,6 @@ function saveProfileSettings() {
       .then(function(){ showToast('✅ Профіль збережено!'); })
       .catch(function(e){ console.error('profile save:', e); showToast('⚠️ Помилка: ' + e.message); });
 
-    // Оновити sellerName у всіх оголошеннях цього юзера
     window._db.collection('listings')
       .where('uid', '==', currentUser.uid)
       .get()
@@ -4535,7 +4114,6 @@ function saveProfileSettings() {
   switchPTab('my', document.querySelector('.ptab'));
 }
 
-// Load saved profile
 function loadSavedProfile() {
   try {
     const saved = JSON.parse(localStorage.getItem('eria-profile') || 'null');
@@ -4547,7 +4125,7 @@ function loadSavedProfile() {
     if (saved.profilePhotoUrl) {
       profilePhotoUrl = saved.profilePhotoUrl;
     }
-    // Pre-fill
+
     setTimeout(() => {
       const n = document.getElementById('set-name'); if(n) n.value = saved.name || '';
       const e = document.getElementById('set-email'); if(e) e.value = saved.email || '';
@@ -4569,7 +4147,6 @@ function switchPTab(tab, btn) {
   if (tab === 'history')   renderViewHistory();
 }
 
-// ── HISTORY OF VIEWED LISTINGS ────────────────────────────────
 var HISTORY_KEY = 'ridego_view_history';
 var HISTORY_MAX = 20;
 
@@ -4577,7 +4154,7 @@ function _addToHistory(id) {
   if (!id) return;
   try {
     var hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    hist = hist.filter(function(i){ return i !== id; }); // прибрати дублі
+    hist = hist.filter(function(i){ return i !== id; });
     hist.unshift(id);
     if (hist.length > HISTORY_MAX) hist = hist.slice(0, HISTORY_MAX);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
@@ -4607,13 +4184,11 @@ function clearViewHistory() {
   renderViewHistory();
   showToast('\u2705 \u0406\u0441\u0442\u043e\u0440\u0456\u044e \u043e\u0447\u0438\u0449\u0435\u043d\u043e');
 }
-// ── HISTORY END ───────────────────────────────────────────────
 
-// ── PRICE DROP NOTIFICATIONS ─────────────────────────────────
 var PRICE_WATCH_KEY = 'ridego_price_watch';
 
 function _trackFavPrices() {
-  // Зберегти поточні ціни улюблених оголошень
+
   if (!favorites.length) return;
   try {
     var priceMap = {};
@@ -4622,7 +4197,7 @@ function _trackFavPrices() {
       if (l && l.price) priceMap[id] = l.price;
     });
     var existing = JSON.parse(localStorage.getItem(PRICE_WATCH_KEY) || '{}');
-    // Перевірити зниження цін
+
     Object.keys(priceMap).forEach(function(id) {
       var oldPrice = existing[id];
       var newPrice = priceMap[id];
@@ -4633,7 +4208,7 @@ function _trackFavPrices() {
         _showPriceDropToast(l, diff, pct);
       }
     });
-    // Оновити збережені ціни
+
     Object.assign(existing, priceMap);
     localStorage.setItem(PRICE_WATCH_KEY, JSON.stringify(existing));
   } catch(e) {}
@@ -4642,7 +4217,6 @@ function _trackFavPrices() {
 function _showPriceDropToast(l, diff, pct) {
   if (!l) return;
 
-  // Браузерний push якщо вкладка не активна
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
     try {
       var n = new Notification('\uD83D\uDCB8 \u0426\u0456\u043d\u0430 \u0437\u043d\u0438\u0437\u0438\u043b\u0430\u0441\u044c \u043d\u0430 ' + pct + '%! \u2014 RideGO', {
@@ -4670,9 +4244,7 @@ function _showPriceDropToast(l, diff, pct) {
   document.head.appendChild(style);
   setTimeout(function() { toast.style.opacity='0'; setTimeout(function(){ toast.remove(); },300); }, 6000);
 }
-// ── PRICE DROP END ────────────────────────────────────────────
 
-// ── GEOLOCATION FILTER ────────────────────────────────────────
 var _userCoords = null;
 
 function filterByLocation() {
@@ -4687,14 +4259,13 @@ function filterByLocation() {
     _userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> \u041f\u043e\u0440\u044f\u0434 \u0437\u0456 \u043c\u043d\u043e\u044e'; btn.style.background = 'var(--brand)'; btn.style.color = '#000'; }
 
-    // Зворотня геокодизація через Nominatim — знайти місто
     fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + _userCoords.lat + '&lon=' + _userCoords.lng + '&accept-language=uk')
       .then(function(r){ return r.json(); })
       .then(function(data) {
         var city = data.address && (data.address.city || data.address.town || data.address.village || data.address.hamlet);
         if (city) {
           showToast('\uD83D\uDCCD \u0412\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043e: ' + city);
-          // Показати оголошення відсортовані по відстані
+
           _renderNearbyListings(city);
         } else {
           _renderNearbyListingsCoords();
@@ -4708,7 +4279,7 @@ function filterByLocation() {
 }
 
 function _renderNearbyListings(city) {
-  // Фільтрувати оголошення по місту
+
   var nearby = _allListings().filter(function(l) {
     return l && l.status !== 'deleted' && l.status !== 'sold' && l.city &&
       l.city.toLowerCase().includes(city.toLowerCase().slice(0, 4));
@@ -4726,7 +4297,7 @@ function _renderNearbyListings(city) {
   if (numEl) numEl.textContent = nearby.length;
   if (lblEl) lblEl.innerHTML = '\uD83D\uDCCD \u041f\u043e\u0440\u044f\u0434 \u0437 \u0432\u0430\u043c\u0438: <b>' + city + '</b>';
   if (grid) grid.innerHTML = nearby.map(function(l){ return createCard(l,'catalog'); }).join('');
-  // Сховати TOP секцію
+
   var topSec = document.getElementById('catalog-top-section');
   if (topSec) topSec.style.display = 'none';
   var allLbl = document.getElementById('catalog-all-label');
@@ -4735,12 +4306,10 @@ function _renderNearbyListings(city) {
 }
 
 function _renderNearbyListingsCoords() {
-  // Якщо не вдалось визначити місто — просто повідомити
+
   showToast('\uD83D\uDCCD \u041c\u0456\u0441\u0446\u0435\u0437\u043d\u0430\u0445\u043e\u0434\u0436\u0435\u043d\u043d\u044f \u0432\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043e, \u0430\u043b\u0435 \u043c\u0456\u0441\u0442\u043e \u043d\u0435 \u0440\u043e\u0437\u043f\u0456\u0437\u043d\u0430\u043d\u043e');
 }
-// ── GEOLOCATION END ───────────────────────────────────────────
 
-// [renderMyListings defined in promo block below]
 function renderFavs() {
   const grid  = document.getElementById('favs-grid');
   const empty = document.getElementById('favs-empty');
@@ -4750,19 +4319,13 @@ function renderFavs() {
   grid.innerHTML = favData.map(l => createCard(l,'profile')).join('');
 }
 
-
-
-// ============================================================
-// MESSAGES
-// ============================================================
-// ═══ CHAT (Firebase Realtime DB) ════════════════════
 var _activeChatId = null;
 var _chatUnsubscribe = null;
 
 function renderChats() {
   var list = document.getElementById('chat-list');
   if (!list) return;
-  // Поки auth не завершився — skeleton замість "Увійдіть"
+
   if (!window._authInitialized) {
     list.innerHTML = '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
       + [1,2,3].map(function() {
@@ -4784,14 +4347,14 @@ function renderChats() {
       + '<button class="btn-primary" onclick="showPage(\'profile\')" style="padding:11px 28px">'
       + '<i class="fa-solid fa-user" style="margin-right:8px"></i>Увійти</button>'
       + '</div>';
-    // Заблокувати поле вводу
+
     var inp = document.getElementById('chat-input');
     var sendBtn = document.querySelector('.send-btn');
     if (inp) { inp.disabled = true; inp.placeholder = 'Увійдіть щоб писати...'; }
     if (sendBtn) sendBtn.disabled = true;
     return;
   }
-  // Розблокувати поле вводу
+
   var inp2 = document.getElementById('chat-input');
   var sendBtn2 = document.querySelector('.send-btn');
   if (inp2) { inp2.disabled = false; inp2.placeholder = 'Написати повідомлення...'; }
@@ -4849,7 +4412,6 @@ function openChatById(chatId) {
   var headerSub  = document.getElementById('chat-header-sub');
   var headerAva  = document.getElementById('chat-header-avatar');
 
-  // Клікабельне ім'я — перехід на профіль продавця
   if (headerName) {
     if (otherId) {
       headerName.innerHTML = '<span style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--brand)" onclick="showSellerByUid(\''+otherId+'\')">' + _esc(name) + '</span>';
@@ -4858,7 +4420,6 @@ function openChatById(chatId) {
     }
   }
 
-  // Підзаголовок — клікабельне оголошення
   if (headerSub) {
     if (c && c.listingId) {
       headerSub.innerHTML = '<span style="cursor:pointer;color:var(--brand)" onclick="showDetail(\''+c.listingId+'\')">'
@@ -4869,13 +4430,11 @@ function openChatById(chatId) {
   }
   if (headerAva) headerAva.textContent = (name[0] || '?').toUpperCase();
 
-  // Мобільний: показати вікно чату, приховати список
   var layout = document.querySelector('.messages-layout');
   if (layout && window.innerWidth <= 700) {
     layout.classList.add('chat-open');
   }
 
-  // Скинути лічильник непрочитаних для поточного юзера
   if (window._db && currentUser && currentUser.uid) {
     var resetUpd = {};
     resetUpd['unread_' + currentUser.uid] = 0;
@@ -4917,7 +4476,6 @@ function _renderMessages(msgs, chat) {
 
   var html = '';
 
-  // Картка оголошення зверху якщо є
   if (chat && chat.listingId && chat.listingTitle) {
     var listing = _allListings().find(function(l){ return l && l.id === chat.listingId; });
     var imgHtml = listing && listing.photos && listing.photos[0]
@@ -4943,15 +4501,14 @@ function _renderMessages(msgs, chat) {
   }
 
   html += msgs.map(function(m) {
-    // "mine" якщо senderUid = поточний юзер
-    // Також перевіряємо chat.participants щоб визначити otherId
+
     var myUid = currentUser && currentUser.uid;
     var mine = myUid && m.senderUid && m.senderUid === myUid;
-    // Якщо senderUid відсутній — fallback по senderName
+
     if (!mine && !m.senderUid && myUid && m.senderName) {
       mine = m.senderName === (currentUser.name || currentUser.email);
     }
-    // Якщо senderUid === otherId (не наш uid і не порожній) — theirs
+
     var time = m.createdAt ? _formatChatTime(typeof m.createdAt === 'object' ? m.createdAt.seconds : m.createdAt/1000) : '';
     return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
       + '<div class="msg-bubble">' + _esc(m.text || '') + '</div>'
@@ -4977,13 +4534,11 @@ function sendMessage() {
     createdAt: Date.now()
   };
 
-  // Знайти отримувача
   var localChat = _fbChats.find(function(c){ return c.id === _activeChatId; });
   var receiverUid = localChat && localChat.participants
     ? localChat.participants.find(function(p){ return p !== currentUser.uid; })
     : null;
 
-  // Одразу оновити локальний кеш
   if (localChat) {
     localChat.lastMessage   = text;
     localChat.lastMessageAt = { seconds: Math.floor(Date.now() / 1000) };
@@ -4991,7 +4546,6 @@ function sendMessage() {
     renderChats();
   }
 
-  // Зберегти в RTDB
   if (window._rtdb) {
     window._rtdb.ref('chats/' + _activeChatId + '/messages').push(msg);
     window._rtdb.ref('chats/' + _activeChatId).update({
@@ -5000,14 +4554,13 @@ function sendMessage() {
     });
   }
 
-  // Оновити Firestore — lastMessage + unread лічильник для отримувача
   if (window._db && receiverUid) {
     var upd = {
       lastMessage: text,
       lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastSenderUid: currentUser.uid
     };
-    // Інкрементувати unread_{receiverUid} — окреме поле для кожного учасника
+
     upd['unread_' + receiverUid] = firebase.firestore.FieldValue.increment(1);
     window._db.collection('chats').doc(_activeChatId).update(upd).catch(function(){});
   } else if (window._db) {
@@ -5017,7 +4570,6 @@ function sendMessage() {
     }).catch(function(){});
   }
 }
-
 
 function _startChatFromListing() {
   var l = [..._fbListings, ...myListings].find(function(x){ return x && x.id === currentDetailId; });
@@ -5036,19 +4588,17 @@ function closeChatOnMobile() {
   renderChats();
 }
 
-// Відкрити або створити чат з продавцем
 function _startChat(sellerUid, listingId, listingTitle) {
   if (!isLoggedIn) { showToast('⚠️ Увійдіть щоб написати'); showPage('profile'); return; }
   if (sellerUid === currentUser.uid) { showToast('ℹ️ Це ваше оголошення'); return; }
 
-  // Знайти БУДЬ-ЯКИЙ існуючий чат з цим юзером (незалежно від оголошення)
   var existing = _fbChats.find(function(c) {
     return c.participants && c.participants.indexOf(sellerUid) >= 0
       && c.participants.indexOf(currentUser.uid) >= 0;
   });
 
   if (existing) {
-    // Якщо відкривають з іншого оголошення — оновити listingId і показати картку
+
     if (listingId && existing.listingId !== listingId) {
       existing.listingId = listingId;
       existing.listingTitle = listingTitle || '';
@@ -5064,7 +4614,6 @@ function _startChat(sellerUid, listingId, listingTitle) {
     return;
   }
 
-  // Створити новий чат
   if (!window._db) return;
   var chatData = {
     participants: [currentUser.uid, sellerUid],
@@ -5083,7 +4632,7 @@ function _startChat(sellerUid, listingId, listingTitle) {
     _fbChats.unshift(newChat);
     showPage('messages');
     setTimeout(function(){ openChatById(ref.id); }, 200);
-    // Завантажити ім'я продавця
+
     window._db.collection('users').doc(sellerUid).get().then(function(snap) {
       if (snap.exists) {
         var sellerName = snap.data().name || '';
@@ -5097,9 +4646,6 @@ function _startChat(sellerUid, listingId, listingTitle) {
   }).catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
 }
 
-// ============================================================
-// TOAST
-// ============================================================
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -5109,9 +4655,6 @@ function showToast(msg) {
   toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
-// ============================================================
-// SEARCH
-// ============================================================
 document.getElementById('headerSearch').addEventListener('keydown', e=>{
   if(e.key==='Enter') {
     const q = e.target.value.trim().toLowerCase();
@@ -5127,187 +4670,8 @@ document.getElementById('headerSearch').addEventListener('keydown', e=>{
   }
 });
 
-// ============================================================
-// UKRAINE GEOGRAPHY DATA — повна ієрархія (136 районів, тисячі НП)
-// ============================================================
+var UA_GEO = window.UA_GEO || {};
 
-const UA_GEO = {
-  "Вінницька область": { lat:49.2328, lng:28.4682, raions: {
-    "Вінницький район":      { lat:49.23, lng:28.47, cities:["Вінниця","Бар","Барський","Бершадь","Браїлів","Вапнярка","Гайворон","Іллінці","Калинівка","Козятин","Крижопіль","Липовець","Могилів-Подільський","Немирів","Погребище","Теплик","Тиврів","Тростянець","Тульчин","Хмільник","Шаргород","Ямпіль","Жмеринка","Городок","Чечельник","Мурованi Курилівці"] },
-    "Гайсинський район":     { lat:48.81, lng:29.38, cities:["Гайсин","Бершадь","Голованівськ","Джулинка","Дохно","Завалля","Іванівка","Кіблич","Ладижин","Легедзине","Любашівка","Манківка","Охримівці","Павлівка","Первомайськ","Теплик","Тростянець","Тульчин","Чечельник","Чернятка","Юрківка"] },
-    "Жмеринський район":     { lat:49.05, lng:28.11, cities:["Жмеринка","Бар","Браїлів","Вапнярка","Гнівань","Дашів","Деребчин","Джулинка","Крижопіль","Медведівка","Мурованi Курилівці","Шаргород","Чернівці"] },
-    "Могилів-Подільський район": { lat:48.45, lng:27.80, cities:["Могилів-Подільський","Ямпіль","Клембівка","Кузьминець","Вендичани","Серебрія","Михайлівка"] },
-    "Тульчинський район":    { lat:48.67, lng:28.85, cities:["Тульчин","Бершадь","Гайворон","Джулинка","Завалля","Кіблич","Крижопіль","Чечельник","Шпиків"] },
-    "Хмільницький район":    { lat:49.56, lng:28.00, cities:["Хмільник","Брацлав","Вінниця","Войтівці","Дашів","Іллінці","Калинівка","Козятин","Липовець","Немирів","Погребище","Рогізна","Уланів","Холодець","Янів"] },
-  }},
-  "Волинська область": { lat:50.7472, lng:25.3254, raions: {
-    "Волинський район":      { lat:51.24, lng:24.03, cities:["Любомль","Шацьк","Ратне","Заболоття","Головне","Смідин","Пулемець","Залізниця","Доросині"] },
-    "Луцький район":         { lat:50.75, lng:25.32, cities:["Луцьк","Нововолинськ","Ківерці","Горохів","Рожище","Торчин","Боратин","Зимне","Колки","Олика","Підгайці","Рокині","Стара Вижівка"] },
-    "Ковельський район":     { lat:51.21, lng:24.71, cities:["Ковель","Любомль","Маневичі","Старовижівка","Камінь-Каширський","Голоби","Несухоїжі","Велицьк","Штунь"] },
-    "Іваничівський район":   { lat:50.67, lng:24.11, cities:["Іваничі","Локачі","Турійськ","Боремель","Краснодуб'я","Заболоцці","Зубильне"] },
-    "Ківерцівський район":   { lat:50.67, lng:25.46, cities:["Ківерці","Цумань","Копачівка","Поворськ","Брища","Олика","Романів"] },
-  }},
-  "Дніпропетровська область": { lat:48.4647, lng:35.0462, raions: {
-    "Дніпровський район":    { lat:48.46, lng:35.04, cities:["Дніпро","Підгороднє","Новомосковськ","Перещепине","Юр'ївка","Лошкарівка","Губиниха","Знаменівка","Богданівка","Покровське"] },
-    "Криворізький район":    { lat:47.91, lng:33.37, cities:["Кривий Ріг","Інгулець","Тернівка","Зеленодольськ","Широке","Апостолове","Нікополь","Марганець","Покров","Томаківка","Орджонікідзе","Жовті Води","Верхівцеве"] },
-    "Кам'янський район":     { lat:48.51, lng:34.62, cities:["Кам'янське","Верхньодніпровськ","Жовті Води","П'ятихатки","Кіровське","Максимівка","Петриківка","Царичанка","Котовка"] },
-    "Нікопольський район":   { lat:47.57, lng:34.40, cities:["Нікополь","Марганець","Томаківка","Покров","Чкалове","Грушівка","Мар'янське","Капулівка","Олексіївка"] },
-    "Павлоградський район":  { lat:48.53, lng:35.86, cities:["Павлоград","Першотравенськ","Тернівка","Петропавлівка","Магдалинівка","Вербки","Знам'янка","Самарське","Новопавлівка"] },
-    "Синельниківський район":{ lat:48.32, lng:35.51, cities:["Синельникове","Широке","Юр'ївка","Новомиколаївка","Зайцеве","Привільне","Рибалівка","Слобожанське"] },
-  }},
-  "Донецька область": { lat:48.0159, lng:37.8028, raions: {
-    "Бахмутський район":     { lat:48.59, lng:37.99, cities:["Бахмут","Часів Яр","Соледар","Зайцеве","Костянтинівка","Торецьк","Дружківка","Краматорськ"] },
-    "Горлівський район":     { lat:48.29, lng:38.06, cities:["Горлівка","Артемівськ","Єнакієве","Макіївка","Ясинувата"] },
-    "Донецький район":       { lat:48.00, lng:37.80, cities:["Донецьк","Авдіївка","Мар'їнка","Красноармійськ","Вугледар"] },
-    "Краматорський район":   { lat:48.72, lng:37.53, cities:["Краматорськ","Слов'янськ","Дружківка","Костянтинівка","Барвінкове","Лиман","Ізюм"] },
-    "Маріупольський район":  { lat:47.09, lng:37.54, cities:["Маріуполь","Волноваха","Докучаєвськ","Тельманове","Бердянськ","Мелекіне","Мангуш"] },
-    "Покровський район":     { lat:48.28, lng:37.18, cities:["Покровськ","Мирноград","Новогродівка","Селидове","Курахово","Вугледар","Добропілля","Родинське"] },
-    "Слов'янський район":    { lat:48.86, lng:37.61, cities:["Слов'янськ","Лиман","Святогірськ","Ізюм","Балаклія","Кремінна"] },
-  }},
-  "Житомирська область": { lat:50.2547, lng:28.6587, raions: {
-    "Бердичівський район":   { lat:49.90, lng:28.60, cities:["Бердичів","Козятин","Попільня","Брусилів","Вчорайше","Гришківці","Дзержинськ","Іванопіль","Ліщин","Мала Коростишівка","Махнівка","Паволоч","Райгородок","Романівка","Ружин","Скраглівка","Стара Котельня","Турчинівка","Хажин"] },
-    "Звягельський район":    { lat:50.90, lng:27.65, cities:["Звягель","Коростень","Олевськ","Овруч","Новоград-Волинський","Баранівка","Городниця","Ємільчине","Народичі","Потіївка","Рокитне","Словечне","Лугини","Малин","Чоповичі","Іскоростень","Радомишль","Брусилів","Горбів","Давидівка","Любар","Дубрівка","Іванівка","Бежів","Пулини","Черняхів","Мирне","Коростишів","Хорошів","Попільня","Янушпіль","Турбів","Романів","Стрижівка","Великі Коровинці","Щорськ","Рубежівка","Станишівка","Кропивня","Клітище","Словечне"] },
-    "Житомирський район":    { lat:50.25, lng:28.66, cities:["Житомир","Малин","Коростишів","Радомишль","Бородянка","Брусилів","Волиця","Гришківці","Гуйва","Дениші","Іванків","Іванопіль","Кмитів","Коростень","Корчівка","Лугини","Любар","Мала Коростишівка","Миропіль","Народичі","Овруч","Олевськ","Паволоч","Потіївка","Пулини","Радомишль","Романів","Рубежівка","Ружин","Станишівка","Черняхів","Чоповичі","Щорськ","Яроповичі","Андрушівка","Баранівка","Бердичів","Бишів","Городниця","Давидівка","Ємільчине","Іскоростень","Левків","Новоград-Волинський","Рокитне","Словечне","Хорошів"] },
-  }},
-  "Закарпатська область": { lat:48.6208, lng:22.2879, raions: {
-    "Ужгородський район":    { lat:48.62, lng:22.29, cities:["Ужгород","Чоп","Берегово","Виноградів","Перечин","Великий Березний","Воловець","Малий Березний","Середнє","Минай","Невицьке"] },
-    "Мукачівський район":    { lat:48.44, lng:22.71, cities:["Мукачево","Свалява","Іршава","Міжгір'я","Воловець","Бистриця","Довге","Кольчине","Павшино","Пістрялово","Чинадієво"] },
-    "Рахівський район":      { lat:48.05, lng:24.21, cities:["Рахів","Великий Бичків","Кобилецька Поляна","Богдан","Розтоки","Ясіня","Кваси","Лазещина","Луги","Верхнє Водяне"] },
-    "Тячівський район":      { lat:48.01, lng:23.57, cities:["Тячів","Хуст","Виноградів","Буштино","Вільхівці","Дубове","Кушниця","Нересниця","Нижнє Селище","Углянське","Усть-Чорна"] },
-    "Хустський район":       { lat:48.18, lng:23.29, cities:["Хуст","Великий Бичків","Іршава","Рахів","Тячів","Вишково","Кобалевка","Крайниково","Кушниця","Нижнє Селище"] },
-  }},
-  "Запорізька область": { lat:47.8388, lng:35.1396, raions: {
-    "Бердянський район":     { lat:46.76, lng:36.79, cities:["Бердянськ","Приморськ","Кирилівка","Новоолексіївка","Обіточне","Осипенко","Степанівка Перша"] },
-    "Василівський район":    { lat:47.44, lng:35.28, cities:["Василівка","Дніпрорудне","Кам'янка-Дніпровська","Малокатеринівка","Малотокмачка","Оріхів","Плавні","Пришиб"] },
-    "Запорізький район":     { lat:47.84, lng:35.14, cities:["Запоріжжя","Мелітополь","Токмак","Енергодар","Василівка","Гуляйполе","Пологи","Вільнянськ","Нікополь"] },
-    "Мелітопольський район": { lat:46.85, lng:35.37, cities:["Мелітополь","Якимівка","Михайлівка","Веселе","Акимівка","Заповітне","Новоолексіївка","Приазовське","Сімферополь"] },
-    "Пологівський район":    { lat:47.48, lng:36.26, cities:["Пологи","Гуляйполе","Більмак","Волноваха","Куйбишеве","Малинівка","Нікольське","Роботине","Токмак"] },
-    "Токмацький район":      { lat:47.26, lng:35.72, cities:["Токмак","Гуляйполе","Мелітополь","Чернігівка","Новомиколаївка","Матвіївка","Оріхів","Полтавка","Тернувате"] },
-  }},
-  "Івано-Франківська область": { lat:48.9226, lng:24.7111, raions: {
-    "Верховинський район":   { lat:48.15, lng:24.81, cities:["Верховина","Жаб'є","Кривопілля","Устєрікі","Криворівня","Зелена","Буковець","Голови","Красник"] },
-    "Івано-Франківський район": { lat:48.92, lng:24.71, cities:["Івано-Франківськ","Тисмениця","Галич","Бурштин","Калуш","Коломия","Косів","Надвірна","Снятин","Болехів","Долина","Яремче","Рогатин","Бережани"] },
-    "Калуський район":       { lat:49.01, lng:24.37, cities:["Калуш","Долина","Болехів","Рожнятів","Спас","Войнилів","Чечва","Вигода","Розгірче","Рибне"] },
-    "Коломийський район":    { lat:48.53, lng:25.04, cities:["Коломия","Снятин","Городенка","Косів","Печеніжин","Гвіздець","Заболотів","Корнич","Отинія","Товмач"] },
-    "Косівський район":      { lat:48.32, lng:25.10, cities:["Косів","Кути","Шешори","Яворів","Брустури","Виженка","Кобаки","Космач","Річка","Соколівка"] },
-    "Надвірнянський район":  { lat:48.63, lng:24.57, cities:["Надвірна","Яремче","Делятин","Ланчин","Микуличин","Пасічна","Татарів","Яблуниця","Зелена"] },
-  }},
-  "Київська область": { lat:50.4501, lng:30.5234, raions: {
-    "Білоцерківський район": { lat:49.81, lng:30.11, cities:["Біла Церква","Рокитне","Миронівка","Ставище","Тараща","Узин","Ходосівка","Шпола","Богуслав","Кагарлик","Обухів","Ракитне","Сквира","Фастів","Яготин"] },
-    "Броварський район":     { lat:50.51, lng:30.79, cities:["Бровари","Бориспіль","Переяслав","Баришівка","Березань","Борисільська","Велика Димерка","Велика Дівиця","Згурівка","Калинівка","Лосятин","Мала Дівиця","Семиполки","Циблі","Яготин"] },
-    "Бориспільський район":  { lat:50.35, lng:30.96, cities:["Бориспіль","Переяслав","Яготин","Бар'ятино","Вороньків","Гнідин","Іванківці","Калита","Мирне","Польова","Щасливе"] },
-    "Бучанський район":      { lat:50.55, lng:30.23, cities:["Буча","Ірпінь","Ворзель","Гостомель","Вишгород","Вишневе","Бабинці","Боярка","Гатне","Димер","Здвижівка","Клавдієво-Тарасове","Коцюбинське","Миколаївка","Петрівське","Романівка","Святопетрівське","Стоянка","Тарасівка","Ясногородка"] },
-    "Вишгородський район":   { lat:50.59, lng:30.47, cities:["Вишгород","Іванків","Славутич","Димер","Берізки","Козаровичі","Лукянівка","Нова Олександрівка","Нові Петрівці","Сухолуччя","Хотянівка","Чорнобиль","Прип'ять"] },
-    "Обухівський район":     { lat:50.11, lng:30.63, cities:["Обухів","Фастів","Біла Церква","Богуслав","Васильків","Ветлаківці","Грузьке","Дибинці","Кожанка","Митниця","Миронівка","Рокитне","Ставище","Тараща","Узин","Чапаєвка","Шпола"] },
-  }},
-  "Місто Київ": { lat:50.4501, lng:30.5234, raions: {
-    "Голосіївський район":   { lat:50.40, lng:30.51, cities:["Голосіїв","Феофанія","Кончі-Заспа","Пирогово","Хотів"] },
-    "Дарницький район":      { lat:50.42, lng:30.63, cities:["Дарниця","Осокорки","Позняки","Харківський масив","Бортничі","Вигурівщина"] },
-    "Деснянський район":     { lat:50.52, lng:30.62, cities:["Троєщина","Лісовий масив","Лісна Поляна","Осокорки","Сосніна","Вигурівщина"] },
-    "Дніпровський район":    { lat:50.46, lng:30.62, cities:["Воскресенка","Лівобережна","Микільська Слобідка","Привокзальний масив","Русанівка"] },
-    "Оболонський район":     { lat:50.52, lng:30.50, cities:["Оболонь","Мінський масив","Куренівка","Пріорка","Пущі-Водиця","Святошин"] },
-    "Печерський район":      { lat:50.43, lng:30.54, cities:["Печерськ","Липки","Звіринець","Кловська","Центр"] },
-    "Подільський район":     { lat:50.47, lng:30.50, cities:["Поділ","Куренівка","Пріорка","Виноградар","Троєщина"] },
-    "Святошинський район":   { lat:50.47, lng:30.40, cities:["Святошин","Нивки","Відрадний","Жуляни","Берковець","Борщагівка","Сирець"] },
-    "Солом'янський район":   { lat:50.44, lng:30.48, cities:["Солом'янка","Відрадний","Чоколівка","Першотравневий","Відрадна","Матвіївка"] },
-    "Шевченківський район":  { lat:50.45, lng:30.51, cities:["Шевченківський","Сирець","Лук'янівка","Татарка","Академмістечко","Жовтневий"] },
-  }},
-  "Кіровоградська область": { lat:48.5132, lng:32.2597, raions: {
-    "Голованівський район":  { lat:48.27, lng:30.50, cities:["Голованівськ","Ульянівка","Добровеличківка","Побузьке","Первомайськ","Завалля","Нова Одеса","Підвисоке","Рівне","Синюхин Брід"] },
-    "Кропивницький район":   { lat:48.51, lng:32.26, cities:["Кропивницький","Олександрівка","Знам'янка","Новоукраїнка","Бобринець","Олексіївка","Петрове","Помічна","Смоліно","Тишківка","Ульянівка","Устинівка","Шостаківка"] },
-    "Новоукраїнський район": { lat:48.32, lng:31.52, cities:["Новоукраїнка","Олексіївка","Глодоси","Аджамка","Завалля","Кетрисанівка","Нова Прага","Нова Стародуб'янка","Помічна","Рівне","Чорноліська"] },
-  }},
-  "Луганська область": { lat:48.5740, lng:39.3078, raions: {
-    "Алчевський район":      { lat:48.47, lng:38.79, cities:["Алчевськ","Стаханов","Брянка","Первомайськ","Артемівськ","Кадіївка","Красний Луч"] },
-    "Довжанський район":     { lat:48.10, lng:39.66, cities:["Довжанськ","Антрацит","Красний Луч","Молодогвардійськ","Петровське","Ровеньки","Свердловськ"] },
-    "Луганський район":      { lat:48.57, lng:39.31, cities:["Луганськ","Щастя","Лутугине","Успенська","Юр'ївка"] },
-    "Сєвєродонецький район": { lat:48.95, lng:38.49, cities:["Сєвєродонецьк","Лисичанськ","Рубіжне","Попасна","Кремінна","Горське","Золоте","Новодружеськ","Привілля"] },
-    "Старобільський район":  { lat:49.27, lng:38.91, cities:["Старобільськ","Сватове","Кремінна","Білокуракине","Марківка","Міловe","Новопсков","Троїцьке","Чмирівка"] },
-  }},
-  "Львівська область": { lat:49.8397, lng:24.0297, raions: {
-    "Дрогобицький район":    { lat:49.35, lng:23.51, cities:["Дрогобич","Борислав","Трускавець","Стебник","Бориня","Добромиль","Меденичі","Попелі","Рудки","Турка","Хирів","Ясениця"] },
-    "Золочівський район":    { lat:49.81, lng:24.90, cities:["Золочів","Броди","Буськ","Перемишляни","Бібрка","Глиняни","Гологори","Жовква","Красне","Олесько","Підгірці","Потелич","Сасів"] },
-    "Львівський район":      { lat:49.84, lng:24.03, cities:["Львів","Дрогобич","Стрий","Самбір","Борислав","Червоноград","Трускавець","Новий Розділ","Рава-Руська","Жовква","Кам'янка-Бузька","Миколаїв","Перемишляни","Пустомити","Рудки","Сколе","Сокаль","Судова Вишня","Яворів"] },
-    "Самбірський район":     { lat:49.52, lng:23.21, cities:["Самбір","Судова Вишня","Хирів","Старий Самбір","Велика Вінниця","Городок","Добромиль","Комарно","Мостиська","Старяви","Турка"] },
-    "Стрийський район":      { lat:49.26, lng:23.86, cities:["Стрий","Жидачів","Моршин","Сколе","Болехів","Дашава","Жидачів","Розвадів","Ходорів","Якимів"] },
-    "Червоноградський район":{ lat:50.39, lng:24.24, cities:["Червоноград","Сокаль","Кристинопіль","Нестеров","Рава-Руська","Магерів","Угнів","Жовква","Добросин","Порпорець"] },
-  }},
-  "Миколаївська область": { lat:46.9750, lng:31.9946, raions: {
-    "Баштанський район":     { lat:47.40, lng:32.44, cities:["Баштанка","Снігурівка","Новий Буг","Вознесенськ","Братське","Єланець","Кривоозерянка","Полтавка","Прибузьке","Рибаківка"] },
-    "Вознесенський район":   { lat:47.56, lng:31.34, cities:["Вознесенськ","Первомайськ","Єланець","Арбузинка","Врадіївка","Доманівка","Кривоозерянка","Олексіївка","Олександрівка","Ташлик"] },
-    "Миколаївський район":   { lat:46.97, lng:31.99, cities:["Миколаїв","Южноукраїнськ","Очаків","Первомайськ","Баштанка","Вознесенськ","Нова Одеса","Новий Буг","Снігурівка","Березнегувате","Галицинове","Жовтневе","Казанка","Кривоозерянка","Куцурубська","Новобузьке","Ольвіополь","Олексіївка","Привільне","Станіслав","Широколанівка"] },
-  }},
-  "Одеська область": { lat:46.4825, lng:30.7233, raions: {
-    "Білгород-Дністровський район": { lat:46.19, lng:30.35, cities:["Білгород-Дністровський","Татарбунари","Аккерман","Сарата","Арциз","Болград","Кілія","Ізмаїл","Рені","Вилкове","Саф'яни","Шабо","Затока","Кароліно-Бугаз"] },
-    "Болградський район":    { lat:45.68, lng:28.61, cities:["Болград","Ізмаїл","Рені","Вилкове","Кілія","Саф'яни","Приморське","Суворово","Тарутине","Табаки","Куліндорово"] },
-    "Ізмаїльський район":    { lat:45.35, lng:28.84, cities:["Ізмаїл","Болград","Рені","Кілія","Вилкове","Арциз","Болград","Кугурлуй","Нагірне","Приморське","Тарутине","Татарбунари","Тулча"] },
-    "Одеський район":        { lat:46.48, lng:30.72, cities:["Одеса","Чорноморськ","Южне","Теплодар","Іллічівськ","Овідіополь","Авангард","Доброслав","Іванівка","Нова Дофінівка","Нові Биляри","Роздільна","Сергіївка","Холодна Балка"] },
-    "Подільський район":     { lat:47.75, lng:29.53, cities:["Подільськ","Балта","Котовськ","Савранка","Ананьїв","Бірзула","Доманівка","Захарівка","Зеленогірськ","Кодима","Любашівка","Олексіївка","Первомайськ","Чечельник"] },
-    "Роздільнянський район": { lat:46.85, lng:29.87, cities:["Роздільна","Березівка","Вознесенськ","Любашівка","Нова Одеса","Первомайськ","Ширяєве","Бирлад","Миколаївка","Олександрівка","Павлівка","Петропавлівка","Посад-Покровське"] },
-  }},
-  "Полтавська область": { lat:49.5883, lng:34.5514, raions: {
-    "Кременчуцький район":   { lat:49.07, lng:33.42, cities:["Кременчук","Горішні Плавні","Козельщина","Глобине","Гадяч","Зіньків","Карлівка","Кобеляки","Лохвиця","Лубни","Миргород","Оржиця","Пирятин","Решетилівка","Семенівка","Хорол","Чорнухи"] },
-    "Лубенський район":      { lat:50.01, lng:33.00, cities:["Лубни","Пирятин","Оржиця","Хорол","Гребінка","Гоголеве","Дрижина Гребля","Заїчинці","Ічня","Яреськи","Лазірки","Нові Санжари","Пулинці","Семенівка","Чорнухи"] },
-    "Миргородський район":   { lat:49.97, lng:33.62, cities:["Миргород","Гадяч","Карлівка","Зіньків","Велика Багачка","Великі Сорочинці","Диканька","Машівка","Нові Санжари","Опішня","Решетилівка","Сенча","Шишаки"] },
-    "Полтавський район":     { lat:49.59, lng:34.55, cities:["Полтава","Карлівка","Кременчук","Диканька","Зіньків","Котельва","Кобеляки","Козельщина","Лохвиця","Лубни","Миргород","Нові Санжари","Опішня","Решетилівка","Хорол","Чорнухи","Яреськи"] },
-  }},
-  "Рівненська область": { lat:50.6199, lng:26.2516, raions: {
-    "Дубенський район":      { lat:50.43, lng:25.74, cities:["Дубно","Млинів","Демидівка","Здолбунів","Корець","Острог","Берестечко","Пляшева","Радивилів","Верба","Вілія","Козин","Мізоч","Олика","Путилівка","Тараканів"] },
-    "Рівненський район":     { lat:50.62, lng:26.25, cities:["Рівне","Острог","Дубно","Радивилів","Рокитне","Березне","Гоща","Здолбунів","Корець","Костопіль","Млинів","Сарни","Клесів","Клевань","Квасилів","Олика","Соснівка","Тинне"] },
-    "Сарненський район":     { lat:51.34, lng:26.62, cities:["Сарни","Костопіль","Березне","Клесів","Дубровиця","Зарічне","Кузнецовськ","Луків","Немовичі","Рокитне","Страшів","Степань","Тинне","Томахів","Чудель"] },
-  }},
-  "Сумська область": { lat:50.9216, lng:34.7981, raions: {
-    "Конотопський район":    { lat:51.23, lng:33.20, cities:["Конотоп","Батурин","Бурин","Путивль","Буринь","Вороніж","Крупець","Смоше","Холопків","Шалигине","Ямпіль"] },
-    "Охтирський район":      { lat:50.31, lng:34.90, cities:["Охтирка","Тростянець","Великий Бобрик","Боромля","Гути","Краснопілля","Лебедин","Лотоки","Миколаїв","Недригайлів","Сергіївка","Терни","Хотінь"] },
-    "Роменський район":      { lat:50.75, lng:33.47, cities:["Ромни","Миропілля","Глинськ","Дубов'язівка","Гудим","Каранського","Красне","Олексіївка","Оленівка","Подол","Смілянське"] },
-    "Сумський район":        { lat:50.92, lng:34.80, cities:["Суми","Охтирка","Шостка","Конотоп","Ромни","Білопілля","Буринь","Глухів","Зноб-Новгородськ","Ямпіль","Кролевець","Лебедин","Середина-Буда","Тростянець","Хотінь","Ворожба"] },
-    "Шосткинський район":    { lat:51.87, lng:33.47, cities:["Шостка","Ямпіль","Кролевець","Середина-Буда","Глухів","Зноб-Новгородськ","Дружба","Єсмань","Знобівка","Свеса","Свеське","Теліженки","Ушня"] },
-  }},
-  "Тернопільська область": { lat:49.5535, lng:25.5948, raions: {
-    "Кременецький район":    { lat:50.10, lng:25.73, cities:["Кременець","Шумськ","Лановці","Острог","Вишнівець","Катеринівка","Кунів","Ланівці","Почаїв","Радивилів","Ридомиль","Тарнорудка","Теофіполь","Устечко"] },
-    "Тернопільський район":  { lat:49.55, lng:25.59, cities:["Тернопіль","Бережани","Монастириська","Козова","Теребовля","Бучач","Гусятин","Збараж","Зборів","Копичинці","Мельниця-Подільська","Підволочиськ","Підгайці","Скала-Подільська","Чортків","Чортківська","Шумськ","Заліщики"] },
-    "Чортківський район":    { lat:49.01, lng:25.80, cities:["Чортків","Заліщики","Бучач","Борщів","Копичинці","Гусятин","Катеринівка","Монастириська","Мельниця-Подільська","Нагірянка","Петриків","Підгайці","Скала-Подільська","Теребовля","Устечко","Хоростків"] },
-  }},
-  "Харківська область": { lat:49.9935, lng:36.2304, raions: {
-    "Богодухівський район":  { lat:50.17, lng:35.55, cities:["Богодухів","Валки","Краснокутськ","Золочів","Дергачі","Дворічна","Зміїв","Красноград","Лозова","Мерефа","Нова Водолага","Первомайський","Харків"] },
-    "Ізюмський район":       { lat:49.21, lng:37.28, cities:["Ізюм","Балаклія","Куп'янськ","Борова","Барвінкове","Велика Камишуваха","Гусарівка","Дворічна","Загоруйківка","Лиман","Сватове","Чугуїв"] },
-    "Красноградський район": { lat:49.36, lng:35.45, cities:["Красноград","Зачепилівка","Нова Водолага","Кегичівка","Великий Бурлук","Борова","Близнюки","Дворічна","Кегичівка","Чкалівка"] },
-    "Куп'янський район":     { lat:49.71, lng:37.62, cities:["Куп'янськ","Борова","Дворічна","Великий Бурлук","Вовчанськ","Куп'янськ-Вузловий","Лиман","Оскіл","Шевченкове"] },
-    "Лозівський район":      { lat:48.89, lng:36.32, cities:["Лозова","Барвінкове","Близнюки","Первомайськ","Богодухів","Красноград","Кегичівка","Слов'янськ","Чкалівка"] },
-    "Харківський район":     { lat:49.99, lng:36.23, cities:["Харків","Мерефа","Дергачі","Люботин","Чугуїв","Первомайський","Балаклія","Богодухів","Валки","Зміїв","Золочів","Краснокутськ","Нова Водолага","Печеніги","Чугуїв","Ізюм"] },
-  }},
-  "Херсонська область": { lat:46.6354, lng:32.6169, raions: {
-    "Бериславський район":   { lat:46.84, lng:33.41, cities:["Берислав","Нова Каховка","Каховка","Горностаївка","Велика Лепетиха","Мала Лепетиха","Нижні Сірогози","Таврійськ","Цюрупинськ"] },
-    "Генічеський район":     { lat:46.17, lng:34.83, cities:["Генічеськ","Нова Збур'ївка","Іванівка","Рикове","Новоолексіївка","Сокологірне","Скадовськ","Велика Олексіївка","Нижньосірогозьке","Стрілкове"] },
-    "Каховський район":      { lat:46.81, lng:33.48, cities:["Каховка","Нова Каховка","Горностаївка","Геніческ","Таврійськ","Чаплинка","Велика Лепетиха","Мала Лепетиха","Пологи","Скадовськ","Снігурівка"] },
-    "Херсонський район":     { lat:46.64, lng:32.62, cities:["Херсон","Цюрупинськ","Скадовськ","Голопристань","Геніческ","Алешки","Берислав","Велика Олександрівка","Нова Каховка","Нижньосірогозьке","Олешки","Очаків","Таврійськ"] },
-  }},
-  "Хмельницька область": { lat:49.4229, lng:26.9871, raions: {
-    "Кам'янець-Подільський район": { lat:48.68, lng:26.58, cities:["Кам'янець-Подільський","Дунаївці","Нова Ушиця","Жванець","Гуменці","Залісся","Ярмолинці","Китайгород","Мала Слободка","Смотрич","Стара Ушиця","Цвіклівці"] },
-    "Хмельницький район":    { lat:49.42, lng:26.99, cities:["Хмельницький","Кам'янець-Подільський","Шепетівка","Старокостянтинів","Красилів","Антонін","Деражня","Дунаївці","Нетішин","Полонне","Теофіполь","Чемерівці","Ярмолинці"] },
-    "Шепетівський район":    { lat:50.19, lng:27.06, cities:["Шепетівка","Полонне","Ізяслав","Славута","Базалія","Гриців","Заслав","Красилів","Купель","Нетішин","Полонне","Судилків","Теофіполь","Тівків"] },
-  }},
-  "Черкаська область": { lat:49.4444, lng:32.0598, raions: {
-    "Звенигородський район": { lat:49.08, lng:30.97, cities:["Звенигородка","Умань","Тальне","Христинівка","Монастирище","Бабанка","Верхнячка","Городище","Єрки","Кам'янка","Коростишів","Лисянка","Маньківка","Рубаний Міст","Тalne","Тернівка","Торговиця","Шаула","Ямпіль"] },
-    "Золотоніський район":   { lat:49.66, lng:32.03, cities:["Золотоноша","Драбів","Корсунь-Шевченківський","Городище","Гельмязів","Жашків","Кам'яні Потоки","Канів","Козацьке","Лазірки","Медведівка","Мошни","Прохорівка","Сміла","Степанці","Тальне"] },
-    "Уманський район":       { lat:48.74, lng:30.22, cities:["Умань","Тальне","Христинівка","Монастирище","Бабанка","Бобринець","Виноград","Вербівка","Гайворон","Дубово","Єрки","Звенигородка","Іванівка","Кам'янка","Краснопілка","Ладижин","Маньківка","Тернівка","Торговиця"] },
-    "Черкаський район":      { lat:49.44, lng:32.06, cities:["Черкаси","Сміла","Золотоноша","Корсунь-Шевченківський","Канів","Городище","Жашків","Звенигородка","Кам'янка","Тальне","Умань","Христинівка","Чигирин","Шпола","Монастирище","Ватутіне"] },
-  }},
-  "Чернівецька область": { lat:48.2921, lng:25.9358, raions: {
-    "Вижницький район":      { lat:48.25, lng:25.18, cities:["Вижниця","Путила","Берегомет","Селятин","Брусниця","Виженка","Глибока","Кімполунг","Конятин","Мігово","Розтоки","Шепіт"] },
-    "Дністровський район":   { lat:48.65, lng:27.02, cities:["Хотин","Сокиряни","Кельменці","Новодністровськ","Герца","Вашківці","Дністровськ","Могилів-Подільський","Недобоївці","Ревне","Хрещатик"] },
-    "Чернівецький район":    { lat:48.29, lng:25.94, cities:["Чернівці","Сторожинець","Кіцмань","Хотин","Вашківці","Вижниця","Герца","Глибока","Заставна","Коломия","Косів","Нова Жадова","Новоселиця","Снятин","Сокиряни"] },
-  }},
-  "Чернігівська область": { lat:51.4982, lng:31.2893, raions: {
-    "Корюківський район":    { lat:51.78, lng:32.26, cities:["Корюківка","Сновськ","Семенівка","Холми","Городня","Козелець","Менський","Новгород-Сіверський","Ріпки","Седнів","Щорс"] },
-    "Ніжинський район":      { lat:51.05, lng:31.89, cities:["Ніжин","Бахмач","Борзна","Менський","Батурин","Бобровиця","Дружба","Козелець","Кролевець","Олишівка","Остер","Прилуки","Семенівка","Сосниця","Чемер"] },
-    "Новгород-Сіверський район": { lat:51.99, lng:33.27, cities:["Новгород-Сіверський","Корюківка","Семенівка","Середина-Буда","Сосниця","Шостка","Ямпіль","Горбів","Клишки","Хоробичі"] },
-    "Прилуцький район":      { lat:50.59, lng:32.39, cities:["Прилуки","Срібне","Варва","Пирятин","Гребінка","Дмитрівка","Добра","Іваниця","Ічня","Лосинівка","Переяслав","Сенча","Смолін","Сокиринці","Талалаївка","Хмелів","Яготин"] },
-    "Чернігівський район":   { lat:51.50, lng:31.29, cities:["Чернігів","Ніжин","Бахмач","Прилуки","Козелець","Бобровиця","Батурин","Борзна","Городня","Десна","Дорогинка","Єнківці","Ічня","Кіпті","Козелець","Лисівка","Любеч","Менський","Михайло-Коцюбинське","Олишівка","Остер","Ріпки","Седнів","Слабин","Сосниця","Чемер","Щорс"] },
-  }},
-};
-
-// Coords for major cities (detail map)
 const CITY_COORDS = {
   "Київ":{"lat":50.4501,"lng":30.5234},"Харків":{"lat":49.9935,"lng":36.2304},
   "Одеса":{"lat":46.4825,"lng":30.7233},"Дніпро":{"lat":48.4647,"lng":35.0462},
@@ -5355,7 +4719,6 @@ const CITY_COORDS = {
   "Свалява":{"lat":48.5406,"lng":22.9769},"Рахів":{"lat":48.0528,"lng":24.2111},
 };
 
-// Compatibility shim
 const UA_OBLASTS = Object.entries(UA_GEO).map(([name, data]) => ({
   name, lat: data.lat, lng: data.lng, osm: name
 }));
@@ -5363,14 +4726,10 @@ const UA_OBLASTS = Object.entries(UA_GEO).map(([name, data]) => ({
 const _settlementsCache = {};
 const _raionsCache = {};
 
-// map instance vars (declared once here)
 let addMapInstance = null;
 let addMapMarker  = null;
 let selectedCoords = null;
 
-// ============================================================
-// CASCADING LOCATION SELECTS (add form)
-// ============================================================
 function initOblastSelect() {
   const sel = document.getElementById('new-oblast');
   if (!sel || sel.options.length > 1) return;
@@ -5388,11 +4747,9 @@ function onOblastChange() {
   raionSel.innerHTML = '<option value="">Оберіть район...</option>';
   raionSel.disabled = !oblast;
 
-  // City input — просто очищаємо, не блокуємо (тепер text autocomplete)
   var cityInp = document.getElementById('new-city');
   if (cityInp) cityInp.value = '';
 
-  // Якщо "Місто Київ" або "Місто Севастополь" — одразу підставити місто
   var _cityOblasts2 = {'Місто Київ': 'Київ', 'Місто Севастополь': 'Севастополь'};
   if (_cityOblasts2[oblast] && cityInp) {
     cityInp.value = _cityOblasts2[oblast];
@@ -5425,7 +4782,7 @@ function onRaionChange() {
   if (raionOpt?.dataset.lat) {
     showAddMap(+raionOpt.dataset.lat, +raionOpt.dataset.lng, raion, 10);
   }
-  // City input — не заповнюємо з UA_GEO, юзер сам введе через Nominatim
+
 }
 
 function onCityChange() {
@@ -5441,7 +4798,7 @@ function onCityChange() {
   } else {
     const rData = UA_GEO[oblast]?.raions[raion];
     if (rData) showAddMap(rData.lat, rData.lng, city, 11);
-    // precise geocode
+
     fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', '+oblast+', Україна')}&format=json&limit=1&countrycodes=ua`, {
       headers:{'Accept-Language':'uk'}
     }).then(r=>r.json()).then(data=>{
@@ -5468,9 +4825,6 @@ function onCityChange() {
   }
 }
 
-// ============================================================
-// LAZY LEAFLET LOADER
-// ============================================================
 var _leafletLoaded = false;
 var _leafletLoading = false;
 var _leafletQueue = [];
@@ -5502,9 +4856,6 @@ function _loadLeaflet(cb) {
   document.head.appendChild(script);
 }
 
-// ============================================================
-// ADD FORM MAP
-// ============================================================
 function showAddMap(lat, lng, label, zoom) {
   const wrap = document.getElementById('add-map-wrap');
   if (!wrap) return;
@@ -5529,12 +4880,9 @@ function showAddMap(lat, lng, label, zoom) {
     }).bindPopup(`<b>${label}</b>`).addTo(addMapInstance).openPopup();
   }
   setTimeout(() => addMapInstance.invalidateSize(), 60);
-  }); // end _loadLeaflet
+  });
 }
 
-// ============================================================
-// DETAIL MAP (Leaflet)
-// ============================================================
 let detailMapInstance = null;
 let detailMapMarker   = null;
 
@@ -5577,7 +4925,7 @@ function renderDetailMap(city, fullLocation) {
       })
       .catch(() => {});
     }
-  }); // end _loadLeaflet
+  });
 }
 
 function _initDetailMap(lat, lng, label, zoom) {
@@ -5594,9 +4942,6 @@ function _initDetailMap(lat, lng, label, zoom) {
   setTimeout(() => detailMapInstance.invalidateSize(), 80);
 }
 
-// ============================================================
-// THEME TOGGLE
-// ============================================================
 function toggleTheme() {
   const isLight = document.body.classList.toggle('light');
   const knob = document.getElementById('themeKnob');
@@ -5605,13 +4950,9 @@ function toggleTheme() {
   showToast(isLight ? '☀️ Денна тема увімкнена' : '🌙 Нічна тема увімкнена');
 }
 
-// ============================================================
-// INIT
-// ============================================================
-// Денна тема за замовчуванням
 try {
   var savedTheme = localStorage.getItem('eria-theme');
-  // Заблокувати transition під час ініціалізації теми
+
   document.documentElement.style.setProperty('--transition-override', 'none');
   var _noTransStyle = document.createElement('style');
   _noTransStyle.textContent = '*, *::before, *::after { transition: none !important; }';
@@ -5624,10 +4965,9 @@ try {
     if (knob) knob.textContent = '☀️';
     if (savedTheme === null) localStorage.setItem('eria-theme', 'light');
   }
-  // Прибрати anti-flash клас з <html>
+
   document.documentElement.classList.remove('light-preload');
 
-  // Відновити transition через 1 кадр
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
       var el = document.getElementById('no-trans-init');
@@ -5637,16 +4977,8 @@ try {
 } catch(e) {}
 
 loadSavedProfile();
-_initRouter(); // reads hash → shows correct page on load
+_initRouter();
 
-
-// ============================================================
-// PROMO SYSTEM
-// ============================================================
-
-// ============================================================
-// PROMO SYSTEM
-// ============================================================
 const PROMO_PRICES = {
   top:       { 7: 150, 14: 250, 30: 400 },
   highlight: { 7:  80, 14: 130, 30: 200 },
@@ -5658,8 +4990,8 @@ const PROMO_NAMES = {
   urgent: 'Термінова продажа', banner: 'Банер магазину',
 };
 
-let _promoListingId  = null;  // id оголошення для якого відкритий модал
-let _promoAfterAdd   = false; // чи відкритий після submitListing
+let _promoListingId  = null;
+let _promoAfterAdd   = false;
 let _selectedPromoType = 'top';
 let _selectedPromoDays = 7;
 
@@ -5669,7 +5001,6 @@ function openPromoModal(listingId, afterAdd) {
   _selectedPromoType = 'top';
   _selectedPromoDays = 7;
 
-  // Назва оголошення в заголовок — безпечний пошук
   const allListings = _allListings();
   const l = allListings.find(x => x && (x.id === +listingId || x.id === listingId));
   const subEl = document.getElementById('promo-modal-listing-name');
@@ -5679,7 +5010,6 @@ function openPromoModal(listingId, afterAdd) {
       : (l ? '«' + l.title + '»' : 'Ваше оголошення');
   }
 
-  // скинути UI
   document.querySelectorAll('.promo-card').forEach(c => c.classList.remove('selected'));
   document.querySelector('.promo-card[data-promo="top"]').classList.add('selected');
   document.querySelectorAll('.promo-dur-btn').forEach((b,i) => b.classList.toggle('active', i===0));
@@ -5724,7 +5054,6 @@ function _updatePromoUI() {
   const type  = _selectedPromoType;
   const price = PROMO_PRICES[type] ? PROMO_PRICES[type][days] : 0;
 
-  // Оновити ціни на картках
   Object.keys(PROMO_PRICES).forEach(t => {
     const el = document.getElementById('price-' + t);
     if (el) {
@@ -5733,7 +5062,6 @@ function _updatePromoUI() {
     }
   });
 
-  // Summary — з null-перевірками
   const totalEl = document.getElementById('promo-total-price');
   const untilEl = document.getElementById('promo-until-date');
   const descEl  = document.getElementById('promo-summary-desc');
@@ -5762,7 +5090,6 @@ function applyPromo() {
 
   var listingId = String(_promoListingId);
 
-  // Зберегти в Firestore
   if (window._db && listingId) {
     window._db.collection('listings').doc(listingId).update(promoData)
       .then(function() {
@@ -5775,7 +5102,6 @@ function applyPromo() {
       });
   }
 
-  // Оновити локально — одразу щоб UI оновився без чекання Firestore
   if (listing) {
     Object.assign(listing, promoData);
   }
@@ -5794,17 +5120,16 @@ function applyPromo() {
 }
 
 function submitListing() {
-  // Auth guard
+
   if (!isLoggedIn || !currentUser || !currentUser.uid) {
     showToast('⚠️ Увійдіть щоб публікувати'); showPage('profile'); return;
   }
 
-  // Rate limiting — не більше 5 оголошень на 10 хвилин
   var _rateKey = 'ridego_post_rate';
   try {
     var rateData = JSON.parse(localStorage.getItem(_rateKey) || '{"count":0,"since":0}');
     var now = Date.now();
-    if (now - rateData.since < 600000) { // 10 хвилин
+    if (now - rateData.since < 600000) {
       if (rateData.count >= 5) {
         showToast('⚠️ Забагато оголошень підряд. Зачекайте кілька хвилин.'); return;
       }
@@ -5813,7 +5138,6 @@ function submitListing() {
     }
   } catch(e) { var rateData = { count: 0, since: Date.now() }; }
 
-  // Перевірити баланс слотів
   if (_userSlots.loaded && _totalSlots() <= 0) {
     showToast('⚠️ Немає слотів для публікації');
     openBuySlots();
@@ -5824,17 +5148,16 @@ function submitListing() {
   const price = parseInt(document.getElementById('new-price')?.value);
   const phone = document.getElementById('new-phone')?.value.trim();
 
-  // Розширена валідація
   if (!title) { showToast('⚠️ Введіть назву оголошення'); return; }
   if (title.length > 200) { showToast('⚠️ Назва занадто довга (макс 200 символів)'); return; }
   if (!price || price < 1) { showToast('⚠️ Введіть коректну ціну'); return; }
   if (price > 10000000) { showToast('⚠️ Ціна перевищує максимум (10 млн грн)'); return; }
   if (!phone) { showToast('⚠️ Введіть номер телефону'); return; }
-  // Перевірка телефону — тільки цифри, +, пробіли, дужки
+
   if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
     showToast('⚠️ Невірний формат телефону'); return;
   }
-  // Перевірка на spam-посилання в назві
+
   if (/https?:\/\/|www\.|\.com|\.ua|\.org/i.test(title)) {
     showToast('⚠️ Посилання в назві заборонені'); return;
   }
@@ -5864,26 +5187,23 @@ function submitListing() {
   const spWheel = document.getElementById('sp-wheel')?.value || '';
   const spWeight= document.getElementById('sp-weight')?.value || '';
 
-  // Зберегти категорію і зібрати specs ДО будь-яких скидань
   const _savedCat = addSelectedCat;
   const rawSpecs = collectSpecs();
   console.log('DEBUG specs cat:', _savedCat, 'rawSpecs keys:', Object.keys(rawSpecs));
 
-  // Маппінг назв секцій → ключів в specsForCard
-  // Маппінг: частина назви секції (без емодзі) → ключ specsForCard
   const SECTION_KEY_MAP = {
-    // Мотор
+
     'Електросистема':     'motor',
     'Двигун':             'motor',
-    // Батарея
+
     'Акумулятор':         'battery',
-    // Динаміка
+
     'Їзда':               'performance',
     'Динаміка':           'performance',
     'Характеристики руху':'performance',
     'Характеристики':     'performance',
     'Ходові':             'performance',
-    // Фізичні — рама, колеса, трансмісія, гальма, підвіска, розміри
+
     'Рама і колеса':      'physical',
     'Рама':               'physical',
     'Трансмісія':         'physical',
@@ -5898,7 +5218,7 @@ function submitListing() {
     'Розміри та вага':    'physical',
     'Розміри':            'physical',
     'Габарити':           'physical',
-    // Оснащення / додатково
+
     'Оснащення':          'extras',
     'Електроніка':        'extras',
     'Додатково':          'extras',
@@ -5906,7 +5226,7 @@ function submitListing() {
     'Сертифікати':        'extras',
     'Безпека':            'extras',
     'Документи':          'extras',
-    // Загальне
+
     'Деталь':             'general',
     'Аксесуар':           'general',
     'Загальне':           'general',
@@ -5914,14 +5234,14 @@ function submitListing() {
 
   const specsForCard = {};
   Object.keys(rawSpecs).forEach(function(sectionName) {
-    // Прибрати емодзі з початку (все до першої літери)
+
     var clean = sectionName.replace(/^[^\u0400-\u04FFa-zA-Z]+/, '').trim();
     var key = null;
-    // Спочатку точний збіг
+
     if (SECTION_KEY_MAP[clean]) {
       key = SECTION_KEY_MAP[clean];
     } else {
-      // Потім пошук по частині
+
       Object.keys(SECTION_KEY_MAP).forEach(function(k) {
         if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
       });
@@ -5959,14 +5279,13 @@ function submitListing() {
     specs: specsForCard,
   };
 
-  // Зберегти в Firestore
   if (window._db && currentUser && currentUser.uid) {
-    // Конвертувати specs — Firestore не підтримує вкладені масиви
+
     var safeSpecs = {};
     if (newL.specs) {
       Object.keys(newL.specs).forEach(function(key) {
         if (Array.isArray(newL.specs[key])) {
-          // Перетворити масив пар [['key','val'],...] в об'єкт
+
           var obj = {};
           newL.specs[key].forEach(function(row) {
             if (Array.isArray(row) && row.length >= 2) {
@@ -6009,25 +5328,25 @@ function submitListing() {
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
         console.log('Saved OK:', docRef.id);
-        // Списати 1 слот
+
         _consumeSlot();
         newL.id = docRef.id;
-        _fbListings.unshift(newL); // myListings не використовуємо — лише _fbListings
+        _fbListings.unshift(newL);
         if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
         showToast('✅ Оголошення опубліковано!');
-        // Записати rate limit
+
         try {
           var _rd = JSON.parse(localStorage.getItem('ridego_post_rate') || '{"count":0,"since":' + Date.now() + '}');
           _rd.count = (_rd.count || 0) + 1;
           localStorage.setItem('ridego_post_rate', JSON.stringify(_rd));
         } catch(e) {}
-        // Зберегти копію фото ДО reset
+
         var photos = uploadedPhotos.filter(function(p){ return p && p.blob; });
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
-        // Завантажити фото в Cloudinary
+
         if (photos.length > 0) {
           var urls = new Array(photos.length).fill(null);
           var uploaded = 0;
@@ -6072,7 +5391,6 @@ function submitListing() {
     _resetAddWizard();
   }
 
-  // reset тепер всередині .then()
 }
 
 function _resetAddWizard() {
@@ -6096,7 +5414,6 @@ function _resetAddWizard() {
   if (typeof addGoStep === 'function') addGoStep(1);
 }
 
-// ── EDIT LISTING ──────────────────────────────────────────────
 var _editListingId = null;
 
 function openEditListing(id) {
@@ -6104,10 +5421,8 @@ function openEditListing(id) {
   if (!l) { showToast('⚠️ Оголошення не знайдено'); return; }
   _editListingId = id;
 
-  // Скидаємо форму і переходимо на крок 2 одразу (категорія вже відома)
   _resetAddWizard();
 
-  // Встановити категорію
   addSelectedCat = l.cat || null;
   document.querySelectorAll('#add-step-1 .transport-btn').forEach(function(b) {
     if (b.dataset.cat === l.cat) {
@@ -6116,10 +5431,8 @@ function openEditListing(id) {
     }
   });
 
-  // Перейти одразу на крок 2
   addGoStep(2);
 
-  // Заповнити поля після невеликої затримки (щоб форма відрендерилась)
   setTimeout(function() {
     var set = function(id, val) {
       var el = document.getElementById(id);
@@ -6136,26 +5449,23 @@ function openEditListing(id) {
     set('new-condition', l.condition || 'Хороший');
     set('new-bargain',  l.bargain || '');
 
-    // Бренд
     var brandEl = document.getElementById('new-brand');
     if (brandEl && l.brand) {
-      // Спробувати знайти в списку
+
       var found = false;
       Array.from(brandEl.options).forEach(function(opt) {
         if (opt.value === l.brand) { brandEl.value = l.brand; found = true; }
       });
       if (!found) {
-        // Вибрати "Інший бренд"
+
         brandEl.value = 'Інший бренд';
         var customEl = document.getElementById('new-brand-custom');
         if (customEl) { customEl.value = l.brand; customEl.style.display = ''; }
       }
     }
 
-    // Місто
     set('new-city', l.city || '');
 
-    // Область — знайти в select
     var oblastEl = document.getElementById('new-oblast');
     if (oblastEl && l.oblast) {
       oblastEl.value = l.oblast;
@@ -6170,7 +5480,6 @@ function openEditListing(id) {
       }, 100);
     }
 
-    // Специфічні поля (battery, speed, range, weight, wheel)
     set('sp-battery-ah', l.battAh || '');
     set('sp-speed',      l.speedVal || '');
     set('sp-range',      l.rangeVal || '');
@@ -6179,7 +5488,6 @@ function openEditListing(id) {
     set('sp-motor-w',    l.motorW || '');
     set('sp-voltage',    l.voltage || '');
 
-    // Змінити заголовок форми і кнопку Submit
     var h2 = document.querySelector('#add-step-2 h2');
     if (h2) h2.textContent = 'Редагування оголошення';
     var submitBtn = document.getElementById('add-submit-btn');
@@ -6233,7 +5541,6 @@ function saveEditListing() {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
-  // Специфічні технічні поля
   var spFields = {
     'sp-battery-ah': 'battAh', 'sp-speed': 'speedVal',
     'sp-range': 'rangeVal', 'sp-weight': 'weightVal',
@@ -6244,7 +5551,6 @@ function saveEditListing() {
     if (el && el.value) updateData[spFields[domId]] = el.value;
   });
 
-  // Зібрати specs рядок для відображення в картці
   var battAh = updateData.battAh || '';
   var speedVal = updateData.speedVal || '';
   var rangeVal = updateData.rangeVal || '';
@@ -6260,12 +5566,12 @@ function saveEditListing() {
   window._db.collection('listings').doc(_editListingId).update(updateData)
     .then(function() {
       showToast('✅ Оголошення оновлено!');
-      // Оновити локальний кеш
+
       var cached = _allListings().find(function(x){ return x && x.id === _editListingId; });
       if (cached) Object.assign(cached, updateData);
       _editListingId = null;
       _resetAddWizard();
-      // Відновити кнопку Submit
+
       var submitBtn = document.getElementById('add-submit-btn');
       if (submitBtn) {
         submitBtn.textContent = 'Опублікувати оголошення';
@@ -6281,7 +5587,7 @@ function saveEditListing() {
       if (btn) { btn.disabled = false; btn.textContent = 'Зберегти зміни'; }
     });
 }
-// ── EDIT LISTING END ─────────────────────────────────────────
+
 function renderMyListings() {
   const grid  = document.getElementById('my-listings-grid');
   const empty = document.getElementById('my-listings-empty');
@@ -6293,7 +5599,7 @@ function renderMyListings() {
   if (!mine.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   grid.innerHTML = mine.map(function(l){ return createMyCard(l); }).join('');
-  // Завантажити статистику переглядів
+
   if (uid) loadViewsStats('7');
 }
 
@@ -6312,7 +5618,7 @@ function renewListing(id) {
       expiresAt: firebase.firestore.Timestamp.fromDate(newExpiry),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function() {
-      // Оновити локально
+
       var l = myListings.find(function(x){ return x.id === id; });
       if (l) { l.status = 'active'; l.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; }
       var fl = _fbListings.find(function(x){ return x.id === id; });
@@ -6328,7 +5634,6 @@ function createMyCard(l) {
   const hasPromo = !!l.promo;
   const promoLabel = hasPromo ? PROMO_NAMES[l.promo] : null;
 
-  // Статус і дата закінчення
   var isInactive = l.status === 'inactive' || l.status === 'expired';
   var expiryStr = '';
   if (l.expiresAt && l.expiresAt.seconds) {
@@ -6390,12 +5695,6 @@ function createMyCard(l) {
   const insertAt = base.lastIndexOf('</div>');
   return base.slice(0, insertAt) + promoBtn + base.slice(insertAt);
 }
-
-// ============================================================
-// SERVICES DATA & FUNCTIONS
-// ============================================================
-
-
 
 function renderServices(){_initSvcCitySelect();filterServices();_initSvcOblastSelect();}
 
@@ -6474,11 +5773,11 @@ function _buildSvcDetailHeader(s){
   var btnPhone=s.phone?"<button class=\"btn-primary\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\u260e\ufe0f '+s.phone)\"><i class=\"fa-solid fa-phone\" style=\"margin-right:6px\"></i>\u0417\u0430\u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443\u0432\u0430\u0442\u0438</button>":"";
   var btnTg=s.telegram?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\ud83d\udcf1 '+s.telegram)\"><i class=\"fa-brands fa-telegram\" style=\"margin-right:6px;color:#2ca5e0\"></i>Telegram</button>":"";
   var btnShop=s.sellerId?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showSeller('"+s.sellerId+"')\"><i class=\"fa-solid fa-store\" style=\"margin-right:6px\"></i>Магазин</button>":"";
-  // Кнопка написати — відкриває чат або показує контакти
+
   var btnMsg = s.uid
     ? "<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"_openSvcChat('"+s.uid+"','"+s.name+"')\"><i class=\"fa-solid fa-comment\" style=\"margin-right:6px\"></i>Написати</button>"
     : "";
-  // Обкладинка — фото або градієнт з іконкою
+
   var coverHtml;
   if (s.photoUrl) {
     coverHtml = "<div class=\"service-detail-cover\" style=\"background:none;padding:0;overflow:hidden\">" +
@@ -6487,7 +5786,7 @@ function _buildSvcDetailHeader(s){
   } else {
     coverHtml = "<div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><span>"+s.icon+"</span>"+badge+"</div>";
   }
-  // Кнопка редагування фото — тільки для власника
+
   var isOwner = (typeof currentUser !== 'undefined') && currentUser && currentUser.uid && s.uid && currentUser.uid === s.uid;
   var editPhotoBtn = isOwner
     ? "<button onclick=\"triggerSvcPhotoUpload('"+s.id+"')\" style=\"position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px\"><i class='fa-solid fa-camera'></i> Змінити фото</button>"
@@ -6503,7 +5802,6 @@ function _openSvcChat(sellerUid, svcName) {
   _startChat(sellerUid, null, svcName);
 }
 
-// ── SERVICE PHOTO UPLOAD ──────────────────────────────────────
 function triggerSvcPhotoUpload(svcId) {
   var inp = document.createElement('input');
   inp.type = 'file';
@@ -6533,20 +5831,20 @@ function triggerSvcPhotoUpload(svcId) {
             .then(function(data) {
               if (!data.secure_url) { showToast('⚠️ Помилка завантаження'); return; }
               var url = data.secure_url;
-              // Зберегти в Firestore
+
               if (window._db) {
                 window._db.collection('services').doc(svcId).update({ photoUrl: url })
                   .then(function() {
                     showToast('✅ Фото оновлено!');
-                    // Оновити кеш
+
                     var svc = _fbServices.concat(myServices).find(function(x){ return x.id === svcId; });
                     if (svc) svc.photoUrl = url;
-                    // Оновити DOM одразу
+
                     var coverEl = document.querySelector('#page-service-detail .service-detail-cover img');
                     if (coverEl) {
                       coverEl.src = url;
                     } else {
-                      // Якщо була іконка — замінюємо весь блок
+
                       showServiceDetail(svcId);
                     }
                   }).catch(function(e){ showToast('⚠️ ' + e.message); });
@@ -6560,7 +5858,6 @@ function triggerSvcPhotoUpload(svcId) {
   };
   inp.click();
 }
-// ── SERVICE PHOTO UPLOAD END ──────────────────────────────────
 
 function _buildSvcDetailBody(s){
   var stars5="\u2605".repeat(Math.round(s.rating))+"\u2606".repeat(5-Math.round(s.rating));
@@ -6574,7 +5871,7 @@ function _buildSvcDetailBody(s){
     var igLine=s.instagram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf8 "+s.instagram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#e1306c20;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-instagram\" style=\"color:#e1306c\"></i></div>"+s.instagram+"</div>":"";
     socialBlock="<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px\"><div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px\">\u0421\u043e\u0446\u043c\u0435\u0440\u0435\u0436\u0456</div><div style=\"display:flex;flex-direction:column;gap:10px\">"+tgLine+igLine+"</div></div>";
   }
-  // Показати блок магазину — по sellerId або uid
+
   var _shopTarget = s.sellerId || (s.uid ? 'uid:'+s.uid : null);
   var shopBlock = _shopTarget ? (
     "<div style=\"background:var(--brand-dim);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:22px\">" +
@@ -6615,7 +5912,6 @@ function _buildSvcDetailBody(s){
     socialBlock+shopBlock+"</div>";
 }
 
-// ── SVC REVIEW FORM ──────────────────────────────────────────
 var _svcReviewStars = {};
 
 function openSvcReviewForm(uid) {
@@ -6670,17 +5966,15 @@ function submitSvcReview(uid) {
     closeSvcReviewForm(uid);
     if (textEl) textEl.value = '';
     setSvcStar(uid, 0);
-    // Перерахувати рейтинг в блоці сервісу
+
     _refreshSvcRating(uid, stars);
-    // Оновити відгуки на сторінці продавця якщо відкрита
+
     if (typeof _loadSellerReviews === 'function') _loadSellerReviews(uid);
   }).catch(function(e) {
     showToast('⚠️ Помилка: ' + e.message);
   });
 }
-// ── SVC REVIEW FORM END ───────────────────────────────────────
 
-// Оновити рейтинговий блок в svc-detail-body після нового відгуку
 function _refreshSvcRating(uid, newStars) {
   if (!window._db) return;
   window._db.collection('reviews').where('sellerUid', '==', uid).get()
@@ -6698,11 +5992,9 @@ function _refreshSvcRating(uid, newStars) {
         ? 'на основі ' + total + ' відгук' + (total===1?'а':total<5?'ів':'ів')
         : 'Поки немає відгуків';
 
-      // Знайти і оновити блок рейтингу в svc-detail-body
-      // Блок має унікальний id svc-review-form-UID, тому шукаємо його сусідній div
       var form = document.getElementById('svc-review-form-' + uid);
       if (form) {
-        // Рейтинговий div — попередній sibling
+
         var ratingDiv = form.previousElementSibling;
         if (ratingDiv) {
           var numEl = ratingDiv.querySelector('div[style*="font-size:48px"]');
@@ -6714,7 +6006,6 @@ function _refreshSvcRating(uid, newStars) {
         }
       }
 
-      // Також оновити сервіс в кешах
       var svc = _fbServices.concat(myServices).find(function(x){ return x.uid === uid; });
       if (svc) { svc.rating = avg; svc.reviews = total; }
     }).catch(function(){});
@@ -6732,7 +6023,6 @@ function showServiceDetail(id){
   _setPath('/service/' + id);
   _updateSEO({ title: s.name, desc: s.desc ? s.desc.slice(0,160) : s.name + ' — сервісний центр у ' + (s.city||''), url: 'https://ridego-sigma.vercel.app/service/' + id });
 
-  // Завантажити актуальний рейтинг з Firestore
   if (window._db && s.uid) {
     window._db.collection('reviews').where('sellerUid', '==', s.uid).get()
       .then(function(snap) {
@@ -6743,7 +6033,7 @@ function showServiceDetail(id){
         var avgStr = avg.toFixed(1);
         var starsStr = '★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg));
         var reviewsTxt = 'на основі ' + total + ' відгук' + (total===1?'а':total<5?'ів':'ів');
-        // Оновити DOM
+
         var form = document.getElementById('svc-review-form-' + s.uid);
         if (form) {
           var ratingDiv = form.previousElementSibling;
@@ -6756,7 +6046,7 @@ function showServiceDetail(id){
             if (cntEl) cntEl.textContent = reviewsTxt;
           }
         }
-        // Оновити кеш
+
         s.rating = +avgStr; s.reviews = total;
       }).catch(function(){});
   }
@@ -6782,7 +6072,7 @@ function onSvcOblastChange(){
   citySel.innerHTML="<option value=\"\">Оберіть місто...</option>";
   citySel.disabled=!oblast;
   if(!oblast)return;
-  // Місто Київ / Севастополь — одразу вибрати місто
+
   var _km={'Місто Київ':'Київ','Місто Севастополь':'Севастополь'};
   if(_km[oblast]){citySel.innerHTML='<option value="'+_km[oblast]+'">'+_km[oblast]+'</option>';citySel.disabled=false;citySel.value=_km[oblast];return;}
   var raions=(UA_GEO[oblast]&&UA_GEO[oblast].raions)||{};
@@ -6839,12 +6129,7 @@ function getSellerService(sellerId){
   return _fbServices.concat(myServices).filter(function(s){return s.sellerId===sellerId;})[0]||null;
 }
 
-// ============================================================
-// MY SERVICE TAB — profile editor
-// ============================================================
-
-// State
-var _editingSvc = null;   // null = створення нового, object = редагування
+var _editingSvc = null;
 var _mysvcRowId = 0;
 var CATS_LIST = [
   {key:"Електросамокати", label:"\u26a1 Самокати"},
@@ -6859,7 +6144,6 @@ function renderMyServiceTab() {
   var el = document.getElementById("ptab-myservice-inner");
   if (!el) return;
 
-  // Знайти сервіси поточного користувача
   var userSvcs = myServices.filter(function(s){ return s._isOwn; });
 
   if (!userSvcs.length) {
@@ -6867,7 +6151,6 @@ function renderMyServiceTab() {
     return;
   }
 
-  // Є сервіси — показати список + кнопку додати ще
   var html = '<div style="display:flex;flex-direction:column;gap:16px">';
   userSvcs.forEach(function(s) {
     html += _mysvcCard(s);
@@ -6918,21 +6201,18 @@ function openMysvcEditor(id) {
   var el = document.getElementById("ptab-myservice-inner");
   if (!el) return;
 
-  // Oblast options
   var oblastOpts = '<option value="">\u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043e\u0431\u043b\u0430\u0441\u0442\u044c...</option>';
   Object.keys(UA_GEO).sort(function(a,b){return a.localeCompare(b,"uk");}).forEach(function(name){
     var sel = (s && s.oblast === name) ? ' selected' : '';
     oblastOpts += '<option value="'+name+'"'+sel+'>'+name+'</option>';
   });
 
-  // Cat pills
   var catsHtml = CATS_LIST.map(function(cat){
     var active = (s && s.cats.indexOf(cat.key)>=0) ? ' active' : '';
     return '<button type="button" class="mysvc-cat-pill'+active+'" data-cat="'+cat.key+'" onclick="toggleMysvcCatPill(this)">'
       +cat.label+'</button>';
   }).join(' ');
 
-  // Badge options
   var badgeOpts = [
     {v:'', l:'Без значка'},
     {v:'official', l:'\🟢 Офіційний сервіс'},
@@ -6942,14 +6222,12 @@ function openMysvcEditor(id) {
     return '<option value="'+o.v+'"'+sel+'>'+o.l+'</option>';
   }).join('');
 
-  // Services rows (category-based)
   _mysvcRowId = 0;
   var svcRowsHtml = '';
   if (s && s.services && s.services.length) {
     var initCats = _normalizeSvcs(s.services);
     initCats.forEach(function(catObj, idx){ svcRowsHtml += _mysvcCatBlock(catObj, idx); });
   }
-  // Якщо новий — список порожній, розділи з'являться при виборі типів транспорту
 
   var cityOpts = '<option value="">\u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043c\u0456\u0441\u0442\u043e...</option>';
   if (s && s.oblast && UA_GEO[s.oblast]) {
@@ -6965,13 +6243,12 @@ function openMysvcEditor(id) {
 
   var isNew = !id;
   el.innerHTML = '<div style="max-width:720px">'
-    // ── Заголовок ──
+
     + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">'
     + (isNew ? '' : '<button class="btn-outline" style="padding:8px 14px;font-size:13px" onclick="renderMyServiceTab()"><i class="fa-solid fa-arrow-left"></i></button>')
     + '<div><div style="font-size:20px;font-weight:800">'+(isNew?'🔧 Новий сервіс':'\u270f\ufe0f \u0420\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438 \u0441\u0435\u0440\u0432\u0456\u0441')+'</div>'
     + '<div style="font-size:13px;color:var(--text-muted)">'+(isNew?'\u0417\u0430\u043f\u043e\u0432\u043d\u0456\u0442\u044c \u0456\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0456\u044e \u0456 \u043e\u043f\u0443\u0431\u043b\u0456\u043a\u0443\u0439\u0442\u0435':'\u0412\u043d\u0435\u0441\u0456\u0442\u044c \u0437\u043c\u0456\u043d\u0438 \u0456 \u0437\u0431\u0435\u0440\u0435\u0436\u0456\u0442\u044c')+'</div></div></div>'
 
-    // ── Основна інформація ──
     + '<div class="mysvc-section">'
     + '<div class="mysvc-section-title"><i class="fa-solid fa-circle-info"></i> \u041e\u0441\u043d\u043e\u0432\u043d\u0430 \u0456\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0456\u044f</div>'
     + '<div class="form-group"><label>\u041d\u0430\u0437\u0432\u0430 \u0441\u0435\u0440\u0432\u0456\u0441\u0443 *</label>'
@@ -6982,13 +6259,11 @@ function openMysvcEditor(id) {
     + '<select class="form-input" id="mysvc-badge">'+badgeOpts+'</select></div>'
     + '</div>'
 
-    // ── Типи транспорту ──
     + '<div class="mysvc-section">'
     + '<div class="mysvc-section-title"><i class="fa-solid fa-tags"></i> \u0422\u0438\u043f\u0438 \u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u0443</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px" id="mysvc-cats">'+catsHtml+'</div>'
     + '</div>'
 
-    // ── Місцезнаходження ──
     + '<div class="mysvc-section">'
     + '<div class="mysvc-section-title"><i class="fa-solid fa-location-dot"></i> \u041c\u0456\u0441\u0446\u0435\u0437\u043d\u0430\u0445\u043e\u0434\u0436\u0435\u043d\u043d\u044f</div>'
     + '<div class="form-row">'
@@ -7003,7 +6278,6 @@ function openMysvcEditor(id) {
     + '<input type="text" class="form-input" id="mysvc-hours" placeholder="\u041f\u043d\u2013\u041f\u0442 9:00\u201318:00, \u0421\u0431 10:00\u201316:00" value="'+(s?s.hours:'')+'"></div>'
     + '</div>'
 
-    // ── Контакти ──
     + '<div class="mysvc-section">'
     + '<div class="mysvc-section-title"><i class="fa-solid fa-phone"></i> \u041a\u043e\u043d\u0442\u0430\u043a\u0442\u0438</div>'
     + '<div class="form-group"><label>\u0422\u0435\u043b\u0435\u0444\u043e\u043d *</label>'
@@ -7015,7 +6289,6 @@ function openMysvcEditor(id) {
     + '<input type="text" class="form-input" id="mysvc-instagram" placeholder="@myservice" value="'+(s&&s.instagram?s.instagram:'')+'"></div>'
     + '</div></div>'
 
-    // ── Послуги ──
     + '<div class="mysvc-section">'
     + '<div class="mysvc-section-title"><i class="fa-solid fa-list-check"></i> \u041f\u043e\u0441\u043b\u0443\u0433\u0438 \u0442\u0430 \u0446\u0456\u043d\u0438</div>'
     + '<div style="display:grid;grid-template-columns:1fr 140px 120px 32px;gap:8px;margin-bottom:8px;padding:0 4px">'
@@ -7027,7 +6300,6 @@ function openMysvcEditor(id) {
     + '<button type="button" class="mysvc-add-row-btn" onclick="addMysvcCategory()" style="margin-top:4px"><i class="fa-solid fa-folder-plus" style="margin-right:6px"></i>\u0414\u043e\u0434\u0430\u0442\u0438 \u0440\u043e\u0437\u0434\u0456\u043b</button>'
     + '</div>'
 
-    // ── Кнопки ──
     + '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px">'
     + '<button type="button" class="mysvc-save-btn" onclick="saveMysvc()">'
     + '<i class="fa-solid fa-check"></i>'+(isNew?'\u041e\u043f\u0443\u0431\u043b\u0456\u043a\u0443\u0432\u0430\u0442\u0438':'\u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0437\u043c\u0456\u043d\u0438')+'</button>'
@@ -7047,7 +6319,7 @@ function _mysvcServiceRow(sv) {
     + ' onmouseover="this.style.background=\'rgba(255,71,87,.1)\';this.style.color=\'#ff4757\'"'
     + ' onmouseout="this.style.background=\'none\';this.style.color=\'var(--text-muted)\'">\u00d7</button>'
     + '</div>';
-  // Синхронізувати розділи послуг якщо редагуємо існуючий сервіс
+
   if (s) setTimeout(_syncCatBlocksWithPills, 0);
 }
 
@@ -7058,8 +6330,6 @@ function addMysvcRow() {
   div.innerHTML = _mysvcServiceRow({name:"",desc:"",price:""});
   list.appendChild(div.firstChild);
 }
-
-// ── Category-based service editor functions ──────────────────
 
 function _normalizeSvcs(services) {
   if (!services || !services.length) return [{cat:"", items:[{name:"",price:""}]}];
@@ -7121,9 +6391,9 @@ function formatMysvcPrice(input) {
   var suffix = document.getElementById("mysvc-suffix-"+id);
   if (!suffix) return;
   var val = input.value.trim();
-  // Показуємо "грн" якщо є хоч щось введено
+
   suffix.style.display = val ? "block" : "none";
-  // Якщо починається з цифри — підставляємо грн автоматично при blur
+
 }
 
 function addMysvcItemRow(containerId) {
@@ -7159,7 +6429,7 @@ function _collectMysvcServices() {
       var name  = (document.getElementById("mysvc-sname-"+id)||{value:""}).value.trim();
       var price = (document.getElementById("mysvc-sprice-"+id)||{value:""}).value.trim();
       if (name) {
-        // Автододати "грн" якщо ціна починається з цифри і ще не має грн/€/$
+
         if (price && /^\d/.test(price) && !/\u0433\u0440\u043d|\u20ac|\$|%|\u0431\u0435\u0437/.test(price)) {
           price = price + " \u0433\u0440\u043d";
         }
@@ -7196,7 +6466,6 @@ function _renderSvcList(services) {
   }).join("");
 }
 
-
 function toggleMysvcCatPill(btn) {
   btn.classList.toggle("active");
   _syncCatBlocksWithPills();
@@ -7207,7 +6476,6 @@ function _syncCatBlocksWithPills() {
   if (!list) return;
   hideMysvcHint();
 
-  // Отримати поточні активні категорії в правильному порядку
   var activeCats = [];
   CATS_LIST.forEach(function(cat) {
     var pill = document.querySelector("#mysvc-cats [data-cat=\""+cat.key+"\"]");
@@ -7216,7 +6484,6 @@ function _syncCatBlocksWithPills() {
     }
   });
 
-  // Отримати поточні розділи
   var existing = {};
   list.querySelectorAll(".mysvc-cat-block").forEach(function(block) {
     var inp = block.querySelector(".mysvc-cat-name-input");
@@ -7224,19 +6491,17 @@ function _syncCatBlocksWithPills() {
     existing[name] = block;
   });
 
-  // Знайти "авто-блоки" від категорій і "ручні" блоки
   var autoCatNames = CATS_LIST.map(function(c){ return c.key; });
 
-  // Для кожної активної категорії — додати блок якщо немає
   activeCats.forEach(function(cat, i) {
     if (!existing[cat.key]) {
-      // Додати новий розділ з назвою категорії
+
       var div = document.createElement("div");
       div.innerHTML = _mysvcCatBlock({cat: cat.key, items:[{name:"",price:""}]}, Date.now()+i);
       var newBlock = div.firstChild;
-      // Позначимо його як авто-створений
+
       newBlock.setAttribute("data-auto-cat", cat.key);
-      // Вставити на правильну позицію (перед ручними блоками)
+
       var manualBlocks = Array.from(list.querySelectorAll(".mysvc-cat-block")).filter(function(b){
         return !b.getAttribute("data-auto-cat") ||
                autoCatNames.indexOf((b.querySelector(".mysvc-cat-name-input")||{value:""}).value.trim()) < 0;
@@ -7249,16 +6514,15 @@ function _syncCatBlocksWithPills() {
     }
   });
 
-  // Видалити авто-блоки для знятих категорій
   list.querySelectorAll(".mysvc-cat-block").forEach(function(block) {
     var inp = block.querySelector(".mysvc-cat-name-input");
     var name = inp ? inp.value.trim() : "";
     var isAutoCat = autoCatNames.indexOf(name) >= 0;
     if (isAutoCat) {
-      // Перевірити чи ця категорія зараз активна
+
       var isActive = activeCats.some(function(c){ return c.key === name; });
       if (!isActive) {
-        // Видалити лише якщо порожній (не заповнений вручну)
+
         var hasContent = false;
         block.querySelectorAll(".mysvc-service-row").forEach(function(row){
           var id = row.id.replace("mysvc-row-","");
@@ -7270,7 +6534,6 @@ function _syncCatBlocksWithPills() {
     }
   });
 }
-
 
 function hideMysvcHint() {
   var h = document.getElementById("mysvc-svc-hint");
@@ -7307,13 +6570,11 @@ function saveMysvc() {
   var cats = Array.from(document.querySelectorAll("#mysvc-cats .mysvc-cat-pill.active")).map(function(p){ return p.dataset.cat; });
   if (!cats.length) { showToast("\u26a0\ufe0f \u041e\u0431\u0435\u0440\u0456\u0442\u044c \u0445\u043e\u0447 \u0431 \u043e\u0434\u0438\u043d \u0442\u0438\u043f \u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u0443"); return; }
 
-  // Зібрати послуги (категорії + рядки)
   var svcRows = _collectMysvcServices();
   var badgeSel = document.getElementById("mysvc-badge");
   var badge    = badgeSel ? badgeSel.value : null;
   var BADGE_LABELS = {official:"\u041e\u0444\u0456\u0446\u0456\u0439\u043d\u0438\u0439 \u0441\u0435\u0440\u0432\u0456\u0441", verified:"\u041f\u0435\u0440\u0435\u0432\u0456\u0440\u0435\u043d\u0438\u0439"};
 
-  // Визначити icon за категоріями
   var icon = cats.indexOf("\u0412\u0435\u043b\u043e\u0441\u0438\u043f\u0435\u0434\u0438")>=0 ? "🚲"
            : cats.indexOf("\u0415\u043b\u0435\u043a\u0442\u0440\u043e\u0441\u043a\u0443\u0442\u0435\u0440\u0438")>=0 ? "🛵"
            : cats.indexOf("\u0410\u043a\u0443\u043c\u0443\u043b\u044f\u0442\u043e\u0440\u0438")>=0 ? "🔋"
@@ -7321,7 +6582,7 @@ function saveMysvc() {
            : "🔧";
 
   if (_editingSvc) {
-    // Оновити існуючий
+
     _editingSvc.name      = name.trim();
     _editingSvc.desc      = (document.getElementById("mysvc-desc")||{}).value||"";
     _editingSvc.cats      = cats;
@@ -7336,7 +6597,7 @@ function saveMysvc() {
     _editingSvc.badgeLabel= badge ? BADGE_LABELS[badge] : null;
     _editingSvc.icon      = icon;
     _editingSvc.services  = svcRows;
-    // Зберегти оновлення в Firestore
+
     if (window._db && _editingSvc.id && currentUser && currentUser.uid) {
       var upd = {
         name:_editingSvc.name, desc:_editingSvc.desc, cats:cats, city:city, oblast:oblast,
@@ -7349,7 +6610,7 @@ function saveMysvc() {
     }
     showToast("✅ Сервіс оновлено!");
   } else {
-    // Новий сервіс
+
     var newSvc = {
       id:         "own-"+Date.now(),
       name:       name.trim(),
@@ -7414,11 +6675,9 @@ function deleteMysvc(id) {
   renderMyServiceTab();
 }
 
-// ── VIEWS STATS FOR OWNER ─────────────────────────────────────
 function loadViewsStats(days) {
   if (!isLoggedIn || !currentUser || !currentUser.uid || !window._db) return;
 
-  // Переключити активний таб
   document.querySelectorAll('.vstab').forEach(function(b) {
     var isActive = b.id === 'vstab-' + days;
     b.style.background = isActive ? 'var(--brand)' : 'transparent';
@@ -7435,7 +6694,6 @@ function loadViewsStats(days) {
   var uid = currentUser.uid;
   var numDays = parseInt(days) || 7;
 
-  // Отримати всі оголошення юзера з полем views
   window._db.collection('listings')
     .where('uid', '==', uid)
     .get()
@@ -7449,29 +6707,23 @@ function loadViewsStats(days) {
         return;
       }
 
-      // Загальна сума переглядів
       var totalViews = listings.reduce(function(s, l) { return s + (l.views || 0); }, 0);
 
-      // Топ-3 оголошення за переглядами
       var sorted = listings.slice().sort(function(a, b) { return (b.views || 0) - (a.views || 0); });
       var top3 = sorted.slice(0, 3);
 
-      // Середнє на оголошення
       var avgViews = listings.length ? Math.round(totalViews / listings.length) : 0;
 
-      // Оголошення без переглядів
       var noViews = listings.filter(function(l) { return !l.views || l.views === 0; }).length;
 
       var html = '';
 
-      // Загальна статистика
       html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">';
       html += _statBox('<i class="fa-solid fa-eye"></i>', totalViews.toLocaleString('uk'), '\u0417\u0430\u0433\u0430\u043b\u044c\u043d\u043e \u043f\u0435\u0440\u0435\u0433\u043b\u044f\u0434\u0456\u0432', 'var(--brand)');
       html += _statBox('<i class="fa-solid fa-chart-simple"></i>', avgViews, '\u0421\u0435\u0440\u0435\u0434\u043d\u0454 \u043d\u0430 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f', '#6366f1');
       html += _statBox('<i class="fa-solid fa-list"></i>', listings.length, '\u0412\u0441\u044c\u043e\u0433\u043e \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u044c', '#f59e0b');
       html += '</div>';
 
-      // Топ оголошення
       if (top3.length) {
         html += '<div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">\u041d\u0430\u0439\u043f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u0456\u0448\u0456</div>';
         html += '<div style="display:flex;flex-direction:column;gap:8px">';
@@ -7491,7 +6743,6 @@ function loadViewsStats(days) {
         html += '</div>';
       }
 
-      // Підказка якщо є оголошення без переглядів
       if (noViews > 0) {
         html += '<div style="margin-top:14px;padding:10px 14px;background:var(--brand-dim);border-radius:10px;font-size:12px;color:var(--text-muted)">';
         html += '<i class="fa-solid fa-lightbulb" style="color:var(--brand);margin-right:6px"></i>';
@@ -7513,17 +6764,14 @@ function _statBox(icon, value, label, color) {
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + label + '</div>'
     + '</div>';
 }
-// ── VIEWS STATS END ───────────────────────────────────────────
 
-
-// ── PHONE VERIFICATION ───────────────────────────────────────
 var _phoneConfirmResult = null;
 var _recaptchaVerifier  = null;
 
 function _initRecaptcha() {
   if (_recaptchaVerifier) return;
   if (!window._auth) return;
-  // Переконатись що контейнер існує в DOM
+
   var container = document.getElementById('recaptcha-container');
   if (!container) {
     container = document.createElement('div');
@@ -7546,7 +6794,6 @@ function startPhoneVerification() {
   var phone = document.getElementById('set-phone')?.value.trim();
   if (!phone) { showToast('\u26a0\ufe0f \u0412\u0432\u0435\u0434\u0456\u0442\u044c \u043d\u043e\u043c\u0435\u0440 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443'); return; }
 
-  // Normalize phone — add +380 if needed
   var normalized = phone.replace(/\s/g, '');
   if (normalized.startsWith('0')) normalized = '+38' + normalized;
   if (!normalized.startsWith('+')) normalized = '+' + normalized;
@@ -7579,7 +6826,7 @@ function startPhoneVerification() {
               : e.message;
       showToast('\u26a0\ufe0f ' + msg);
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-halved" style="margin-right:5px"></i>\u0412\u0435\u0440\u0438\u0444\u0456\u043a\u0443\u0432\u0430\u0442\u0438'; }
-      // Reset recaptcha
+
       _recaptchaVerifier = null;
     });
 }
@@ -7591,7 +6838,7 @@ function confirmPhoneCode() {
 
   _phoneConfirmResult.confirm(code)
     .then(function(result) {
-      // Phone verified! Save to Firestore
+
       var phone = document.getElementById('set-phone')?.value.trim() || '';
       if (window._db && currentUser && currentUser.uid) {
         window._db.collection('users').doc(currentUser.uid).update({
@@ -7600,7 +6847,7 @@ function confirmPhoneCode() {
           phoneVerifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         }).catch(function(){});
       }
-      // Show verified badge
+
       var badge = document.getElementById('phone-verified-badge');
       if (badge) badge.style.display = 'inline';
       var btn = document.getElementById('phone-verify-btn');
@@ -7624,7 +6871,6 @@ function cancelPhoneVerification() {
   if (codeEl) codeEl.value = '';
 }
 
-// При завантаженні профілю — показати бейдж якщо вже верифіковано
 function _checkPhoneVerified(d) {
   if (!d || !d.phoneVerified) return;
   var badge = document.getElementById('phone-verified-badge');
@@ -7632,10 +6878,7 @@ function _checkPhoneVerified(d) {
   var btn = document.getElementById('phone-verify-btn');
   if (btn) btn.style.display = 'none';
 }
-// ── PHONE VERIFICATION END ────────────────────────────────────
 
-
-// ── PRICE RANGE SLIDER ───────────────────────────────────────
 var PRICE_MAX = 500000;
 
 function onPriceRangeInput() {
@@ -7646,7 +6889,6 @@ function onPriceRangeInput() {
   var from = parseInt(fromEl.value);
   var to   = parseInt(toEl.value);
 
-  // Не дати перетнутись
   var gap = 1000;
   if (from > to - gap) {
     if (document.activeElement === fromEl) {
@@ -7658,10 +6900,8 @@ function onPriceRangeInput() {
     }
   }
 
-  // Оновити fill
   _updatePriceSliderFill(from, to);
 
-  // Оновити label
   var label = document.getElementById('price-range-label');
   if (label) {
     if (from === 0 && to >= PRICE_MAX) {
@@ -7671,13 +6911,11 @@ function onPriceRangeInput() {
     }
   }
 
-  // Синхронізувати з hidden inputs (для getFilteredData)
   var hidFrom = document.getElementById('fp-price-from');
   var hidTo   = document.getElementById('fp-price-to');
   if (hidFrom) hidFrom.value = from > 0 ? from : '';
   if (hidTo)   hidTo.value   = to < PRICE_MAX ? to : '';
 
-  // Активні пресети
   document.querySelectorAll('.price-preset').forEach(function(b) { b.classList.remove('active'); });
 
   updateActiveFilters();
@@ -7698,13 +6936,12 @@ function setPricePreset(from, to) {
   if (fromEl) fromEl.value = from;
   if (toEl)   toEl.value   = Math.min(to, PRICE_MAX);
 
-  // Highlight active preset
   document.querySelectorAll('.price-preset').forEach(function(b) {
     var txt = b.textContent;
     var isAll = from === 0 && to >= PRICE_MAX;
     b.classList.toggle('active', isAll ? txt === '\u0412\u0441\u0456' : false);
   });
-  // Mark clicked button
+
   event && event.target && event.target.classList.add('active');
 
   onPriceRangeInput();
@@ -7715,7 +6952,6 @@ function _fmtPrice(n) {
   return n.toLocaleString('uk');
 }
 
-// Ініціалізувати слайдер при першому показі фільтрів
 function _initPriceSlider() {
   var fromEl = document.getElementById('fp-price-from-range');
   var toEl   = document.getElementById('fp-price-to-range');
@@ -7724,10 +6960,7 @@ function _initPriceSlider() {
   fromEl.dataset.initialized = '1';
   _updatePriceSliderFill(parseInt(fromEl.value)||0, parseInt(toEl.value)||PRICE_MAX);
 }
-// ── PRICE RANGE SLIDER END ───────────────────────────────────
 
-
-// ── SHARE LISTING ────────────────────────────────────────────
 function shareListing() {
   var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
   if (!l) return;
@@ -7738,7 +6971,7 @@ function shareListing() {
     navigator.share({ title: text, text: text, url: url })
       .catch(function(){});
   } else {
-    // Fallback — показати модалку з варіантами
+
     _showShareModal(url, text, l.title);
   }
 }
@@ -7804,10 +7037,7 @@ function copySellerLink() {
   var url = window.location.href;
   _copyShareUrl(url);
 }
-// ── SHARE END ─────────────────────────────────────────────────
 
-
-// ── COMPARE LISTINGS ─────────────────────────────────────────
 var _compareIds = [];
 var _compareMax = 3;
 
@@ -7939,10 +7169,7 @@ function openCompareModal() {
 
   document.body.appendChild(overlay);
 }
-// ── COMPARE END ───────────────────────────────────────────────
 
-
-// ── SHARE LISTING ────────────────────────────────────────────
 function shareListing() {
   var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
   if (!l) return;
@@ -7953,7 +7180,7 @@ function shareListing() {
     navigator.share({ title: text, text: text, url: url })
       .catch(function(){});
   } else {
-    // Fallback — показати модалку з варіантами
+
     _showShareModal(url, text, l.title);
   }
 }
@@ -8019,10 +7246,7 @@ function copySellerLink() {
   var url = window.location.href;
   _copyShareUrl(url);
 }
-// ── SHARE END ─────────────────────────────────────────────────
 
-
-// ── COMPARE LISTINGS ─────────────────────────────────────────
 var _compareIds = [];
 var _compareMax = 3;
 
@@ -8154,10 +7378,7 @@ function openCompareModal() {
 
   document.body.appendChild(overlay);
 }
-// ── COMPARE END ───────────────────────────────────────────────
 
-
-// ── FOLLOW SELLER ─────────────────────────────────────────────
 var _currentSellerUid = null;
 
 function _initFollowBtn(sellerUid) {
@@ -8165,14 +7386,12 @@ function _initFollowBtn(sellerUid) {
   var btn = document.getElementById('seller-follow-btn');
   if (!btn) return;
 
-  // Ховаємо для своєї сторінки
   if (!isLoggedIn || !currentUser || currentUser.uid === sellerUid) {
     btn.style.display = 'none';
     return;
   }
   btn.style.display = '';
 
-  // Перевірити чи вже підписані
   _isFollowing(sellerUid, function(following) {
     _renderFollowBtn(following);
   });
@@ -8215,7 +7434,7 @@ function toggleFollowSeller() {
   var sellerUid = _currentSellerUid;
   _isFollowing(sellerUid, function(following) {
     if (following) {
-      // Відписатись
+
       window._db.collection('follows')
         .where('followerUid', '==', currentUser.uid)
         .where('sellerUid', '==', sellerUid)
@@ -8223,13 +7442,13 @@ function toggleFollowSeller() {
           snap.docs.forEach(function(d) { d.ref.delete(); });
           _renderFollowBtn(false);
           showToast('\u0412\u0456\u0434\u043f\u0438\u0441\u0430\u043d\u043e');
-          // Декрементувати лічильник
+
           window._db.collection('users').doc(sellerUid).update({
             followers: firebase.firestore.FieldValue.increment(-1)
           }).catch(function(){});
         });
     } else {
-      // Підписатись
+
       window._db.collection('follows').add({
         followerUid: currentUser.uid,
         followerName: currentUser.name || currentUser.email || '',
@@ -8238,18 +7457,16 @@ function toggleFollowSeller() {
       }).then(function() {
         _renderFollowBtn(true);
         showToast('\u2705 \u041f\u0456\u0434\u043f\u0438\u0441\u0430\u043b\u0438\u0441\u044c! \u0411\u0443\u0434\u0435\u043c\u043e \u0441\u0441\u043f\u043e\u0432\u0456\u0449\u0430\u0442\u0438 \u043f\u0440\u043e \u043d\u043e\u0432\u0456 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f');
-        // Інкрементувати лічильник
+
         window._db.collection('users').doc(sellerUid).update({
           followers: firebase.firestore.FieldValue.increment(1)
         }).catch(function(){});
-        // Сповістити підписника коли продавець додасть нове оголошення
-        // (реалізується через Cloud Functions або onSnapshot)
+
       });
     }
   });
 }
 
-// Показати кількість підписників в статистиці продавця
 function _renderFollowersCount(sellerUid) {
   if (!window._db) return;
   window._db.collection('users').doc(sellerUid).get().then(function(snap) {
@@ -8263,9 +7480,7 @@ function _renderFollowersCount(sellerUid) {
     }
   }).catch(function(){});
 }
-// ── FOLLOW SELLER END ─────────────────────────────────────────
 
-// ── SCHEMA.ORG ────────────────────────────────────────────────
 function _setListingSchema(l) {
   var existing = document.getElementById('schema-listing');
   if (existing) existing.remove();
@@ -8299,7 +7514,6 @@ function _setListingSchema(l) {
     'url': 'https://ridego-sigma.vercel.app/listing/' + l.id
   };
 
-  // Прибрати undefined поля
   Object.keys(schema).forEach(function(k) { if (schema[k] === undefined) delete schema[k]; });
   if (schema.offers) Object.keys(schema.offers).forEach(function(k) { if (schema.offers[k] === undefined) delete schema.offers[k]; });
 
@@ -8337,7 +7551,6 @@ function _setSellerSchema(d, listings) {
   document.head.appendChild(script);
 }
 
-// Breadcrumb schema для головної
 function _setHomeBreadcrumbSchema() {
   var existing = document.getElementById('schema-breadcrumb');
   if (existing) return;
@@ -8359,193 +7572,4 @@ function _setHomeBreadcrumbSchema() {
   script.textContent = JSON.stringify(schema);
   document.head.appendChild(script);
 }
-// ── SCHEMA.ORG END ────────────────────────────────────────────
-
-
-// ── QR CODE FOR LISTING ───────────────────────────────────────────
-function showListingQR() {
-  var id = currentDetailId;
-  if (!id) return;
-  var l = _allListings().find(function(x){ return x && x.id === id; });
-  var url = 'https://ridego-sigma.vercel.app/listing/' + id;
-
-  var overlay = document.createElement('div');
-  overlay.id = 'qr-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
-
-  var box = document.createElement('div');
-  box.style.cssText = 'background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;width:100%;text-align:center;color:#111';
-  box.innerHTML = '<div style="font-size:18px;font-weight:800;margin-bottom:4px;color:#111">QR-код оголошення</div>'
-    + '<div style="font-size:13px;color:#666;margin-bottom:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (l ? l.title : '') + '</div>'
-    + '<div id="qr-canvas-wrap" style="background:#f5f5f5;border-radius:12px;padding:20px;margin-bottom:16px;display:inline-flex;justify-content:center"></div>'
-    + '<div style="font-size:11px;color:#888;margin-bottom:20px;word-break:break-all">' + url + '</div>'
-    + '<div style="display:flex;gap:8px">'
-    + '<button onclick="_closeQR()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Закрити</button>'
-    + '<button onclick="_downloadQR()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#00c853;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⇩ Завантажити</button>'
-    + '<button onclick="_printQR()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#333;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">⎙ Друкувати</button>'
-    + '</div>';
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-
-  // Генерувати QR локально
-  function _generateQR() {
-    var wrap = document.getElementById('qr-canvas-wrap');
-    if (!wrap) return;
-    if (typeof QRCode !== 'undefined') {
-      wrap.innerHTML = '';
-      new QRCode(wrap, { text: url, width: 200, height: 200, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-    } else {
-      wrap.innerHTML = '<div style="color:#aaa;font-size:12px;padding:20px">Завантаження...</div>';
-      var t = setInterval(function(){
-        if (typeof QRCode !== 'undefined') { clearInterval(t); _generateQR(); }
-      }, 200);
-      setTimeout(function(){ clearInterval(t); }, 8000);
-    }
-  }
-  setTimeout(_generateQR, 50);
-}
-
-function _closeQR() {
-  var o = document.getElementById('qr-overlay');
-  if (o) o.remove();
-}
-
-function _downloadQR() {
-  var id = currentDetailId;
-  var wrap = document.getElementById('qr-canvas-wrap');
-  if (!wrap) return;
-  var canvas = wrap.querySelector('canvas');
-  if (!canvas) { showToast('⚠️ QR ще генерується'); return; }
-  var a = document.createElement('a');
-  a.download = 'ridego-qr-' + id + '.png';
-  a.href = canvas.toDataURL('image/png');
-  a.click();
-}
-
-function _printQR() {
-  var id = currentDetailId;
-  var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
-  var wrap = document.getElementById('qr-canvas-wrap');
-  var canvas = wrap ? wrap.querySelector('canvas') : null;
-  var qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
-  var win = window.open('', '_blank', 'width=420,height=560');
-  win.document.write('<!DOCTYPE html><html><head><title>QR код</title>'
-    + '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#111;margin:0}'
-    + 'h2{font-size:17px;margin-bottom:6px}.price{font-size:22px;font-weight:800;color:#00c853;margin-bottom:18px}'
-    + '.url{font-size:10px;color:#888;margin-top:14px;word-break:break-all}.brand{font-size:12px;color:#888;margin-bottom:4px}'
-    + '@media print{button{display:none}}</style></head><body>'
-    + '<div class="brand">RideGO</div>'
-    + '<h2>' + (l ? l.title : '') + '</h2>'
-    + '<div class="price">' + (l && l.price ? l.price.toLocaleString('uk') + ' грн' : '') + '</div>'
-    + (qrDataUrl ? '<img src="' + qrDataUrl + '" width="220" height="220">' : '<p>QR-код</p>')
-    + '<div style="font-size:13px;color:#444;margin-top:10px">відскануйте для переходу до оголошення</div>'
-    + '<div class="url">ridego-sigma.vercel.app/listing/' + currentDetailId + '</div>'
-    + '<br><button onclick="window.print()" style="margin-top:16px;padding:10px 28px;background:#333;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">Друкувати</button>'
-    + '</body></html>');
-  win.document.close();
-}
-// ── QR CODE END ─────────────────────────────────────────────
-// ── REPORT REVIEW ─────────────────────────────────────────────
-function reportReview(reviewId, reviewText) {
-  if (!isLoggedIn) { showToast('\u26a0\ufe0f \u0423\u0432\u0456\u0439\u0434\u0456\u0442\u044c \u0449\u043e\u0431 \u043f\u043e\u0441\u043a\u0430\u0440\u0436\u0438\u0442\u0438\u0441\u044c'); return; }
-
-  var overlay = document.createElement('div');
-  overlay.id = 'report-review-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
-
-  var reasons = [
-    '\u0424\u0430\u043b\u044c\u0448\u0438\u0432\u0438\u0439 \u0432\u0456\u0434\u0433\u0443\u043a',
-    '\u041e\u0444\u0435\u043d\u0437\u0438\u0432\u043d\u0438\u0439 \u043a\u043e\u043d\u0442\u0435\u043d\u0442',
-    '\u0421\u043f\u0430\u043c / \u0440\u0435\u043a\u043b\u0430\u043c\u0430',
-    '\u041d\u0435 \u0441\u0442\u043e\u0441\u0443\u0454\u0442\u044c\u0441\u044f \u0446\u044c\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u0430\u0432\u0446\u044f',
-    '\u0406\u043d\u0448\u0430 \u043f\u0440\u0438\u0447\u0438\u043d\u0430'
-  ];
-
-  overlay.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:380px;width:100%">'
-    + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">\uD83D\uDEA9 \u0421\u043a\u0430\u0440\u0433\u0430 \u043d\u0430 \u0432\u0456\u0434\u0433\u0443\u043a</div>'
-    + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">\u0412\u0456\u0434\u0433\u0443\u043a:</div>'
-    + '<div style="font-size:13px;background:var(--dark3);border-radius:10px;padding:10px 14px;margin-bottom:16px;color:var(--text-muted);font-style:italic">&laquo;' + (reviewText || '').slice(0, 80) + (reviewText && reviewText.length > 80 ? '...' : '') + '&raquo;</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
-    + reasons.map(function(r) {
-        return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">'
-          + '<input type="radio" name="rev-report-reason" value="' + r + '" style="accent-color:var(--brand)"> ' + r + '</label>';
-      }).join('')
-    + '</div>'
-    + '<div style="display:flex;gap:10px">'
-    + '<button class="btn-outline" style="flex:1;padding:11px" onclick="document.getElementById(\'report-review-overlay\').remove()">\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button>'
-    + '<button class="btn-primary" style="flex:1;padding:11px;background:#ef4444;border-color:#ef4444" onclick="_submitReviewReport(\'' + reviewId + '\')">'
-    + '<i class="fa-solid fa-flag" style="margin-right:6px"></i>\u041d\u0430\u0434\u0456\u0441\u043b\u0430\u0442\u0438</button>'
-    + '</div></div>';
-
-  document.body.appendChild(overlay);
-}
-
-function _submitReviewReport(reviewId) {
-  var reason = document.querySelector('input[name="rev-report-reason"]:checked');
-  if (!reason) { showToast('\u26a0\ufe0f \u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043f\u0440\u0438\u0447\u0438\u043d\u0443'); return; }
-  var overlay = document.getElementById('report-review-overlay');
-  if (overlay) overlay.remove();
-
-  if (!window._db || !currentUser) return;
-  window._db.collection('reports').add({
-    type: 'review',
-    reviewId: reviewId,
-    reason: reason.value,
-    reporterUid: currentUser.uid,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(function() {
-    showToast('\u2705 \u0421\u043a\u0430\u0440\u0433\u0443 \u043d\u0430\u0434\u0456\u0441\u043b\u0430\u043d\u043e. \u041c\u0438 \u0440\u043e\u0437\u0433\u043b\u044f\u043d\u0435\u043c\u043e \u043f\u0440\u043e\u0442\u044f\u0433\u043e\u043c 24 \u0433\u043e\u0434\u0438\u043d');
-  }).catch(function(e) {
-    showToast('\u26a0\ufe0f ' + e.message);
-  });
-}
-// ── REPORT REVIEW END ─────────────────────────────────────────
-
-// ── TRUSTED SELLER BADGE ──────────────────────────────────────
-function _calcTrustedSeller(uid, listings, reviews) {
-  // Критерії "Надійний продавець":
-  // 1. 5+ продажів (status === 'sold')
-  // 2. Рейтинг 4.0+
-  // 3. Мінімум 3 відгуки
-  var soldCount = listings.filter(function(l) {
-    return l && l.uid === uid && l.status === 'sold';
-  }).length;
-  var revCount = reviews.length;
-  var avgRating = revCount > 0
-    ? reviews.reduce(function(s, r){ return s + (r.rating || 0); }, 0) / revCount
-    : 0;
-
-  return soldCount >= 5 && revCount >= 3 && avgRating >= 4.0;
-}
-
-function _renderTrustedBadge(uid, listings) {
-  if (!window._db) return;
-  // Завантажити відгуки продавця
-  window._db.collection('reviews').where('sellerUid', '==', uid).get()
-    .then(function(snap) {
-      var reviews = snap.docs.map(function(d){ return d.data(); });
-      var isTrusted = _calcTrustedSeller(uid, listings, reviews);
-      if (!isTrusted) return;
-      // Показати бейдж
-      var metaEl = document.querySelector('.seller-meta');
-      if (!metaEl) return;
-      var existing = document.getElementById('trusted-badge');
-      if (existing) return;
-      var badge = document.createElement('span');
-      badge.id = 'trusted-badge';
-      badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#f59e0b20,#f59e0b10);'
-        + 'border:1px solid #f59e0b50;color:#f59e0b;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:help';
-      badge.title = '\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c \u0437 5+ \u0443\u0433\u043e\u0434\u0430\u043c\u0438 \u0456 \u0440\u0435\u0439\u0442\u0438\u043d\u0433\u043e\u043c 4.0+';
-      badge.innerHTML = '<i class="fa-solid fa-shield-halved"></i> \u041d\u0430\u0434\u0456\u0439\u043d\u0438\u0439 \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c';
-      metaEl.appendChild(badge);
-
-      // Також зберегти в Firestore якщо ще не збережено
-      if (window._db && uid) {
-        window._db.collection('users').doc(uid).update({ trustedSeller: true }).catch(function(){});
-      }
-    }).catch(function(){});
-}
-// ── TRUSTED SELLER END ────────────────────────────────────────
 
