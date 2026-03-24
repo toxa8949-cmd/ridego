@@ -1,0 +1,45 @@
+{
+  "name": "RideGO — Маркетплейс електротранспорту",
+  "short_name": "RideGO",
+  "description": "Купуй та продавай електросамокати, велосипеди, скутери по всій Україні",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#00c853",
+  "orientation": "portrait-primary",
+  "lang": "uk",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Каталог",
+      "short_name": "Каталог",
+      "url": "/catalog",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Додати оголошення",
+      "short_name": "Додати",
+      "url": "/add",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Повідомлення",
+      "short_name": "Чат",
+      "url": "/messages",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ]
+}
