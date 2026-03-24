@@ -730,6 +730,12 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
             <div class="stat-label">Відвідувачів сьогодні</div>
             <span class="stat-delta up" id="delta-views"><i class="fa-solid fa-eye"></i>переглядів: —</span>
           </div>
+          <div class="stat-card green">
+            <div class="stat-icon green"><i class="fa-solid fa-mobile-screen"></i></div>
+            <div class="stat-value" id="stat-pwa">—</div>
+            <div class="stat-label">Встановили додаток</div>
+            <span class="stat-delta up" id="delta-pwa"><i class="fa-solid fa-arrow-up"></i>PWA installs</span>
+          </div>
         </div>
 
         <!-- Charts row -->
@@ -1397,6 +1403,19 @@ function loadFirebaseData() {
       if (vEl) vEl.textContent = visits > 999 ? (visits/1000).toFixed(1)+'K' : visits;
       var dv = document.getElementById('delta-views');
       if (dv) dv.innerHTML = '<i class="fa-solid fa-user"></i> унікальних браузерів: ' + visits;
+    }).catch(function(){});
+
+    // PWA встановлення — загальна кількість
+    _db.collection('analytics').doc('pwa_installs').get().then(function(snap) {
+      var total = snap.exists ? (snap.data().count || 0) : 0;
+      var el = document.getElementById('stat-pwa');
+      if (el) el.textContent = total;
+      // Сьогоднішні
+      _db.collection('analytics').doc('pwa_' + todayStr).get().then(function(s2) {
+        var today = s2.exists ? (s2.data().count || 0) : 0;
+        var dEl = document.getElementById('delta-pwa');
+        if (dEl) dEl.innerHTML = '<i class="fa-solid fa-mobile-screen"></i> сьогодні: +' + today;
+      }).catch(function(){});
     }).catch(function(){});
     var m4 = document.getElementById('mini-listings-active'); if(m4) m4.textContent = active.length;
     var m5 = document.getElementById('mini-listings-moderate'); if(m5) m5.textContent = moderate.length;
