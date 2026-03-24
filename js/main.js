@@ -811,30 +811,31 @@ function createCard(l, backPage) {
   <div class="listing-card ${promoClass}" onclick="showDetail('${l.id}')">
 
     <!-- Photo -->
-    <div style="position:relative;flex-shrink:0">${imgHtml}${badgeHtml}${promoBadge}</div>
+    <div style="position:relative;flex-shrink:0">${imgHtml}${badgeHtml}${promoBadge}
+      ${l.condition ? `<div class="card-condition-badge card-condition-${(l.condition||'').toLowerCase().replace(/\s/g,'-')}">${l.condition}</div>` : ''}
+    </div>
 
     <!-- Body -->
     <div class="listing-body">
-
-      <!-- GRID MODE top: category tag -->
-      <div class="listing-tags">
-        <span class="tag tag-blue">${l.cat}</span>
-      </div>
 
       <!-- LIST MODE top row: tags + price -->
       <div class="lv-top-row">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="tag tag-blue" style="font-size:11px">${l.cat}</span>
-          ${condHtml}
         </div>
         <div class="listing-price" style="font-size:20px;margin:0;white-space:nowrap">
           ${l.price.toLocaleString('uk')} грн
         </div>
       </div>
 
-      <!-- Title + year -->
+      <!-- Title -->
       <div class="listing-title">${l.title}</div>
-      ${metaHtml}
+
+      <!-- Meta: рік + місто -->
+      <div class="card-meta-row">
+        ${l.year ? `<span class="card-meta-item"><i class="fa-regular fa-calendar"></i>${l.year}</span>` : ''}
+        <span class="card-meta-item"><i class="fa-solid fa-location-dot"></i>${l.city}</span>
+      </div>
 
       <!-- Grid price -->
       <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
@@ -844,11 +845,14 @@ function createCard(l, backPage) {
 
       <!-- GRID MODE footer -->
       <div class="listing-footer">
-        <span class="loc"><i class="fa-solid fa-location-dot"></i>${l.city}</span>
-        <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
+          class="card-seller-btn">
+          <i class="fa-solid fa-user-circle"></i>${l.sellerName || l.seller || 'Продавець'}
+        </button>
+        <div style="display:flex;gap:4px;align-items:center">
           <button class="fav-btn compare-btn-card" id="cmp-btn-${l.id}" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438"
             onclick="event.stopPropagation();toggleCompare('${l.id}',this)"
-            style="font-size:14px;opacity:.6">
+            style="font-size:13px;opacity:.5">
             <i class="fa-solid fa-scale-balanced"></i>
           </button>
           <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)">
@@ -856,11 +860,8 @@ function createCard(l, backPage) {
           </button>
         </div>
       </div>
-      <div class="lv-hide-in-list" style="padding-top:10px;border-top:1px solid var(--border);margin-top:2px">
-        ${sellerBtn}
-      </div>
 
-      <!-- LIST MODE bottom row: seller+city | btn+fav -->
+      <!-- LIST MODE bottom row -->
       <div class="lv-bottom-row">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           ${sellerBtn}
