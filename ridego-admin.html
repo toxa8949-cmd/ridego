@@ -1463,48 +1463,7 @@ function _timeAgo(seconds) {
 }
 
 function _updateBarChart(listings) {
-  var days = 7;
-  var labels = [], listingCounts = [], userCounts = [];
-  var users = window._adminUsers || [];
-
-  for (var i = days-1; i >= 0; i--) {
-    var d = new Date();
-    d.setDate(d.getDate() - i);
-    d.setHours(0,0,0,0);
-    var nextD = new Date(d); nextD.setDate(nextD.getDate()+1);
-    var dayName = d.toLocaleDateString('uk-UA',{weekday:'short'});
-    labels.push(dayName + ' ' + d.getDate());
-
-    var lCnt = listings.filter(function(l) {
-      if (!l.createdAt || !l.createdAt.seconds) return false;
-      var ts = l.createdAt.seconds * 1000;
-      return ts >= d.getTime() && ts < nextD.getTime();
-    }).length;
-    listingCounts.push(lCnt);
-
-    var uCnt = users.filter(function(u) {
-      if (!u.createdAt || !u.createdAt.seconds) return false;
-      var ts = u.createdAt.seconds * 1000;
-      return ts >= d.getTime() && ts < nextD.getTime();
-    }).length;
-    userCounts.push(uCnt);
-  }
-
-  var maxC = Math.max.apply(null, listingCounts.concat(userCounts)) || 1;
-  var html = '';
-  for (var j = 0; j < labels.length; j++) {
-    var hL = Math.max(Math.round((listingCounts[j]/maxC)*100), listingCounts[j]>0?5:0);
-    var hU = Math.max(Math.round((userCounts[j]/maxC)*100), userCounts[j]>0?5:0);
-    html += '<div class="bar-group">'
-      + '<div class="bar-wrap" style="display:flex;gap:3px;align-items:flex-end;height:100%">'
-      + '<div class="bar-listings" style="height:'+hL+'%;flex:1" title="\u041e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u044c: '+listingCounts[j]+'"></div>'
-      + '<div style="height:'+hU+'%;flex:1;background:var(--blue);border-radius:4px 4px 0 0;min-height:'+(userCounts[j]>0?4:0)+'px;transition:height .4s" title="\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0439: '+userCounts[j]+'"></div>'
-      + '</div>'
-      + '<div class="bar-label" style="font-size:9px">' + labels[j] + '</div>'
-      + '</div>';
-  }
-  var bc = document.getElementById('bar-chart');
-  if (bc) bc.innerHTML = html;
+  _updateBarChartN(listings, 7);
 }
 
 // ═══ OVERRIDE RENDER TABLES ═══════════════════════
@@ -1787,47 +1746,55 @@ function _updateBarChartN(listings, days) {
   var labels = [], listingCounts = [], userCounts = [];
   var users = window._adminUsers || [];
 
-  for (var i = days-1; i >= 0; i--) {
+  for (var i = days - 1; i >= 0; i--) {
     var d = new Date();
     d.setDate(d.getDate() - i);
-    d.setHours(0,0,0,0);
-    var nextD = new Date(d); nextD.setDate(nextD.getDate()+1);
+    d.setHours(0, 0, 0, 0);
+    var nextD = new Date(d); nextD.setDate(nextD.getDate() + 1);
     var dayName = days <= 7
-      ? d.toLocaleDateString('uk-UA',{weekday:'short'})
-      : d.getDate() + '/' + (d.getMonth()+1);
+      ? d.toLocaleDateString('uk-UA', { weekday: 'short' }) + ' ' + d.getDate()
+      : d.getDate() + '/' + (d.getMonth() + 1);
     labels.push(dayName);
 
-    var lCnt = listings.filter(function(l) {
+    listingCounts.push(listings.filter(function(l) {
       if (!l.createdAt || !l.createdAt.seconds) return false;
       var ts = l.createdAt.seconds * 1000;
       return ts >= d.getTime() && ts < nextD.getTime();
-    }).length;
-    listingCounts.push(lCnt);
+    }).length);
 
-    var uCnt = users.filter(function(u) {
+    userCounts.push(users.filter(function(u) {
       if (!u.createdAt || !u.createdAt.seconds) return false;
       var ts = u.createdAt.seconds * 1000;
       return ts >= d.getTime() && ts < nextD.getTime();
-    }).length;
-    userCounts.push(uCnt);
+    }).length);
   }
 
-  var maxC = Math.max.apply(null, listingCounts.concat(userCounts)) || 1;
+  var maxC = Math.max.apply(null, listingCounts.concat(userCounts).concat([1]));
+  var CHART_H = 120; // px — висота зони стовпців
+
   var html = '';
   for (var j = 0; j < labels.length; j++) {
-    var hL = Math.max(Math.round((listingCounts[j]/maxC)*100), listingCounts[j]>0?5:0);
-    var hU = Math.max(Math.round((userCounts[j]/maxC)*100), userCounts[j]>0?5:0);
+    var lPx = listingCounts[j] > 0 ? Math.max(Math.round((listingCounts[j] / maxC) * CHART_H), 6) : 0;
+    var uPx = userCounts[j]    > 0 ? Math.max(Math.round((userCounts[j]    / maxC) * CHART_H), 6) : 0;
     var showLabel = days <= 14 || j % 5 === 0;
-    html += '<div class="bar-group">'
-      + '<div class="bar-wrap" style="display:flex;gap:2px;align-items:flex-end;height:100%">'
-      + '<div class="bar-listings" style="height:'+hL+'%;flex:1" title="Оголошення: '+listingCounts[j]+'"></div>'
-      + '<div style="height:'+hU+'%;flex:1;background:var(--blue);border-radius:4px 4px 0 0;min-height:'+(userCounts[j]>0?4:0)+'px;transition:height .4s" title="Реєстрації: '+userCounts[j]+'"></div>'
+
+    html += '<div class="bar-group" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:' + (CHART_H + 24) + 'px">'
+      // Числа над стовпцями
+      + '<div style="display:flex;gap:2px;align-items:flex-end;height:' + CHART_H + 'px">'
+      + '<div title="Оголошення: ' + listingCounts[j] + '" style="width:10px;height:' + lPx + 'px;background:var(--brand);border-radius:3px 3px 0 0;transition:height .4s;cursor:pointer" onclick=""></div>'
+      + '<div title="Реєстрації: '  + userCounts[j]    + '" style="width:10px;height:' + uPx + 'px;background:var(--blue);border-radius:3px 3px 0 0;transition:height .4s;cursor:pointer"></div>'
       + '</div>'
-      + '<div class="bar-label" style="font-size:'+(days>14?'8':'9')+'px">' + (showLabel ? labels[j] : '') + '</div>'
+      + '<div style="font-size:' + (days > 14 ? '8' : '9') + 'px;color:var(--text-muted);font-family:monospace;text-align:center;white-space:nowrap">'
+      + (showLabel ? labels[j] : '') + '</div>'
       + '</div>';
   }
+
   var bc = document.getElementById('bar-chart');
-  if (bc) bc.innerHTML = html;
+  if (bc) {
+    bc.style.alignItems = 'flex-end';
+    bc.style.height = (CHART_H + 24) + 'px';
+    bc.innerHTML = html;
+  }
 }
 
 // ═══════════════════════════════════════════════
