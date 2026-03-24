@@ -2172,6 +2172,13 @@ if ('serviceWorker' in navigator) {
 var _isPWA = window.matchMedia('(display-mode: standalone)').matches
   || window.navigator.standalone === true;
 
+// Якщо раніше встановлювали але зараз не standalone — скинути флаг
+// (юзер видалив додаток)
+if (!_isPWA && localStorage.getItem('pwa-installed')) {
+  localStorage.removeItem('pwa-installed');
+  localStorage.removeItem('pwa-banner-dismissed');
+}
+
 // Android/Desktop — стандартний beforeinstallprompt
 var _pwaPrompt = null;
 window.addEventListener('beforeinstallprompt', function(e) {
@@ -2251,14 +2258,17 @@ function triggerPWAInstall() {
 // iOS Safari — немає beforeinstallprompt, показуємо інструкцію вручну
 var _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 var _isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-if (_isIOS && _isSafari && !_isPWA
-    && !localStorage.getItem('pwa-ios-dismissed')
-    && !localStorage.getItem('pwa-installed')) {
-  // Показати кнопку у футері для iOS
+
+// Показати кнопку у футері завжди (крім коли вже встановлено як PWA)
+if (!_isPWA) {
   setTimeout(function() {
     var footerBtn = document.getElementById('footer-install-btn');
     if (footerBtn) footerBtn.style.display = '';
   }, 1000);
+}
+
+if (_isIOS && _isSafari && !_isPWA
+    && !localStorage.getItem('pwa-ios-dismissed')) {
   setTimeout(function() {
     var banner = document.getElementById('pwa-ios-banner');
     if (banner) banner.style.display = '';
