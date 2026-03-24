@@ -913,34 +913,31 @@ function loadFirebaseData(force) {
   }
 
   if (!force) {
-    try {
-      var cached = sessionStorage.getItem('ridego_listings_cache');
-      var cachedTs = parseInt(sessionStorage.getItem('ridego_listings_cache_ts') || '0');
-      if (cached && (now - cachedTs) < 5 * 60 * 1000) {
-        var parsed = JSON.parse(cached);
-        if (parsed && parsed.length) {
-          _fbListings = parsed;
-          _fbDataLoadedAt = cachedTs;
-          // Також відновити сервіси з кешу
-          try {
-            var svcsCache = sessionStorage.getItem('ridego_services_cache');
-            var svcsCacheTs = parseInt(sessionStorage.getItem('ridego_services_cache_ts') || '0');
-            if (svcsCache && (now - svcsCacheTs) < 10 * 60 * 1000) {
-              _fbServices = JSON.parse(svcsCache);
-            }
-          } catch(e2) {}
+    _idbGet('listings', 10 * 60 * 1000, function(cached) {
+      if (cached && cached.length) {
+        _fbListings = cached;
+        _fbDataLoadedAt = Date.now();
+        _idbGet('services', 15 * 60 * 1000, function(svcs) {
+          if (svcs) _fbServices = svcs;
           renderHomeListings();
           renderCatalog();
           if (_fbServices.length) {
             renderHomeServices();
             if (typeof renderServices === 'function') renderServices();
           }
-          setTimeout(function() { loadFirebaseData(true); }, 3000);
-          return;
-        }
+        });
+        setTimeout(function() { loadFirebaseData(true); }, 3000);
+        return;
       }
-    } catch(e) {}
+      _loadFirebaseFromNetwork(force);
+    });
+    return;
   }
+  _loadFirebaseFromNetwork(force);
+}
+
+function _loadFirebaseFromNetwork(force) {
+  var now = Date.now();
 
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     showToast('⚠️ Немає з\'єднання з інтернетом');
@@ -952,10 +949,7 @@ function loadFirebaseData(force) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
 
-      try {
-        sessionStorage.setItem('ridego_listings_cache', JSON.stringify(_fbListings));
-        sessionStorage.setItem('ridego_listings_cache_ts', String(_fbDataLoadedAt));
-      } catch(e) {}
+      _idbSet('listings', _fbListings);
 
       var fbIds = {};
       _fbListings.forEach(function(l){ if (l.id) fbIds[l.id] = true; });
@@ -986,10 +980,7 @@ function loadFirebaseData(force) {
       var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       var myIds = myServices.map(function(s){ return s.id; });
       _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
-      try {
-        sessionStorage.setItem('ridego_services_cache', JSON.stringify(_fbServices));
-        sessionStorage.setItem('ridego_services_cache_ts', String(Date.now()));
-      } catch(e) {}
+      _idbSet('services', _fbServices);
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
       var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
@@ -1763,7 +1754,7 @@ function getFilteredData() {
   return data;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 var _catalogData  = [];
 var _catalogPage  = 0;
 var _catalogAllShown = false;
@@ -7573,3 +7564,70 @@ function _setHomeBreadcrumbSchema() {
   document.head.appendChild(script);
 }
 
+
+var _idbDb = null;
+var _IDB_NAME = 'ridego-cache';
+var _IDB_VER  = 1;
+var _IDB_STORE = 'data';
+
+function _idbOpen(cb) {
+  if (_idbDb) { cb(_idbDb); return; }
+  if (!window.indexedDB) { cb(null); return; }
+  var req = indexedDB.open(_IDB_NAME, _IDB_VER);
+  req.onupgradeneeded = function(e) {
+    var db = e.target.result;
+    if (!db.objectStoreNames.contains(_IDB_STORE)) {
+      db.createObjectStore(_IDB_STORE, { keyPath: 'key' });
+    }
+  };
+  req.onsuccess = function(e) {
+    _idbDb = e.target.result;
+    cb(_idbDb);
+  };
+  req.onerror = function() { cb(null); };
+}
+
+function _idbSet(key, value, cb) {
+  _idbOpen(function(db) {
+    if (!db) {
+      try { sessionStorage.setItem(key, JSON.stringify({ v: value, t: Date.now() })); } catch(e) {}
+      if (cb) cb();
+      return;
+    }
+    var tx = db.transaction(_IDB_STORE, 'readwrite');
+    var store = tx.objectStore(_IDB_STORE);
+    store.put({ key: key, value: value, ts: Date.now() });
+    tx.oncomplete = function() { if (cb) cb(); };
+    tx.onerror = function() { if (cb) cb(); };
+  });
+}
+
+function _idbGet(key, maxAgeMs, cb) {
+  _idbOpen(function(db) {
+    if (!db) {
+      try {
+        var raw = sessionStorage.getItem(key);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && Date.now() - parsed.t < maxAgeMs) {
+            cb(parsed.v);
+            return;
+          }
+        }
+      } catch(e) {}
+      cb(null);
+      return;
+    }
+    var tx = db.transaction(_IDB_STORE, 'readonly');
+    var req = tx.objectStore(_IDB_STORE).get(key);
+    req.onsuccess = function() {
+      var result = req.result;
+      if (result && Date.now() - result.ts < maxAgeMs) {
+        cb(result.value);
+      } else {
+        cb(null);
+      }
+    };
+    req.onerror = function() { cb(null); };
+  });
+}
