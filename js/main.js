@@ -767,6 +767,7 @@ function createCard(l, backPage) {
 
   if (l.status === 'sold') {
     promoClass = 'is-sold';
+    // Overlay поверх всього фото
     promoBadge = `<div class="promo-badge-sold"><i class="fa-solid fa-circle-check"></i> ПРОДАНО</div>`;
   } else if (activePromo === 'top') {
     promoClass = 'is-top';
@@ -787,7 +788,16 @@ function createCard(l, backPage) {
     </div>` : '';
 
   const yearHtml = l.year ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${l.year} р.</span>` : '';
-  const condHtml = `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition || 'Хороший'}</span>`;
+  const condHtml = l.condition && l.condition !== 'Хороший'
+    ? `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition}</span>`
+    : `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition || 'Хороший'}</span>`;
+  // Метарядок: рік + стан — під назвою
+  const metaHtml = (l.year || l.condition)
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        ${l.year ? `<span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${l.year} р.</span>` : ''}
+        ${l.condition ? `<span style="font-size:12px;color:${l.condition==='Новий'?'var(--brand)':'var(--text-muted)'};display:flex;align-items:center;gap:4px"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition}</span>` : ''}
+       </div>`
+    : '';
 
   const _sellerUid = l.uid || '';
   const sellerBtn = `<button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
@@ -823,7 +833,8 @@ function createCard(l, backPage) {
       </div>
 
       <!-- Title + year -->
-      <div class="listing-title">${l.title}${yearHtml}</div>
+      <div class="listing-title">${l.title}</div>
+      ${metaHtml}
 
       <!-- Grid price -->
       <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
