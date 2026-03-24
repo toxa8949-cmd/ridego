@@ -811,14 +811,12 @@ function createCard(l, backPage) {
   <div class="listing-card ${promoClass}" onclick="showDetail('${l.id}')">
 
     <!-- Photo -->
-    <div style="position:relative;flex-shrink:0">${imgHtml}${badgeHtml}${promoBadge}
-      ${l.condition ? `<div class="card-condition-badge card-condition-${(l.condition||'').toLowerCase().replace(/\s/g,'-')}">${l.condition}</div>` : ''}
-    </div>
+    <div style="position:relative;flex-shrink:0">${imgHtml}${badgeHtml}${promoBadge}</div>
 
     <!-- Body -->
     <div class="listing-body">
 
-      <!-- LIST MODE top row: tags + price -->
+      <!-- LIST MODE top row: category + price -->
       <div class="lv-top-row">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="tag tag-blue" style="font-size:11px">${l.cat}</span>
@@ -831,10 +829,10 @@ function createCard(l, backPage) {
       <!-- Title -->
       <div class="listing-title">${l.title}</div>
 
-      <!-- Meta: рік + місто -->
-      <div class="card-meta-row">
-        ${l.year ? `<span class="card-meta-item"><i class="fa-regular fa-calendar"></i>${l.year}</span>` : ''}
-        <span class="card-meta-item"><i class="fa-solid fa-location-dot"></i>${l.city}</span>
+      <!-- Condition + year pill row -->
+      <div class="card-pills-row">
+        ${l.condition ? `<span class="card-pill card-pill-${l.condition==='Новий'?'new':l.condition==='Хороший'?'good':'used'}">${l.condition}</span>` : ''}
+        ${l.year ? `<span class="card-pill card-pill-year"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${l.year}</span>` : ''}
       </div>
 
       <!-- Grid price -->
