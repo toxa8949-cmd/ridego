@@ -5642,8 +5642,8 @@ function renderMyListings() {
   if (!grid || !empty) return;
   var uid = currentUser && currentUser.uid;
   var mine = uid
-    ? _allListings().filter(function(l){ return l && l.uid === uid; })
-    : myListings;
+    ? _allListings().filter(function(l){ return l && l.uid === uid && l.status !== 'deleted'; })
+    : myListings.filter(function(l){ return l && l.status !== 'deleted'; });
   if (!mine.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   grid.innerHTML = mine.map(function(l){ return createMyCard(l); }).join('');
@@ -5678,6 +5678,10 @@ function deleteListing(id) {
       renderMyListings();
       renderHomeListings();
       renderCatalog();
+      // Оновити лічильник активних
+      var activeCount = _allListings().filter(function(l){ return l && l.uid === currentUser.uid && l.status !== 'deleted' && l.status !== 'sold'; }).length;
+      var el = document.getElementById('pstat-active');
+      if (el) el.textContent = activeCount;
       showToast('🗑 Оголошення видалено');
     })
     .catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
