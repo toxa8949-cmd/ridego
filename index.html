@@ -2246,13 +2246,44 @@ function triggerPWAInstall() {
       _pwaPrompt = null;
     });
   } else if (_isIOS && _isSafari) {
-    // iOS — показати інструкцію
     var banner = document.getElementById('pwa-ios-banner');
     if (banner) banner.style.display = '';
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   } else {
-    showToast('ℹ️ Відкрийте сайт в Chrome для встановлення');
+    // Chrome без промпту — показати інструкцію
+    _showManualInstallHint();
   }
+}
+
+function _showManualInstallHint() {
+  var existing = document.getElementById('manual-install-overlay');
+  if (existing) { existing.remove(); return; }
+
+  var isAndroid = /android/i.test(navigator.userAgent);
+  var overlay = document.createElement('div');
+  overlay.id = 'manual-install-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML = '<div style="background:var(--card-bg);border-radius:20px 20px 0 0;padding:28px 24px;max-width:480px;width:100%;border-top:1px solid var(--border)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+    + '<div style="font-size:17px;font-weight:700">\uD83D\uDCF1 Встановити RideGO</div>'
+    + '<button onclick="document.getElementById(\'manual-install-overlay\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted)">&times;</button>'
+    + '</div>'
+    + (isAndroid
+      ? '<div style="font-size:14px;color:var(--text-muted);line-height:1.8">'
+        + '1. Натисніть <b style="color:var(--text)">⋮</b> (три крапки) у правому верхньому куті Chrome<br>'
+        + '2. Оберіть <b style="color:var(--text)">«Додати на головний екран»</b><br>'
+        + '3. Натисніть <b style="color:var(--brand)">Додати</b>'
+        + '</div>'
+      : '<div style="font-size:14px;color:var(--text-muted);line-height:1.8">'
+        + '1. Натисніть іконку <b style="color:var(--text)">⬇</b> в адресному рядку Chrome<br>'
+        + '2. Або <b style="color:var(--text)">⋮ → «Встановити RideGO»</b>'
+        + '</div>'
+    )
+    + '<button onclick="document.getElementById(\'manual-install-overlay\').remove()" class="btn-primary" style="width:100%;margin-top:20px;padding:13px">Зрозуміло</button>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
 }
 
 // iOS Safari — немає beforeinstallprompt, показуємо інструкцію вручну
