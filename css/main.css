@@ -3102,3 +3102,39 @@ body {
 .listing-card .listing-price {
   margin-bottom: 0;
 }
+
+/* ── CARD UNIFIED LOOK ───────────────────────────────────────── */
+
+/* Specs блок — фіксована мінімальна висота щоб картки були однакові */
+.listing-specs {
+  min-height: 44px;
+  margin-bottom: 12px !important;
+}
+
+/* Порожній specs placeholder — займає місце */
+.listing-specs-empty {
+  min-height: 12px;
+  margin-bottom: 12px;
+}
+
+/* Один separator — тільки перед footer */
+.listing-footer {
+  border-top: 1px solid var(--border) !important;
+  padding-top: 10px !important;
+  margin-top: 4px !important;
+}
+
+/* Ціна — однаковий розмір завжди */
+.listing-card .listing-price {
+  font-size: 24px !important;
+  font-weight: 800;
+  color: var(--brand);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+/* Pills row — фіксована висота */
+.card-pills-row {
+  min-height: 24px;
+  margin-bottom: 6px;
+}
