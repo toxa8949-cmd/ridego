@@ -2951,3 +2951,82 @@ body {
 .listing-card.is-sold .listing-img { filter: grayscale(25%); }
 .listing-card.is-sold .listing-price { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--text-muted); font-size: 20px; }
 .listing-card.is-sold:hover { opacity: 1; }
+
+/* ── CARD REDESIGN ───────────────────────────────────────────── */
+
+/* Бейдж стану — зверху зліва на фото */
+.card-condition-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .3px;
+  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,.45);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.15);
+}
+.card-condition-badge.card-condition-новий {
+  background: rgba(0,200,83,.85);
+  border-color: rgba(0,200,83,.4);
+  color: #000;
+}
+.card-condition-badge.card-condition-відмінний {
+  background: rgba(59,130,246,.8);
+  color: #fff;
+}
+
+/* Мета рядок: рік + місто */
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.card-meta-item i {
+  font-size: 11px;
+  color: var(--brand);
+}
+
+/* Кнопка продавця в футері */
+.card-seller-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  transition: color .15s;
+  font-family: inherit;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+.card-seller-btn:hover { color: var(--brand); }
+.card-seller-btn i { color: var(--brand); flex-shrink: 0; }
+
+/* Ціна — більша і красива */
+.listing-price {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brand);
+  margin-bottom: 10px;
+  letter-spacing: -.3px;
+}
+
+/* Прибираємо listing-tags (тепер тег у lv-top-row і більше не потрібен окремо) */
+.listing-tags { display: none; }
