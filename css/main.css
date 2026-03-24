@@ -3030,3 +3030,47 @@ body {
 
 /* Прибираємо listing-tags (тепер тег у lv-top-row і більше не потрібен окремо) */
 .listing-tags { display: none; }
+
+/* ── CARD PILLS ROW ─────────────────────────────────────────── */
+.card-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.card-pill-new {
+  background: rgba(0,200,83,.12);
+  color: var(--brand);
+  border-color: rgba(0,200,83,.25);
+}
+.card-pill-good {
+  background: rgba(59,130,246,.1);
+  color: #60a5fa;
+  border-color: rgba(59,130,246,.2);
+}
+.card-pill-used {
+  background: var(--dark3);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.card-pill-year {
+  background: var(--dark3);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+/* Прибираємо старі зайві елементи */
+.listing-tags { display: none; }
+.card-condition-badge { display: none; }
+.card-meta-row { display: none; }
