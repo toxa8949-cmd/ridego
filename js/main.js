@@ -751,8 +751,17 @@ function _cdnOg(url) { return _cdnImg(url, { w: 1200, q: 80, c: 'fill' }); }
 function createCard(l, backPage) {
   const isFav    = favorites.includes(l.id);
   const thumbSrc = _cdnThumb(l.img) || l.img;
+  // ── XSS: екрануємо всі поля що надходять від користувача ──
+  const eTitle      = _esc(l.title);
+  const eCity       = _esc(l.city);
+  const eCat        = _esc(l.cat);
+  const eCondition  = _esc(l.condition);
+  const eYear       = _esc(l.year);
+  const eSellerName = _esc(l.sellerName || l.seller || 'Продавець');
+  const eSellerUid  = _esc(l.uid || '');
+  const eBargain    = _esc(l.bargain);
   const imgHtml  = l.img
-    ? `<div class="listing-img-wrap"><img class="listing-img lazy-img" src="${_cdnTiny(l.img)||thumbSrc}" data-src="${thumbSrc}" alt="${l.title}" loading="lazy" decoding="async" onerror="this.style.display='none'" style="filter:blur(8px);transition:filter .4s ease"></div>`
+    ? `<div class="listing-img-wrap"><img class="listing-img lazy-img" src="${_cdnTiny(l.img)||thumbSrc}" data-src="${thumbSrc}" alt="${eTitle}" loading="lazy" decoding="async" onerror="this.style.display='none'" style="filter:blur(8px);transition:filter .4s ease"></div>`
     : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
   const badgeHtml = l.badge
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
@@ -789,35 +798,40 @@ function createCard(l, backPage) {
   const specSpeed   = _specVal(l.speed, 'км/год');
   const specRange   = _specVal(l.range, 'км');
 
+  // XSS: екрануємо spec значення
+  const eSpecBattery = _esc(specBattery);
+  const eSpecSpeed   = _esc(specSpeed);
+  const eSpecRange   = _esc(specRange);
+
   const specsHtml = (specBattery || specSpeed || specRange) ? `
     <div class="listing-specs">
-      ${specBattery ? `<div class="spec"><i class="fa-solid fa-battery-full"></i>${specBattery}</div>` : ''}
-      ${specSpeed   ? `<div class="spec"><i class="fa-solid fa-gauge-high"></i>${specSpeed}</div>`   : ''}
-      ${specRange   ? `<div class="spec"><i class="fa-solid fa-road"></i>${specRange}</div>`         : ''}
+      ${eSpecBattery ? `<div class="spec"><i class="fa-solid fa-battery-full"></i>${eSpecBattery}</div>` : ''}
+      ${eSpecSpeed   ? `<div class="spec"><i class="fa-solid fa-gauge-high"></i>${eSpecSpeed}</div>`   : ''}
+      ${eSpecRange   ? `<div class="spec"><i class="fa-solid fa-road"></i>${eSpecRange}</div>`         : ''}
     </div>` : '<div class="listing-specs-empty"></div>';
 
-  const yearHtml = l.year ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${l.year} р.</span>` : '';
-  const condHtml = l.condition && l.condition !== 'Хороший'
-    ? `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition}</span>`
-    : `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition || 'Хороший'}</span>`;
+  const yearHtml = eYear ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${eYear} р.</span>` : '';
+  const condHtml = eCondition
+    ? `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${eCondition}</span>`
+    : `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>Хороший</span>`;
   // Метарядок: рік + стан — під назвою
-  const metaHtml = (l.year || l.condition)
+  const metaHtml = (eYear || eCondition)
     ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-        ${l.year ? `<span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${l.year} р.</span>` : ''}
-        ${l.condition ? `<span style="font-size:12px;color:${l.condition==='Новий'?'var(--brand)':'var(--text-muted)'};display:flex;align-items:center;gap:4px"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${l.condition}</span>` : ''}
+        ${eYear ? `<span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${eYear} р.</span>` : ''}
+        ${eCondition ? `<span style="font-size:12px;color:${l.condition==='Новий'?'var(--brand)':'var(--text-muted)'};display:flex;align-items:center;gap:4px"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${eCondition}</span>` : ''}
        </div>`
     : '';
 
-  const _sellerUid = l.uid || '';
-  const sellerBtn = `<button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
+  const _sellerUid = eSellerUid;
+  const sellerBtn = `<button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${_esc((l.seller||'').replace(/'/g,"\\'"))}')` };"
     style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);
            display:inline-flex;align-items:center;gap:5px;padding:0;transition:color .15s;font-family:inherit"
     onmouseover="this.style.color='var(--brand)'" onmouseout="this.style.color='var(--text-muted)'">
-    <i class="fa-solid fa-user-circle" style="color:var(--brand)"></i>${l.sellerName || l.seller || 'Продавець'}
+    <i class="fa-solid fa-user-circle" style="color:var(--brand)"></i>${eSellerName}
   </button>`;
 
   return `
-  <div class="listing-card ${promoClass}" onclick="showDetail('${l.id}')">
+  <div class="listing-card ${promoClass}" onclick="showDetail('${_esc(l.id)}')">
 
     <!-- Photo — тільки promo badges (TOP/Хіт/Терміново) -->
     <div style="position:relative;flex-shrink:0">${imgHtml}${promoBadge}</div>
@@ -827,27 +841,27 @@ function createCard(l, backPage) {
 
       <!-- LIST MODE top row: category + price -->
       <div class="lv-top-row">
-        <span class="tag tag-blue" style="font-size:11px">${l.cat}</span>
+        <span class="tag tag-blue" style="font-size:11px">${eCat}</span>
         <div class="listing-price" style="font-size:20px;margin:0;white-space:nowrap">
           ${l.price.toLocaleString('uk')} грн
         </div>
       </div>
 
       <!-- Title -->
-      <div class="listing-title">${l.title}</div>
+      <div class="listing-title">${eTitle}</div>
 
       <!-- Condition + year -->
       <div class="card-pills-row">
-        ${l.condition ? `<span class="card-pill card-pill-${l.condition==='Новий'?'new':l.condition==='Хороший'?'good':'used'}">${l.condition}</span>` : ''}
-        ${l.year ? `<span class="card-pill card-pill-year"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${l.year}</span>` : ''}
+        ${eCondition ? `<span class="card-pill card-pill-${l.condition==='Новий'?'new':l.condition==='Хороший'?'good':'used'}">${eCondition}</span>` : ''}
+        ${eYear ? `<span class="card-pill card-pill-year"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${eYear}</span>` : ''}
       </div>
 
       <!-- Price + ТОРГ/ОБМІН -->
       <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
         <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
-        ${l.bargain==='Торг' ? `<span class="card-pill card-pill-bargain">Торг</span>` : ''}
-        ${l.bargain==='Обмін' ? `<span class="card-pill card-pill-exchange">Обмін</span>` : ''}
-        ${l.bargain==='Торг+Обмін' ? `<span class="card-pill card-pill-bargain">Торг</span><span class="card-pill card-pill-exchange">Обмін</span>` : ''}
+        ${eBargain==='Торг' ? `<span class="card-pill card-pill-bargain">Торг</span>` : ''}
+        ${eBargain==='Обмін' ? `<span class="card-pill card-pill-exchange">Обмін</span>` : ''}
+        ${eBargain==='Торг+Обмін' ? `<span class="card-pill card-pill-bargain">Торг</span><span class="card-pill card-pill-exchange">Обмін</span>` : ''}
       </div>
 
       <!-- Specs -->
@@ -856,19 +870,19 @@ function createCard(l, backPage) {
       <!-- Footer: продавець + кнопки -->
       <div class="listing-footer">
         <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
-          <button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${(l.seller||'').replace(/'/g,"\\'")}')` };"
+          <button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${_esc((l.seller||'').replace(/'/g,"\\'"))}')` };"
             class="card-seller-btn">
-            <i class="fa-solid fa-user-circle"></i>${l.sellerName || l.seller || 'Продавець'}
+            <i class="fa-solid fa-user-circle"></i>${eSellerName}
           </button>
-          <span class="loc"><i class="fa-solid fa-location-dot"></i>${l.city}</span>
+          <span class="loc"><i class="fa-solid fa-location-dot"></i>${eCity}</span>
         </div>
         <div style="display:flex;gap:4px;align-items:center">
-          <button class="fav-btn compare-btn-card" id="cmp-btn-${l.id}"
-            onclick="event.stopPropagation();toggleCompare('${l.id}',this)"
+          <button class="fav-btn compare-btn-card" id="cmp-btn-${_esc(l.id)}"
+            onclick="event.stopPropagation();toggleCompare('${_esc(l.id)}',this)"
             style="font-size:13px;opacity:.5" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438">
             <i class="fa-solid fa-scale-balanced"></i>
           </button>
-          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)">
+          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${_esc(l.id)}',this)">
             <i class="fa-${isFav?'solid':'regular'} fa-heart"></i>
           </button>
         </div>
@@ -879,14 +893,14 @@ function createCard(l, backPage) {
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           ${sellerBtn}
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted)">
-            <i class="fa-solid fa-location-dot" style="color:var(--brand);font-size:11px"></i>${l.city}
+            <i class="fa-solid fa-location-dot" style="color:var(--brand);font-size:11px"></i>${eCity}
           </span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-          <button class="lv-btn" onclick="event.stopPropagation();showDetail('${l.id}')">
+          <button class="lv-btn" onclick="event.stopPropagation();showDetail('${_esc(l.id)}')">
             <i class="fa-solid fa-arrow-right" style="font-size:11px"></i> Переглянути
           </button>
-          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)" style="font-size:18px">
+          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${_esc(l.id)}',this)" style="font-size:18px">
             <i class="fa-${isFav?'solid':'regular'} fa-heart"></i>
           </button>
         </div>
@@ -2368,7 +2382,10 @@ function renderSellerReviews(s) {
 
   const colors = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#22c55e','#f97316'];
   document.getElementById('reviews-list').innerHTML = revs.length ? revs.map((r, i) => {
-    const initials = r.author.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const eAuthor = _esc(r.author || 'Анонім');
+    const eText   = _esc(r.text || '');
+    const eDate   = _esc(r.date || '');
+    const initials = eAuthor.replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g,'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const color = colors[i % colors.length];
     const stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
     return `<div class="review-card">
@@ -2376,11 +2393,11 @@ function renderSellerReviews(s) {
         <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
-            <span style="font-weight:700;font-size:14px">${r.author}</span>
-            <span style="font-size:11px;color:var(--text-muted)">${r.date}</span>
+            <span style="font-weight:700;font-size:14px">${eAuthor}</span>
+            <span style="font-size:11px;color:var(--text-muted)">${eDate}</span>
           </div>
           <div style="color:#ffa726;font-size:13px;margin-bottom:8px;letter-spacing:1px">${stars}</div>
-          <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">${r.text}</p>
+          <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0">${eText}</p>
         </div>
       </div>
     </div>`;
@@ -2523,10 +2540,10 @@ function showDetail(id, _skipPush) {
 
   const condColor = { 'Новий':'#00e676','Чудовий':'#69f0ae','Хороший':'#ffa726','Задовільний':'#ff5252' }[l.condition] || '#8b949e';
   document.getElementById('detail-meta').innerHTML = `
-    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-location-dot" style="color:var(--brand)"></i>${l.city}</span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${condColor};display:inline-block"></span>${l.condition}</span>
-    <span style="display:flex;align-items:center;gap:5px"><i class="fa-regular fa-clock" style="color:var(--brand)"></i>${l.time}</span>
-    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-tag" style="color:var(--brand)"></i>${l.cat}</span>
+    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-location-dot" style="color:var(--brand)"></i>${_esc(l.city)}</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${condColor};display:inline-block"></span>${_esc(l.condition)}</span>
+    <span style="display:flex;align-items:center;gap:5px"><i class="fa-regular fa-clock" style="color:var(--brand)"></i>${_esc(l.time)}</span>
+    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-tag" style="color:var(--brand)"></i>${_esc(l.cat)}</span>
   `;
 
   renderDetailMap(l.city, l.fullLoc || `${l.city}, Україна`);
@@ -2597,7 +2614,7 @@ function renderGalleryImage(l) {
   if (l && l.img) {
     var fallbackIcon = l.icon || '📦';
     var detailSrc = _cdnDetail(galleryImgs[galleryIdx]) || galleryImgs[galleryIdx];
-    wrap.innerHTML = `<img src="${detailSrc}" alt="${l.title || ''}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${fallbackIcon}</div>`;
+    wrap.innerHTML = `<img src="${detailSrc}" alt="${_esc(l.title || '')}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${_esc(l.icon || '📦')}</div>`;
   } else {
     const icon = l ? (l.icon || '📦') : '📦';
     wrap.innerHTML = `<div style="font-size:100px;color:var(--brand);opacity:.5">${icon}</div>`;
