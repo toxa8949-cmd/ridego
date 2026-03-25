@@ -1,6 +1,6 @@
 // RideGO Service Worker
-const CACHE_NAME = 'ridego-v1';
-const CACHE_STATIC = 'ridego-static-v1';
+const CACHE_NAME = 'ridego-v2';
+const CACHE_STATIC = 'ridego-static-v2';
 
 // Файли що кешуємо при встановленні
 const STATIC_ASSETS = [
@@ -67,7 +67,10 @@ self.addEventListener('fetch', function(e) {
     'nominatim.openstreetmap.org',
     'identitytoolkit.googleapis.com',
     'securetoken.googleapis.com',
-    'api.qrserver.com'
+    'api.qrserver.com',
+    'cdnjs.cloudflare.com',  // Font Awesome, Leaflet — завжди з CDN, не кешуємо
+    'fonts.googleapis.com',  // Google Fonts CSS — не кешуємо
+    'fonts.gstatic.com'      // Google Fonts woff2 — браузер сам кешує
   ];
   if (skipCache.some(function(d) { return url.hostname.includes(d); })) {
     return; // дозволяємо браузеру обробити
@@ -108,11 +111,7 @@ self.addEventListener('fetch', function(e) {
   }
 
   // Статичні ресурси (JS, CSS, шрифти) — Cache first
-  if (
-    url.pathname.match(/\.(js|css|woff2?|ttf|svg|ico|png|webp)$/) ||
-    url.hostname === 'cdnjs.cloudflare.com' ||
-    url.hostname === 'fonts.gstatic.com'
-  ) {
+  if (url.pathname.match(/\.(js|css|woff2?|ttf|svg|ico|png|webp)$/)) {
     e.respondWith(
       caches.match(req).then(function(cached) {
         if (cached) return cached;
