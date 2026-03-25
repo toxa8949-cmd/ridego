@@ -987,6 +987,8 @@ function _loadFirebaseFromNetwork(force) {
 
       renderHomeListings();
       renderCatalog();
+      // Оновити лічильник активних оголошень в профілі
+      if (typeof _updateActiveCount === 'function') _updateActiveCount();
 
       setTimeout(function() {
         if (typeof _trackFavPrices === 'function') _trackFavPrices();
@@ -5648,7 +5650,20 @@ function renderMyListings() {
   empty.style.display = 'none';
   grid.innerHTML = mine.map(function(l){ return createMyCard(l); }).join('');
 
+  // Оновити лічильник активних
+  _updateActiveCount();
+
   if (uid) loadViewsStats('7');
+}
+
+function _updateActiveCount() {
+  var uid = currentUser && currentUser.uid;
+  if (!uid) return;
+  var count = _allListings().filter(function(l){
+    return l && l.uid === uid && l.status !== 'deleted' && l.status !== 'sold';
+  }).length;
+  var el = document.getElementById('pstat-active');
+  if (el) el.textContent = count;
 }
 
 function deleteListing(id) {
@@ -5675,13 +5690,9 @@ function deleteListing(id) {
       _idbSet('listings', _fbListings);
 
       // Оновити UI
-      renderMyListings();
+      renderMyListings(); // всередині вже викликає _updateActiveCount
       renderHomeListings();
       renderCatalog();
-      // Оновити лічильник активних
-      var activeCount = _allListings().filter(function(l){ return l && l.uid === currentUser.uid && l.status !== 'deleted' && l.status !== 'sold'; }).length;
-      var el = document.getElementById('pstat-active');
-      if (el) el.textContent = activeCount;
       showToast('🗑 Оголошення видалено');
     })
     .catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
