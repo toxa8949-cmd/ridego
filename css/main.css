@@ -827,7 +827,7 @@
   }
   .send-btn:hover { background: var(--brand-dark); transform: scale(1.05); }
 
-  @media (max-width: 700px) {
+  @media (max-width: 900px) {
     .messages-layout {
       grid-template-columns: 1fr;
       height: calc(100vh - 130px);
