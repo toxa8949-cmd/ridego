@@ -3138,3 +3138,15 @@ body {
   min-height: 24px;
   margin-bottom: 6px;
 }
+
+/* Mobile nav — явні кольори для світлої теми */
+body.light .mnav-item {
+  color: #5a7a5a;
+}
+body.light .mnav-item.active,
+body.light .mnav-item:hover {
+  color: var(--brand);
+}
+body.light .mnav-item span {
+  color: inherit;
+}
