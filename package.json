@@ -1,0 +1,13 @@
+{
+  "name": "ridego",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "dev": "npx serve dist"
+  },
+  "devDependencies": {
+    "terser": "^5.31.0",
+    "csso": "^5.0.5"
+  }
+}
