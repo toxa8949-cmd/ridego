@@ -176,12 +176,6 @@ function _renderSlotsUI() {
   var welcome = Math.max(0, Math.min(_userSlots.slotsWelcome || 0, total));
   var bought  = Math.max(0, _userSlots.slots || 0);
 
-  var el = document.getElementById('profile-slots-badge');
-  if (el) {
-    el.textContent = total + ' слот' + (total === 1 ? '' : total < 5 ? 'и' : 'ів');
-    el.style.color = total > 0 ? 'var(--brand)' : '#ff5252';
-  }
-
   var panel = document.getElementById('slots-panel');
   if (!panel) return;
 
@@ -191,17 +185,20 @@ function _renderSlotsUI() {
     welcomeExpiry = ' (згорають ' + exp.toLocaleDateString('uk-UA', {day:'numeric',month:'long'}) + ')';
   }
 
+  // Склонування: розміщення
+  var label = total === 1 ? 'розміщення' : total < 5 ? 'розміщення' : 'розміщень';
+
   panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
     + '<div>'
     + '<div style="font-size:28px;font-weight:800;color:var(--brand)">' + total + '</div>'
-    + '<div style="font-size:13px;color:var(--text-muted)">доступних слотів</div>'
+    + '<div style="font-size:13px;color:var(--text-muted)">доступних ' + label + '</div>'
     + '</div>'
     + '<button class="btn-primary" style="padding:10px 20px;font-size:14px" onclick="openBuySlots()">'
-    + '<i class="fa-solid fa-plus" style="margin-right:6px"></i>Купити слоти</button>'
+    + '<i class="fa-solid fa-plus" style="margin-right:6px"></i>Купити розміщення</button>'
     + '</div>'
     + (welcome > 0 ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">🎁 Стартові: <b>' + welcome + '</b>' + welcomeExpiry + '</div>' : '')
     + (bought > 0  ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">💳 Куплені: <b>' + bought + '</b> (не згорають)</div>' : '')
-    + (total === 0 ? '<div style="font-size:13px;color:#ff5252;margin-bottom:8px">⚠️ Слотів немає — купіть щоб публікувати оголошення</div>' : '');
+    + (total === 0 ? '<div style="font-size:13px;color:#ff5252;margin-bottom:8px">⚠️ Розміщень немає — придбайте щоб публікувати оголошення</div>' : '');
 }
 
 function openBuySlots() {
