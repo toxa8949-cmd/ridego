@@ -4512,24 +4512,30 @@ function openChatById(chatId) {
 
   if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
 
-  if (window._rtdb) {
-    var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
-    var _rtdbCallback = msgsRef.on('value', function(snap) {
-      var msgs = [];
-      if (snap && snap.forEach) {
-        snap.forEach(function(child) { msgs.push(child.val()); });
-      }
-      _renderMessages(msgs, c);
-    });
-    _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
-  } else if (window._db) {
-    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
-      .collection('messages').onSnapshot(function(snap) {
-        var msgs = snap.docs.map(function(d){ return d.data(); });
-        msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
+  function _doSubscribe() {
+    if (window._rtdb) {
+      var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
+      var _rtdbCallback = msgsRef.on('value', function(snap) {
+        var msgs = [];
+        if (snap && snap.forEach) {
+          snap.forEach(function(child) { msgs.push(child.val()); });
+        }
         _renderMessages(msgs, c);
       });
+      _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
+    } else if (window._db) {
+      _chatUnsubscribe = window._db.collection('chats').doc(chatId)
+        .collection('messages').onSnapshot(function(snap) {
+          var msgs = snap.docs.map(function(d){ return d.data(); });
+          msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
+          _renderMessages(msgs, c);
+        });
+    } else {
+      // Firebase ще не готовий — повторити через 300мс
+      setTimeout(_doSubscribe, 300);
+    }
   }
+  _doSubscribe();
 
   renderChats();
 }
@@ -4581,7 +4587,7 @@ function _renderMessages(msgs, chat) {
   }).join('');
 
   area.innerHTML = html;
-  area.scrollTop = area.scrollHeight;
+  requestAnimationFrame(function() { area.scrollTop = area.scrollHeight; requestAnimationFrame(function() { area.scrollTop = area.scrollHeight; }); });
 }
 
 function sendMessage() {
@@ -4959,12 +4965,10 @@ function renderDetailMap(city, fullLocation) {
   if (!mapEl) return;
 
   if (detailMapInstance) {
-    try { detailMapInstance.remove(); } catch(e) {}
+    detailMapInstance.remove();
     detailMapInstance = null;
     detailMapMarker   = null;
   }
-  // Скинути innerHTML щоб Leaflet не бачив вже ініціалізований контейнер
-  if (mapEl) { mapEl.innerHTML = ''; }
 
   _loadLeaflet(function() {
     const known = CITY_COORDS[city];
