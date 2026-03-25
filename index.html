@@ -1460,11 +1460,8 @@
               <div class="pstat-l">Обраних</div>
             </div>
           </div>
-          <!-- Actions — inline on desktop, full-width on mobile -->
+          <!-- Actions -->
           <div class="profile-actions">
-            <button class="btn-primary profile-btn-edit" onclick="switchPTab('settings', document.querySelectorAll('.ptab')[2])">
-              <i class="fa-solid fa-pen"></i> Редагувати
-            </button>
             <button class="btn-outline profile-btn-logout" onclick="doLogout()">
               <i class="fa-solid fa-right-from-bracket"></i> Вийти
             </button>
@@ -1475,16 +1472,13 @@
       <!-- Tabs -->
       <div class="profile-tabs">
         <button class="ptab active" onclick="switchPTab('my',this)">
-          <i class="fa-solid fa-grid-2" style="margin-right:6px;font-size:12px"></i>Мої оголошення
+          <i class="fa-solid fa-grid-2" style="margin-right:6px;font-size:12px"></i>Оголошення
         </button>
         <button class="ptab" onclick="switchPTab('favs',this)">
           <i class="fa-solid fa-heart" style="margin-right:6px;font-size:12px"></i>Обране
         </button>
-        <button class="ptab" onclick="switchPTab('history',this)">
-          <i class="fa-solid fa-clock-rotate-left" style="margin-right:6px;font-size:12px"></i>Історія
-        </button>
         <button class="ptab" onclick="switchPTab('settings',this)">
-          <i class="fa-solid fa-sliders" style="margin-right:6px;font-size:12px"></i>Налаштування
+          <i class="fa-solid fa-pen" style="margin-right:6px;font-size:12px"></i>Редагувати
         </button>
         <button class="ptab" onclick="switchPTab('myservice',this)">
           <i class="fa-solid fa-wrench" style="margin-right:6px;font-size:12px"></i>Мій сервіс
