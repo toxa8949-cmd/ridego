@@ -42,6 +42,7 @@ const COPY_FILES = [
   'favicon.svg',
   'favicon.ico',
   'sitemap.xml',
+  'ridego-admin.html',
 ];
 
 COPY_FILES.forEach(f => {
