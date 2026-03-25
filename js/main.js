@@ -4495,7 +4495,7 @@ function openChatById(chatId) {
   if (headerAva) headerAva.textContent = (name[0] || '?').toUpperCase();
 
   var layout = document.querySelector('.messages-layout');
-  if (layout && window.innerWidth <= 900) {
+  if (layout && window.innerWidth <= 700) {
     layout.classList.add('chat-open');
   }
 
@@ -4508,28 +4508,49 @@ function openChatById(chatId) {
   }
 
   var area = document.getElementById('messages-area');
-  if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Завантаження...</div>';
+
+  function _dbg(msg) {
+    if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px">' + msg + '</div>';
+  }
+
+  _dbg('Завантаження...');
 
   if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
 
-  if (window._rtdb) {
+  function _getChatData() {
+    return _fbChats.find(function(x){ return x.id === chatId; }) || c;
+  }
+
+  function _doSubscribe() {
+    if (!window._auth) { _dbg('⏳ чекаємо _auth...'); setTimeout(_doSubscribe, 300); return; }
+    if (!window._rtdb) { _dbg('⏳ чекаємо _rtdb...'); setTimeout(_doSubscribe, 300); return; }
+
+    var user = window._auth.currentUser;
+    if (!user) {
+      _dbg('⏳ чекаємо авторизацію...');
+      var unsubAuth = window._auth.onAuthStateChanged(function(u) {
+        unsubAuth();
+        if (u) { _doSubscribe(); }
+        else { _dbg('❌ не залогінений'); }
+      });
+      return;
+    }
+
+    _dbg('🔗 підключаємось... uid=' + user.uid.slice(0,6));
+
     var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
     var _rtdbCallback = msgsRef.on('value', function(snap) {
       var msgs = [];
       if (snap && snap.forEach) {
         snap.forEach(function(child) { msgs.push(child.val()); });
       }
-      _renderMessages(msgs, c);
+      _renderMessages(msgs, _getChatData());
+    }, function(err) {
+      _dbg('❌ RTDB error: ' + err.code + ' — ' + err.message);
     });
     _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
-  } else if (window._db) {
-    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
-      .collection('messages').onSnapshot(function(snap) {
-        var msgs = snap.docs.map(function(d){ return d.data(); });
-        msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
-        _renderMessages(msgs, c);
-      });
   }
+  _doSubscribe();
 
   renderChats();
 }
