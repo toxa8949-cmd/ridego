@@ -127,6 +127,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/config",
+      "destination": "/api/config"
+    },
+    {
       "source": "/manifest.json",
       "destination": "/manifest.json"
     },
@@ -219,5 +223,8 @@
       "destination": "/index.html"
     }
   ],
-  "redirects": []
+  "redirects": [],
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "installCommand": null
 }
