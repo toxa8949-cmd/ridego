@@ -4495,7 +4495,7 @@ function openChatById(chatId) {
   if (headerAva) headerAva.textContent = (name[0] || '?').toUpperCase();
 
   var layout = document.querySelector('.messages-layout');
-  if (layout && window.innerWidth <= 700) {
+  if (layout && window.innerWidth <= 900) {
     layout.classList.add('chat-open');
   }
 
@@ -4512,46 +4512,24 @@ function openChatById(chatId) {
 
   if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
 
-  // Якщо _fbChats ще не завантажений — оновити c після завантаження
-  function _getChatData() {
-    return _fbChats.find(function(x){ return x.id === chatId; }) || c;
-  }
-
-  // Чекаємо на _rtdb (може бути null якщо Firebase ще ініціалізується async)
-  function _waitRtdb(attempts) {
-    if (attempts <= 0) {
-      // Fallback — Firestore якщо rtdb так і не з'явився
-      if (window._db) {
-        _chatUnsubscribe = window._db.collection('chats').doc(chatId)
-          .collection('messages').onSnapshot(function(snap) {
-            var msgs = snap.docs.map(function(d){ return d.data(); });
-            msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
-            _renderMessages(msgs, _getChatData());
-          }, function(e) {
-            var a = document.getElementById('messages-area');
-            if (a) a.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Помилка: ' + e.message + '</div>';
-          });
+  if (window._rtdb) {
+    var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
+    var _rtdbCallback = msgsRef.on('value', function(snap) {
+      var msgs = [];
+      if (snap && snap.forEach) {
+        snap.forEach(function(child) { msgs.push(child.val()); });
       }
-      return;
-    }
-    if (window._rtdb) {
-      var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
-      var _rtdbCallback = msgsRef.on('value', function(snap) {
-        var msgs = [];
-        if (snap && snap.forEach) {
-          snap.forEach(function(child) { msgs.push(child.val()); });
-        }
-        _renderMessages(msgs, _getChatData());
-      }, function(e) {
-        var a = document.getElementById('messages-area');
-        if (a) a.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Помилка з'єднання</div>';
+      _renderMessages(msgs, c);
+    });
+    _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
+  } else if (window._db) {
+    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
+      .collection('messages').onSnapshot(function(snap) {
+        var msgs = snap.docs.map(function(d){ return d.data(); });
+        msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
+        _renderMessages(msgs, c);
       });
-      _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
-    } else {
-      setTimeout(function() { _waitRtdb(attempts - 1); }, 300);
-    }
   }
-  _waitRtdb(10); // чекаємо до 3 секунд (10 × 300мс)
 
   renderChats();
 }
@@ -4603,11 +4581,7 @@ function _renderMessages(msgs, chat) {
   }).join('');
 
   area.innerHTML = html;
-  // iOS Safari і Android Chrome потребують RAF щоб scrollHeight був актуальним
-  requestAnimationFrame(function() {
-    area.scrollTop = area.scrollHeight;
-    requestAnimationFrame(function() { area.scrollTop = area.scrollHeight; });
-  });
+  area.scrollTop = area.scrollHeight;
 }
 
 function sendMessage() {
