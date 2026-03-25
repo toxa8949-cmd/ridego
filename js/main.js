@@ -4959,10 +4959,12 @@ function renderDetailMap(city, fullLocation) {
   if (!mapEl) return;
 
   if (detailMapInstance) {
-    detailMapInstance.remove();
+    try { detailMapInstance.remove(); } catch(e) {}
     detailMapInstance = null;
     detailMapMarker   = null;
   }
+  // Скинути innerHTML щоб Leaflet не бачив вже ініціалізований контейнер
+  if (mapEl) { mapEl.innerHTML = ''; }
 
   _loadLeaflet(function() {
     const known = CITY_COORDS[city];
