@@ -98,20 +98,13 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script>
+  // Firebase config завантажується з сервера (ключі в Vercel Env Vars)
   (function() {
-    var cfg = {
-      apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
-      authDomain: "ridego-6f981.firebaseapp.com",
-      databaseURL: "https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "ridego-6f981",
-      storageBucket: "ridego-6f981.firebasestorage.app",
-      messagingSenderId: "769845611953",
-      appId: "1:769845611953:web:d21b7cf32f5fae84888190"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(cfg);
-    window._auth = firebase.auth();
-    window._db   = firebase.firestore();
-    window._rtdb = firebase.database();
+    function _initFirebase(cfg) {
+      if (!firebase.apps.length) firebase.initializeApp(cfg);
+      window._auth = firebase.auth();
+      window._db   = firebase.firestore();
+      window._rtdb = firebase.database();
 
     // Auth state — відновлення сесії
     var _authInitialized = false;
@@ -228,7 +221,27 @@
     var presenceRef = window._rtdb.ref('presence/' + Math.random().toString(36).slice(2));
     presenceRef.set({ t: Date.now() });
     presenceRef.onDisconnect().remove();
+    }
 
+    // Завантажити конфіг з сервера
+    fetch('/api/config', { cache: 'no-store' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('Config ' + r.status);
+        return r.json();
+      })
+      .then(function(cfg) {
+        _initFirebase(cfg);
+      })
+      .catch(function(err) {
+        console.error('Firebase config fetch failed:', err);
+        document.body.innerHTML =
+          '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:Inter,sans-serif;text-align:center;gap:16px;padding:32px">' +
+          '<div style="font-size:48px">⚠️</div>' +
+          '<h2 style="margin:0">Помилка підключення</h2>' +
+          '<p style="color:#888;margin:0">Спробуйте оновити сторінку</p>' +
+          '<button onclick="location.reload()" style="padding:12px 28px;background:#00c853;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Оновити</button>' +
+          '</div>';
+      });
 
   })();
   </script>
