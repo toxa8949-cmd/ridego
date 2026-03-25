@@ -692,13 +692,20 @@
   }
   .profile-tabs::-webkit-scrollbar { display: none; }
   .ptab {
-    flex: 1; padding: 12px 8px; font-weight: 600; font-size: 13px;
-    border: none; background: none; color: var(--text-muted);
-    cursor: pointer; border-bottom: 2.5px solid transparent;
-    transition: all .2s; font-family: 'Inter', sans-serif;
-    white-space: nowrap; margin-bottom: -1px;
+    flex: 1;
+    padding: 14px 8px;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: all .2s;
+    font-family: 'Inter', sans-serif;
+    white-space: nowrap;
+    margin-bottom: -1px;
     text-align: center;
-    flex-shrink: 0;
   }
   .ptab.active { color: var(--brand); border-bottom-color: var(--brand); }
   .ptab:hover { color: var(--text); }
@@ -896,7 +903,7 @@
   .btn-messages:hover { background:var(--brand-dark); transform:translateY(-1px); }
   .btn-messages i { font-size:15px; }
   .header-msg-badge { position:absolute; top:-4px; right:-4px; background:#ff4757; color:#fff; font-size:9px; font-weight:800; min-width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0 3px; border:2px solid var(--dark2); }
-  @media(max-width:768px) { .mobile-nav { display:block; } nav, .search-wrap { display:none !important; } body { padding-bottom:60px; } .messages-layout { height:calc(100vh - 130px); } }
+  @media(max-width:900px) { .mobile-nav { display:block; } nav, .search-wrap { display:none !important; } body { padding-bottom:60px; } .messages-layout { height:calc(100vh - 130px); } }
 
   .mobile-search-btn { display: none; }
   .mobile-msg-btn { display: none; }
@@ -1623,7 +1630,8 @@
   @media(max-width:400px){
     .profile-pic { width: 60px; height: 60px; font-size: 20px; }
     .profile-name { font-size: 16px; }
-    .ptab { padding: 10px 12px; font-size: 12px; }
+    .ptab { padding: 12px 4px; font-size: 11px; }
+    .ptab i { display: inline; margin-right: 0 !important; }
     .type-card-title { font-size: 12px; }
     .profile-stats { gap: 10px; }
     .pstat-num { font-size: 16px; }
@@ -2602,15 +2610,14 @@
 .footer-socials { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .footer-social-btn {
-  width: 38px; height: 38px; border-radius: 10px;
+  width: 44px; height: 44px; border-radius: 12px;
   background: var(--dark3); border: 1px solid var(--border);
-  color: var(--text-muted); display: flex; align-items: center;
-  justify-content: center; font-size: 16px; text-decoration: none;
+  display: flex; align-items: center;
+  justify-content: center; font-size: 20px; text-decoration: none;
   transition: all .2s;
-
 }
-
-.footer-social-btn:hover { background: var(--brand); color: #000; border-color: var(--brand); }
+.footer-social-btn span { display: flex; align-items: center; justify-content: center; }
+.footer-social-btn:hover { background: var(--brand-dim); border-color: var(--brand); transform: translateY(-2px); }
 
 .footer-col { display: flex; flex-direction: column; gap: 10px; }
 
@@ -3149,4 +3156,17 @@ body.light .mnav-item:hover {
 }
 body.light .mnav-item span {
   color: inherit;
+}
+
+/* Mobile nav SVG icons */
+.mnav-item svg {
+  flex-shrink: 0;
+  display: block;
+}
+.mnav-item span {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  line-height: 1;
 }
