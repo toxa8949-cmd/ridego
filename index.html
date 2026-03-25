@@ -67,8 +67,10 @@
 <!-- Leaflet CSS — критичний тільки для карт -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"></noscript>
-<!-- Font Awesome — defer через preload trick -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Font Awesome — синхронно + preload шрифту -->
+<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <!-- Leaflet JS — defer -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <!-- QRCode — defer, завантажується лише при потребі -->
@@ -280,14 +282,28 @@
 <!-- ===== MOBILE NAV ===== -->
 <div class="mobile-nav">
   <div class="mobile-nav-inner">
-    <button class="mnav-item" onclick="showPage('home')"><i class="fa-solid fa-house"></i><span>Головна</span></button>
-    <button class="mnav-item" onclick="showPage('catalog')"><i class="fa-solid fa-list"></i><span>Каталог</span></button>
+    <button class="mnav-item" onclick="showPage('home')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Головна</span>
+    </button>
+    <button class="mnav-item" onclick="showPage('catalog')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>Каталог</span>
+    </button>
     <button class="mnav-fab" onclick="showPage('add')">
-      <div class="mnav-fab-circle"><i class="fa-solid fa-plus"></i></div>
+      <div class="mnav-fab-circle">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
       <span class="mnav-fab-label">Додати</span>
     </button>
-    <button class="mnav-item" onclick="showPage('services')"><i class="fa-solid fa-wrench"></i><span>Сервіси</span></button>
-    <button class="mnav-item" onclick="showPage('profile')"><i class="fa-solid fa-user"></i><span>Профіль</span></button>
+    <button class="mnav-item" onclick="showPage('services')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.07"/></svg>
+      <span>Сервіси</span>
+    </button>
+    <button class="mnav-item" onclick="showPage('profile')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Профіль</span>
+    </button>
   </div>
 </div>
 
