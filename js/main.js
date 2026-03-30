@@ -1270,8 +1270,8 @@ function createHomeSvcCard(s) {
     )
     +"<div style=\"flex:1;min-width:0\">"
     +"<div style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">"
-    +"<div class=\"home-svc-name\">"+_esc(s.name||'')+"</div>"+badge+"</div>"
-    +"<div class=\"home-svc-city\">📍 "+_esc(s.city||'')+( s.address?" · "+_esc(s.address):"")+"</div>"
+    +"<div class=\"home-svc-name\">"+s.name+"</div>"+badge+"</div>"
+    +"<div class=\"home-svc-city\">📍 "+(s.city||"")+(s.address?" \u00b7 "+s.address:"")+"</div>"
     +"</div></div>"
     +"<div class=\"home-svc-cats\">"+cats+"</div>"
     +(preview ? "<div class=\"home-svc-services\">"+preview+"</div>" : "")
@@ -2166,13 +2166,7 @@ function _renderSellerByUid(uid) {
         var lines = [];
         if (d.phone) lines.push('<a href="tel:' + d.phone + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:500"><i class="fa-solid fa-phone" style="color:var(--brand);width:16px"></i>' + _esc(d.phone) + '</a>');
         if (d.email) lines.push('<a href="mailto:' + d.email + '" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-size:14px"><i class="fa-solid fa-envelope" style="color:var(--brand);width:16px"></i>' + _esc(d.email) + '</a>');
-        if (d.website) {
-          var _safeWebsite = d.website.trim();
-          if (!/^javascript:/i.test(_safeWebsite)) {
-            if (!/^https?:\/\//i.test(_safeWebsite)) _safeWebsite = 'https://' + _safeWebsite;
-            lines.push('<a href="' + _esc(_safeWebsite) + '" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;color:var(--brand);text-decoration:none;font-size:14px"><i class="fa-solid fa-globe" style="width:16px"></i>' + _esc(d.website.replace(/^https?:\/\//, '')) + '</a>');
-          }
-        }
+        if (d.website) lines.push('<a href="' + d.website + '" target="_blank" style="display:flex;align-items:center;gap:10px;color:var(--brand);text-decoration:none;font-size:14px"><i class="fa-solid fa-globe" style="width:16px"></i>' + d.website.replace(/^https?:\/\//, '') + '</a>');
         contactsEl.innerHTML = lines.join('') || '<span style="font-size:13px;color:var(--text-muted)">Контакти не вказані</span>';
       }
 
@@ -5868,9 +5862,9 @@ function createServiceCard(s){
     )+
     "<div class=\"service-card-body\">"+
     "<div class=\"service-card-cats\">"+cats+"</div>"+
-    "<div class=\"service-card-name\">"+_esc(s.name||'')+"</div>"+
-    "<div class=\"service-card-city\"><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand)\"></i>"+_esc(s.city||'')+_esc(addr)+"</div>"+
-    "<div class=\"service-card-desc\">"+_esc(s.desc||'')+"</div>"+
+    "<div class=\"service-card-name\">"+s.name+"</div>"+
+    "<div class=\"service-card-city\"><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand)\"></i>"+s.city+addr+"</div>"+
+    "<div class=\"service-card-desc\">"+s.desc+"</div>"+
     "<div class=\"service-card-services\">"+prev+"</div>"+
     "<div class=\"service-card-footer\">"+
     "<div class=\"service-card-rating\"><span style=\"color:#ffa726\">"+stars+"</span> "+rating+"</div>"+
@@ -5982,8 +5976,8 @@ function _buildSvcDetailBody(s){
   var reviewsTxt=s.reviews>0?"\u043d\u0430 \u043e\u0441\u043d\u043e\u0432\u0456 "+s.reviews+" \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432":"\u041f\u043e\u043a\u0438 \u043d\u0435\u043c\u0430\u0454 \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432";
   var socialBlock="";
   if(s.telegram||s.instagram){
-    var tgLine=s.telegram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf1 "+s.telegram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#2ca5e020;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-telegram\" style=\"color:#2ca5e0\"></i></div>"+_esc(s.telegram||'')+'</div>":"";
-    var igLine=s.instagram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf8 "+s.instagram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#e1306c20;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-instagram\" style=\"color:#e1306c\"></i></div>"+_esc(s.instagram||'')+'</div>":"";
+    var tgLine=s.telegram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf1 "+s.telegram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#2ca5e020;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-telegram\" style=\"color:#2ca5e0\"></i></div>"+s.telegram+"</div>":"";
+    var igLine=s.instagram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf8 "+s.instagram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#e1306c20;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-instagram\" style=\"color:#e1306c\"></i></div>"+s.instagram+"</div>":"";
     socialBlock="<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px\"><div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px\">\u0421\u043e\u0446\u043c\u0435\u0440\u0435\u0436\u0456</div><div style=\"display:flex;flex-direction:column;gap:10px\">"+tgLine+igLine+"</div></div>";
   }
 
@@ -5999,7 +5993,7 @@ function _buildSvcDetailBody(s){
   return "<div style=\"display:flex;flex-direction:column;gap:20px\">"+
     "<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:24px\">"+
     "<div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-circle-info\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u0440\u043e \u0441\u0435\u0440\u0432\u0456\u0441</div>"+
-    "<p style=\"font-size:14px;line-height:1.8;color:var(--text-muted)\">"+_esc(s.desc||'')+'</p></div>"\+
+    "<p style=\"font-size:14px;line-height:1.8;color:var(--text-muted)\">"+s.desc+"</p></div>"+
     "<div><div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-list-check\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u043e\u0441\u043b\u0443\u0433\u0438 \u0442\u0430 \u0446\u0456\u043d\u0438</div>"+
     "<div class=\"service-services-list\">"+svcList+"</div></div></div>"+
     "<div style=\"display:flex;flex-direction:column;gap:16px\">"+
@@ -7776,6 +7770,7 @@ var IMPORT_COLS = [
   { key: 'range',     label: 'Запас ходу',    required: false },
   { key: 'year',      label: 'Рік',           required: false },
   { key: 'bargain',   label: 'Торг/Обмін',    required: false },
+  { key: 'photos',    label: 'Фото (URL через |)', required: false },
 ];
 
 var VALID_CATS = [
@@ -8108,49 +8103,87 @@ function _submitImport() {
     }
 
     var row = valid[i];
-    var fbListing = {
-      title:      row.title.substring(0, 200),
-      price:      row.price || 0,
-      cat:        row.cat || '',
-      city:       (row.city || '').substring(0, 100),
-      condition:  row.condition || 'Хороший',
-      desc:       (row.desc || '').substring(0, 2000),
-      battery:    (row.battery || '').substring(0, 50),
-      speed:      (row.speed || '').substring(0, 50),
-      range:      (row.range || '').substring(0, 50),
-      year:       row.year || '',
-      bargain:    row.bargain || '',
-      badge:      '',
-      icon:       '',
-      img:        '',
-      imgs:       [],
-      specs:      {},
-      time:       new Date().toLocaleDateString('uk-UA'),
-      seller:     (currentUser.name || '').substring(0, 100),
-      sellerName: (currentUser.name || '').substring(0, 100),
-      sellerEmail:(currentUser.email || '').substring(0, 200),
-      uid:        currentUser.uid,
-      createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
-      expiresAt:  firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
-      status:     'active'
-    };
+    // Завантажити фото з URL на Cloudinary
+    function _uploadPhotoUrls(urls, cb) {
+      if (!urls || !urls.length) { cb([]); return; }
+      var results = [];
+      var idx = 0;
+      function _next() {
+        if (idx >= urls.length || idx >= 10) { cb(results); return; }
+        var url = urls[idx++].trim();
+        if (!url) { _next(); return; }
+        // Завантажити через Cloudinary upload by URL
+        var fd = new FormData();
+        fd.append('file', url);
+        fd.append('upload_preset', 'ridego_unsigned');
+        fd.append('folder', 'ridego');
+        fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
+          method: 'POST', body: fd
+        }).then(function(r){ return r.json(); })
+          .then(function(d){
+            if (d.secure_url) results.push(d.secure_url);
+            _next();
+          }).catch(function(){ _next(); });
+      }
+      _next();
+    }
 
-    window._db.collection('listings').add(fbListing)
+    var photoUrls = row.photos ? row.photos.split('|').map(function(u){ return u.trim(); }).filter(Boolean) : [];
+
+    function _saveListing(uploadedPhotos) {
+      var fbListing = {
+        title:      row.title.substring(0, 200),
+        price:      row.price || 0,
+        cat:        row.cat || '',
+        city:       (row.city || '').substring(0, 100),
+        condition:  row.condition || 'Хороший',
+        desc:       (row.desc || '').substring(0, 2000),
+        battery:    (row.battery || '').substring(0, 50),
+        speed:      (row.speed || '').substring(0, 50),
+        range:      (row.range || '').substring(0, 50),
+        year:       row.year || '',
+        bargain:    row.bargain || '',
+        badge:      '',
+        icon:       '',
+        img:        uploadedPhotos[0] || '',
+        imgs:       uploadedPhotos,
+        photos:     uploadedPhotos,
+        specs:      {},
+        time:       new Date().toLocaleDateString('uk-UA'),
+        seller:     (currentUser.name || '').substring(0, 100),
+        sellerName: (currentUser.name || '').substring(0, 100),
+        sellerEmail:(currentUser.email || '').substring(0, 200),
+        uid:        currentUser.uid,
+        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+        expiresAt:  firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
+        status:     'active'
+      };
+
+      window._db.collection('listings').add(fbListing)
       .then(function(ref) {
-        done++;
-        fbListing.id = ref.id;
-        _fbListings.unshift(fbListing);
-        _consumeSlot();
-        // Оновити прогрес
-        var btn2 = document.getElementById('import-submit-btn');
-        if (btn2) btn2.textContent = 'Імпортуємо... ' + (i+1) + '/' + total;
-        setTimeout(function(){ _next(i+1); }, 300); // 300ms між записами щоб не перевантажити
-      })
-      .catch(function(e) {
-        failed++;
-        console.error('Import error row ' + (i+1) + ':', e.message);
-        setTimeout(function(){ _next(i+1); }, 300);
-      });
+          done++;
+          fbListing.id = ref.id;
+          _fbListings.unshift(fbListing);
+          _consumeSlot();
+          var btn2 = document.getElementById('import-submit-btn');
+          if (btn2) btn2.textContent = 'Імпортуємо... ' + (i+1) + '/' + total;
+          setTimeout(function(){ _next(i+1); }, 300);
+        })
+        .catch(function(e) {
+          failed++;
+          console.error('Import error row ' + (i+1) + ':', e.message);
+          setTimeout(function(){ _next(i+1); }, 300);
+        });
+    }
+
+    // Спочатку завантажуємо фото, потім зберігаємо оголошення
+    if (photoUrls.length) {
+      var btn2 = document.getElementById('import-submit-btn');
+      if (btn2) btn2.textContent = 'Завантаження фото ' + (i+1) + '/' + total + '...';
+      _uploadPhotoUrls(photoUrls, _saveListing);
+    } else {
+      _saveListing([]);
+    }
   }
   _next(0);
 }
@@ -8159,8 +8192,8 @@ function _submitImport() {
 function _downloadImportTemplate() {
   var headers = IMPORT_COLS.map(function(c){ return c.label.replace('*',''); }).join(';');
   var example = [
-    'Електросамокат Kugoo S3 Pro;15000;Електросамокати;Хороший;Київ;Хороший стан мінімальний пробіг;7.5 Ah;30 км/год;25 км;2022;Торг',
-    'Велосипед Trek 820;8500;Велосипеди;Відмінний;Львів;;;"";;"";2023;',
+    'Електросамокат Kugoo S3 Pro;15000;Електросамокати;Хороший;Київ;Хороший стан мінімальний пробіг;7.5 Ah;30 км/год;25 км;2022;Торг;https://example.com/photo1.jpg|https://example.com/photo2.jpg',
+    'Велосипед Trek 820;8500;Велосипеди;Відмінний;Львів;;;"";;"";2023;;',
   ].join('\n');
   var csv = headers + '\n' + example;
   var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
