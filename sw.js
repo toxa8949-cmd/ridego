@@ -1,25 +1,18 @@
 // RideGO Service Worker
-const CACHE_NAME = 'ridego-v3';
-const CACHE_STATIC = 'ridego-static-v3';
+const CACHE_NAME = 'ridego-v5';
+const CACHE_STATIC = 'ridego-static-v5';
 
-// Файли що кешуємо при встановленні
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/main.css',
-  '/js/main.js',
-  '/js/extra.js',
   '/favicon.svg',
   '/favicon.ico',
   '/manifest.json'
 ];
 
-// ── INSTALL ──────────────────────────────────────────────────
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_STATIC).then(function(cache) {
-      // addAll може зфейлитись якщо хоч один файл не знайдено
-      // тому додаємо по одному щоб не ламати весь SW
       return Promise.allSettled(
         STATIC_ASSETS.map(function(url) {
           return cache.add(url).catch(function(err) {
@@ -33,7 +26,6 @@ self.addEventListener('install', function(e) {
   );
 });
 
-// ── ACTIVATE ─────────────────────────────────────────────────
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
@@ -41,6 +33,7 @@ self.addEventListener('activate', function(e) {
         keys.filter(function(k) {
           return k !== CACHE_STATIC && k !== CACHE_NAME;
         }).map(function(k) {
+          console.log('[SW] Deleting old cache:', k);
           return caches.delete(k);
         })
       );
@@ -50,58 +43,53 @@ self.addEventListener('activate', function(e) {
   );
 });
 
-// ── FETCH ─────────────────────────────────────────────────────
 self.addEventListener('fetch', function(e) {
   var req = e.request;
   var url = new URL(req.url);
 
-  // Тільки GET запити
   if (req.method !== 'GET') return;
 
-  // Firebase, Cloudinary, Nominatim — завжди мережа (не кешуємо API)
   var skipCache = [
-    'firebaseio.com',
-    'googleapis.com',
-    'cloudfunctions.net',
-    'cloudinary.com',
-    'nominatim.openstreetmap.org',
-    'identitytoolkit.googleapis.com',
-    'securetoken.googleapis.com',
-    'api.qrserver.com',
-    'cdnjs.cloudflare.com',  // Font Awesome, Leaflet — завжди з CDN, не кешуємо
-    'fonts.googleapis.com',  // Google Fonts CSS — не кешуємо
-    'fonts.gstatic.com'      // Google Fonts woff2 — браузер сам кешує
+    'firebaseio.com', 'googleapis.com', 'cloudfunctions.net',
+    'cloudinary.com', 'nominatim.openstreetmap.org',
+    'identitytoolkit.googleapis.com', 'securetoken.googleapis.com',
+    'api.qrserver.com', 'cdnjs.cloudflare.com',
+    'fonts.googleapis.com', 'fonts.gstatic.com', 'exchangerate-api.com'
   ];
-  if (skipCache.some(function(d) { return url.hostname.includes(d); })) {
-    return; // дозволяємо браузеру обробити
-  }
+  if (skipCache.some(function(d) { return url.hostname.includes(d); })) return;
 
-  // Зображення з Cloudinary — кешуємо
   if (url.hostname === 'res.cloudinary.com') {
     e.respondWith(
       caches.open(CACHE_NAME).then(function(cache) {
         return cache.match(req).then(function(cached) {
           if (cached) return cached;
           return fetch(req).then(function(resp) {
-            if (resp && resp.status === 200) {
-              cache.put(req, resp.clone());
-            }
+            if (resp && resp.status === 200) cache.put(req, resp.clone());
             return resp;
-          }).catch(function() {
-            return cached || new Response('', { status: 408 });
-          });
+          }).catch(function() { return cached || new Response('', { status: 408 }); });
         });
       })
     );
     return;
   }
 
-  // Навігація (HTML сторінки) — Network first, fallback до /index.html
+  // JS і CSS — ЗАВЖДИ З МЕРЕЖІ, ніколи не кешуємо
+  if (url.pathname.match(/\.(js|css)$/)) {
+    e.respondWith(
+      fetch(req).catch(function() {
+        return caches.match(req).then(function(c) {
+          return c || new Response('', { status: 408 });
+        });
+      })
+    );
+    return;
+  }
+
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req).catch(function() {
         return caches.match('/index.html').then(function(cached) {
-          return cached || new Response('<h1>Немає з\'єднання з інтернетом</h1>', {
+          return cached || new Response('<h1>Немає з\'єднання</h1>', {
             headers: { 'Content-Type': 'text/html; charset=utf-8' }
           });
         });
@@ -110,45 +98,31 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  // Статичні ресурси (JS, CSS, шрифти) — Cache first
-  if (url.pathname.match(/\.(js|css|woff2?|ttf|svg|ico|png|webp)$/)) {
+  if (url.pathname.match(/\.(woff2?|ttf|svg|ico|png|webp|jpg|jpeg)$/)) {
     e.respondWith(
       caches.match(req).then(function(cached) {
         if (cached) return cached;
         return fetch(req).then(function(resp) {
           if (resp && resp.status === 200) {
-            caches.open(CACHE_STATIC).then(function(cache) {
-              cache.put(req, resp.clone());
-            });
+            caches.open(CACHE_STATIC).then(function(cache) { cache.put(req, resp.clone()); });
           }
           return resp;
-        }).catch(function() {
-          return cached || new Response('', { status: 408 });
-        });
+        }).catch(function() { return cached || new Response('', { status: 408 }); });
       })
     );
     return;
   }
 
-  // Решта — Network first
-  e.respondWith(
-    fetch(req).catch(function() {
-      return caches.match(req);
-    })
-  );
+  e.respondWith(fetch(req).catch(function() { return caches.match(req); }));
 });
 
-// ── PUSH NOTIFICATIONS ────────────────────────────────────────
 self.addEventListener('push', function(e) {
   if (!e.data) return;
   var data = e.data.json();
   e.waitUntil(
     self.registration.showNotification(data.title || 'RideGO', {
-      body: data.body || '',
-      icon: '/favicon.svg',
-      badge: '/favicon.svg',
-      tag: data.tag || 'ridego',
-      data: { url: data.url || '/' }
+      body: data.body || '', icon: '/favicon.svg', badge: '/favicon.svg',
+      tag: data.tag || 'ridego', data: { url: data.url || '/' }
     })
   );
 });
