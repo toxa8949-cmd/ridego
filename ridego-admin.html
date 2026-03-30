@@ -1318,7 +1318,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 // ═══════════════════════════════════════════════
 // DEMO DATA
 // ═══════════════════════════════════════════════
-const ADMIN_CREDS = { login: 'admin', pass: 'ridego2024' };
+// Авторизація через Firebase Auth — пароль більше не зберігається в коді
 
 // ═══ FIREBASE INIT ═══════════════════════════════
 var _db = null;
@@ -1652,17 +1652,36 @@ const CHART_DATA = {
 // AUTH
 // ═══════════════════════════════════════════════
 function doLogin() {
-  var u = document.getElementById('login-user').value.trim();
-  var p = document.getElementById('login-pass').value;
-  if (u === ADMIN_CREDS.login && p === ADMIN_CREDS.pass) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').classList.add('shown');
-    initApp();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('login-pass').value = '';
-    setTimeout(function(){ document.getElementById('login-error').style.display = 'none'; }, 3000);
-  }
+  var email = document.getElementById('login-user').value.trim();
+  var pass  = document.getElementById('login-pass').value;
+  var btn   = document.querySelector('.login-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Вхід...'; }
+
+  firebase.auth().signInWithEmailAndPassword(email, pass)
+    .then(function(cred) {
+      // Перевіряємо чи є uid в колекції admins
+      return firebase.firestore()
+        .collection('admins').doc(cred.user.uid).get();
+    })
+    .then(function(snap) {
+      if (!snap.exists) {
+        firebase.auth().signOut();
+        throw new Error('Немає прав адміна');
+      }
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').classList.add('shown');
+      initApp();
+    })
+    .catch(function(e) {
+      var errEl = document.getElementById('login-error');
+      if (errEl) {
+        errEl.textContent = e.code === 'auth/invalid-credential' ? 'Невірний email або пароль' : e.message;
+        errEl.style.display = 'block';
+        setTimeout(function(){ errEl.style.display = 'none'; }, 4000);
+      }
+      document.getElementById('login-pass').value = '';
+      if (btn) { btn.disabled = false; btn.textContent = 'Увійти'; }
+    });
 }
 
 function doLogout() {
