@@ -4464,20 +4464,7 @@ function _formatChatTime(seconds) {
 }
 
 function openChatById(chatId) {
-  if (!chatId) return;
-  // Якщо auth ще не ініціалізований — чекаємо
-  if (!window._authInitialized) {
-    var _waitAuth = function() {
-      if (window._authInitialized) {
-        if (isLoggedIn) openChatById(chatId);
-      } else {
-        setTimeout(_waitAuth, 200);
-      }
-    };
-    setTimeout(_waitAuth, 200);
-    return;
-  }
-  if (!isLoggedIn) return;
+  if (!chatId || !isLoggedIn) return;
   _activeChatId = chatId;
   var c = _fbChats.find(function(x){ return x.id === chatId; });
 
@@ -4521,50 +4508,40 @@ function openChatById(chatId) {
   }
 
   var area = document.getElementById('messages-area');
-
-  function _dbg(msg) {
-    console.log('[CHAT DBG]', msg);
-    if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px">' + msg + '</div>';
-  }
-  _dbg('Ініціалізація...');
+  if (area) area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Завантаження...</div>';
 
   if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
 
-  function _getChatData() {
-    return _fbChats.find(function(x){ return x.id === chatId; }) || c;
-  }
-
-  function _doSubscribe() {
-    if (!window._auth)  { _dbg('⏳ чекаємо _auth...'); setTimeout(_doSubscribe, 200); return; }
-    if (!window._rtdb)  { _dbg('⏳ чекаємо _rtdb...'); setTimeout(_doSubscribe, 200); return; }
-
-    var user = window._auth.currentUser;
-    if (!user) {
-      _dbg('⏳ чекаємо currentUser...');
-      var unsubAuth = window._auth.onAuthStateChanged(function(u) {
-        unsubAuth();
-        if (u) { _doSubscribe(); }
-        else   { _dbg('❌ не авторизований'); }
-      });
-      return;
-    }
-
-    _dbg('🔗 uid=' + user.uid.slice(0,8) + ' chatId=' + chatId.slice(0,8));
-
+  if (window._rtdb) {
     var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
     var _rtdbCallback = msgsRef.on('value', function(snap) {
       var msgs = [];
-      if (snap && snap.forEach) {
-        snap.forEach(function(child) { msgs.push(child.val()); });
+      if (snap && snap.val()) {
+        var val = snap.val();
+        // Підтримка і об'єкту і масиву
+        if (typeof val === 'object') {
+          Object.keys(val).forEach(function(k) {
+            if (val[k] && typeof val[k] === 'object') {
+              msgs.push(val[k]);
+            }
+          });
+        }
+        // Сортуємо по часу
+        msgs.sort(function(a, b) {
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        });
       }
-      _dbg = function(){}; // вимкнути debug після першого отримання даних
-      _renderMessages(msgs, _getChatData());
-    }, function(err) {
-      _dbg('❌ ' + err.code + ': ' + err.message);
+      _renderMessages(msgs, c);
     });
     _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
+  } else if (window._db) {
+    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
+      .collection('messages').onSnapshot(function(snap) {
+        var msgs = snap.docs.map(function(d){ return d.data(); });
+        msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
+        _renderMessages(msgs, c);
+      });
   }
-  _doSubscribe();
 
   renderChats();
 }
