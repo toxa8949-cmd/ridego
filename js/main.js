@@ -4512,7 +4512,18 @@ function openChatById(chatId) {
 
   if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
 
-  if (window._rtdb) {
+  // Читаємо з Firestore — працює на всіх пристроях включно з мобільним Chrome
+  if (window._db) {
+    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
+      .collection('messages')
+      .orderBy('createdAt', 'asc')
+      .onSnapshot(function(snap) {
+        var msgs = snap.docs.map(function(d){ return d.data(); });
+        _renderMessages(msgs, c);
+      }, function(e) {
+        console.error('[chat read]', e.message);
+      });
+  } else if (window._rtdb) {
     var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
     var _rtdbCallback = msgsRef.on('value', function(snap) {
       var msgs = [];
@@ -4522,13 +4533,6 @@ function openChatById(chatId) {
       _renderMessages(msgs, c);
     });
     _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
-  } else if (window._db) {
-    _chatUnsubscribe = window._db.collection('chats').doc(chatId)
-      .collection('messages').onSnapshot(function(snap) {
-        var msgs = snap.docs.map(function(d){ return d.data(); });
-        msgs.sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
-        _renderMessages(msgs, c);
-      });
   }
 
   renderChats();
@@ -4610,6 +4614,18 @@ function sendMessage() {
     renderChats();
   }
 
+  // Зберігаємо в Firestore для надійного читання на всіх пристроях
+  if (window._db) {
+    var fsMsg = {
+      text: msg.text,
+      senderUid: msg.senderUid,
+      senderName: msg.senderName,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    window._db.collection('chats').doc(_activeChatId)
+      .collection('messages').add(fsMsg).catch(function(e){ console.error('[chat send fs]', e.message); });
+  }
+  // Також в RTDB для сумісності зі старими повідомленнями
   if (window._rtdb) {
     window._rtdb.ref('chats/' + _activeChatId + '/messages').push(msg);
     window._rtdb.ref('chats/' + _activeChatId).update({
