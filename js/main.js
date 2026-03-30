@@ -4514,26 +4514,57 @@ function openChatById(chatId) {
 
   if (window._rtdb) {
     var msgsRef = window._rtdb.ref('chats/' + chatId + '/messages');
+    var _gotData = false;
+
     var _rtdbCallback = msgsRef.on('value', function(snap) {
+      _gotData = true;
       var msgs = [];
       if (snap && snap.val()) {
         var val = snap.val();
-        // Підтримка і об'єкту і масиву
-        if (typeof val === 'object') {
-          Object.keys(val).forEach(function(k) {
-            if (val[k] && typeof val[k] === 'object') {
-              msgs.push(val[k]);
-            }
-          });
-        }
-        // Сортуємо по часу
-        msgs.sort(function(a, b) {
-          return (a.createdAt || 0) - (b.createdAt || 0);
+        Object.keys(val).forEach(function(k) {
+          if (val[k] && typeof val[k] === 'object') msgs.push(val[k]);
         });
+        msgs.sort(function(a, b) { return (a.createdAt||0) - (b.createdAt||0); });
       }
       _renderMessages(msgs, c);
+    }, function(err) {
+      console.error('[RTDB]', err.code, err.message);
     });
     _chatUnsubscribe = function() { msgsRef.off('value', _rtdbCallback); };
+
+    // Fallback: якщо WebSocket не дав даних за 3с — читаємо через REST
+    setTimeout(function() {
+      if (_gotData) return;
+      var dbUrl = 'https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app/chats/' + chatId + '/messages.json';
+      window._auth.currentUser.getIdToken().then(function(token) {
+        return fetch(dbUrl + '?auth=' + token);
+      }).then(function(r) { return r.json(); }).then(function(val) {
+        if (!val) { _renderMessages([], c); return; }
+        var msgs = [];
+        Object.keys(val).forEach(function(k) {
+          if (val[k] && typeof val[k] === 'object') msgs.push(val[k]);
+        });
+        msgs.sort(function(a, b) { return (a.createdAt||0) - (b.createdAt||0); });
+        _renderMessages(msgs, c);
+        // Запустити polling кожні 5с
+        var _pollInterval = setInterval(function() {
+          if (!_activeChatId || _activeChatId !== chatId) { clearInterval(_pollInterval); return; }
+          window._auth.currentUser && window._auth.currentUser.getIdToken().then(function(token) {
+            return fetch(dbUrl + '?auth=' + token);
+          }).then(function(r) { return r.json(); }).then(function(val2) {
+            if (!val2) return;
+            var msgs2 = [];
+            Object.keys(val2).forEach(function(k) {
+              if (val2[k] && typeof val2[k] === 'object') msgs2.push(val2[k]);
+            });
+            msgs2.sort(function(a, b) { return (a.createdAt||0) - (b.createdAt||0); });
+            _renderMessages(msgs2, c);
+          }).catch(function(){});
+        }, 5000);
+        var _origUnsub = _chatUnsubscribe;
+        _chatUnsubscribe = function() { clearInterval(_pollInterval); if(_origUnsub) _origUnsub(); };
+      }).catch(function(e) { console.error('REST fallback:', e); });
+    }, 3000);
   } else if (window._db) {
     _chatUnsubscribe = window._db.collection('chats').doc(chatId)
       .collection('messages').onSnapshot(function(snap) {
