@@ -1,6 +1,6 @@
 // RideGO Service Worker
-const CACHE_NAME = 'ridego-v2';
-const CACHE_STATIC = 'ridego-static-v2';
+const CACHE_NAME = 'ridego-v3';
+const CACHE_STATIC = 'ridego-static-v3';
 
 // Файли що кешуємо при встановленні
 const STATIC_ASSETS = [
