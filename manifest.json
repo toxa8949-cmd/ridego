@@ -29,7 +29,7 @@
     {
       "name": "Каталог",
       "short_name": "Каталог",
-      "url": "https://ridego.com.ua/catalog",
+      "url": "/catalog",
       "icons": [
         {
           "src": "/favicon.svg",
@@ -40,7 +40,7 @@
     {
       "name": "Додати оголошення",
       "short_name": "Додати",
-      "url": "https://ridego.com.ua/add",
+      "url": "/add",
       "icons": [
         {
           "src": "/favicon.svg",
@@ -51,7 +51,7 @@
     {
       "name": "Повідомлення",
       "short_name": "Чат",
-      "url": "https://ridego.com.ua/messages",
+      "url": "/messages",
       "icons": [
         {
           "src": "/favicon.svg",
