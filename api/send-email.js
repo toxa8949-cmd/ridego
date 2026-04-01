@@ -1,6 +1,10 @@
 // api/send-email.js — Vercel serverless function
 // Відправка email через Resend API
 
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 export default async function handler(req, res) {
   // Тільки POST
   if (req.method !== 'POST') {
@@ -37,7 +41,7 @@ export default async function handler(req, res) {
     </div>
     <!-- Body -->
     <div style="padding:40px">
-      <h2 style="margin:0 0 16px;font-size:22px;color:#111">Ласкаво просимо, ${data?.name || 'друже'}! 🎉</h2>
+      <h2 style="margin:0 0 16px;font-size:22px;color:#111">Ласкаво просимо, ${escHtml(data?.name || 'друже')}! 🎉</h2>
       <p style="margin:0 0 20px;color:#444;line-height:1.6;font-size:15px">
         Ваш акаунт на <strong>RideGO</strong> успішно створений. Тепер ви можете купувати, продавати та обмінюватись електросамокатами, велосипедами та іншим транспортом.
       </p>
@@ -60,7 +64,7 @@ export default async function handler(req, res) {
 
   // ── НОВЕ ПОВІДОМЛЕННЯ В ЧАТІ ───────────────────────────────
   else if (type === 'new_message') {
-    subject = `💬 Нове повідомлення від ${data?.senderName || 'користувача'} — RideGO`;
+    subject = `💬 Нове повідомлення від ${escHtml(data?.senderName || 'користувача')} — RideGO`;
     html = `
 <!DOCTYPE html>
 <html>
@@ -76,10 +80,10 @@ export default async function handler(req, res) {
     <div style="padding:40px">
       <h2 style="margin:0 0 16px;font-size:20px;color:#111">У вас нове повідомлення 💬</h2>
       <p style="margin:0 0 20px;color:#444;line-height:1.6;font-size:15px">
-        <strong>${data?.senderName || 'Користувач'}</strong> написав вам повідомлення${data?.listingTitle ? ` щодо оголошення <strong>"${data.listingTitle}"</strong>` : ''}:
+        <strong>${escHtml(data?.senderName || 'Користувач')}</strong> написав вам повідомлення${data?.listingTitle ? ` щодо оголошення <strong>"${escHtml(data.listingTitle)}"</strong>` : ''}:
       </p>
       <div style="background:#f8f8f8;border-left:4px solid #1db954;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 24px">
-        <p style="margin:0;color:#333;font-size:15px;line-height:1.6;font-style:italic">"${data?.message || ''}"</p>
+        <p style="margin:0;color:#333;font-size:15px;line-height:1.6;font-style:italic">"${escHtml(data?.message || '')}"</p>
       </div>
       <a href="https://ridego.com.ua/messages" style="display:inline-block;background:#1db954;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px">
         Відповісти →

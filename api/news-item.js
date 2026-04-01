@@ -27,7 +27,7 @@ async function getNewsFromFirestore(id) {
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
-  const id = req.url.replace('/api/news-item/', '').split('?')[0];
+  const id = req.url.replace('/api/news-item/', '').split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
 
   if (!isBot) {
     res.setHeader('Location', `${BASE}/news/${id}`);

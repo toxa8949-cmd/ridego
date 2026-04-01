@@ -46,8 +46,11 @@ module.exports = async (req, res) => {
     if (Array.isArray(listings)) {
       listings.forEach(item => {
         if (!item.document) return;
-        const id = item.document.name.split('/').pop();
         const f = item.document.fields || {};
+        // Пропускаємо sold та inactive
+        const status = f.status && f.status.stringValue || '';
+        if (status === 'sold' || status === 'inactive' || status === 'expired') return;
+        const id = item.document.name.split('/').pop();
         const date = f.createdAt && f.createdAt.timestampValue ? f.createdAt.timestampValue.slice(0,10) : '';
         const promo = f.promo && f.promo.stringValue || '';
         urls.push({ loc: `/listing/${id}`, priority: promo === 'top' ? '0.9' : '0.7', changefreq: 'weekly', lastmod: date });

@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
 
-  const slug = req.url.replace('/api/category/', '').replace('/category/', '').split('?')[0].trim();
+  const slug = req.url.replace('/api/category/', '').replace('/category/', '').split('?')[0].trim().replace(/[^a-zA-Z0-9_-]/g, '');
   const catInfo = CATEGORIES[slug];
 
   if (!isBot) {
