@@ -94,6 +94,19 @@ function _initNewUserSlots(uid) {
   _userSlots.slots = 0;
   _userSlots.slotsWelcome = 10;
   _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
+
+  // Відправити вітальний email
+  if (currentUser && currentUser.email) {
+    fetch('/api/send-email', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        type: 'welcome',
+        to: currentUser.email,
+        data: { name: currentUser.displayName || currentUser.email.split('@')[0] }
+      })
+    }).catch(function(e){ console.log('welcome email error:', e.message); });
+  }
   _userSlots.loaded = true;
 }
 
@@ -4613,6 +4626,26 @@ function sendMessage() {
 
     upd['unread_' + receiverUid] = firebase.firestore.FieldValue.increment(1);
     window._db.collection('chats').doc(_activeChatId).update(upd).catch(function(){});
+
+    // Відправити email отримувачу якщо є email в Firestore
+    window._db.collection('users').doc(receiverUid).get().then(function(doc) {
+      if (doc.exists && doc.data().email) {
+        var chat = _fbChats.find(function(c){ return c.id === _activeChatId; });
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            type: 'new_message',
+            to: doc.data().email,
+            data: {
+              senderName: currentUser.name || currentUser.email || 'Користувач',
+              message: text,
+              listingTitle: chat && chat.listingTitle ? chat.listingTitle : ''
+            }
+          })
+        }).catch(function(e){ console.log('chat email error:', e.message); });
+      }
+    }).catch(function(){});
   } else if (window._db) {
     window._db.collection('chats').doc(_activeChatId).update({
       lastMessage: text,
