@@ -827,7 +827,7 @@
   }
   .send-btn:hover { background: var(--brand-dark); transform: scale(1.05); }
 
-  @media (max-width: 900px) {
+  @media (max-width: 700px) {
     .messages-layout {
       grid-template-columns: 1fr;
       height: calc(100vh - 130px);
@@ -3170,3 +3170,17 @@ body.light .mnav-item span {
   font-family: 'Inter', sans-serif;
   line-height: 1;
 }
+
+/* ── SKELETON LOADER ─────────────────────────────────────── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.skeleton-pulse {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+.skeleton-card { cursor: default !important; }
+
+/* ── HERO SEARCH ─────────────────────────────────────────── */
+.hero-search-wrap input::placeholder { color: var(--text-muted); }
+.hero-search-wrap input:focus { outline: none; }
