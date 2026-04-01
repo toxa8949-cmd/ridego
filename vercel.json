@@ -72,7 +72,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "no-cache, no-store, must-revalidate"
         },
         {
           "key": "X-Content-Type-Options",
@@ -163,73 +163,4 @@
       "destination": "/index.html"
     },
     {
-      "source": "/category/:slug",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/seller/:uid",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/service/:id",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/news/:id",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/news-detail",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/catalog",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/add",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/services",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/messages",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/profile",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/news",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/faq",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/terms",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/privacy",
-      "destination": "/index.html"
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "ridego-sigma.vercel.app"
-        }
-      ],
-      "destination": "https://ridego.com.ua/$1",
-      "permanent": true
-    }
-  ]
-}
+      "source": "/category/:slug
