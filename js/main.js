@@ -1,5 +1,40 @@
 
 
+// ── HERO ПОШУК ─────────────────────────────────────────────
+function heroSearch() {
+  var q = (document.getElementById('hero-search-input') || {}).value || '';
+  if (!q.trim()) { showPage('catalog'); return; }
+  showPage('catalog');
+  setTimeout(function() {
+    var inp = document.getElementById('search-input') || document.getElementById('catalog-search-input');
+    if (inp) { inp.value = q.trim(); }
+    if (typeof runSearch === 'function') runSearch();
+    else if (typeof filterListings === 'function') filterListings();
+  }, 100);
+}
+
+function heroFilter(type, value) {
+  showPage('catalog');
+  setTimeout(function() {
+    if (type === 'category') {
+      var catEl = document.getElementById('fp-cat') || document.querySelector('[id*="cat"]');
+      if (catEl) { catEl.value = value; }
+    } else if (type === 'price') {
+      var priceEl = document.getElementById('fp-price-to') || document.getElementById('filter-price-to');
+      if (priceEl) { priceEl.value = value; }
+    } else if (type === 'condition') {
+      var condEl = document.getElementById('fp-condition') || document.querySelector('[id*="condition"]');
+      if (condEl) { condEl.value = value; }
+    } else if (type === 'city') {
+      var cityEl = document.getElementById('fp-city');
+      if (cityEl) { cityEl.value = value; }
+    }
+    if (typeof runSearch === 'function') runSearch();
+    else if (typeof filterListings === 'function') filterListings();
+    if (typeof updateActiveFilters === 'function') updateActiveFilters();
+  }, 100);
+}
+
 function _esc(str) {
   if (!str) return '';
   return String(str)
@@ -876,6 +911,11 @@ function createCard(l, backPage) {
           <span class="loc"><i class="fa-solid fa-location-dot"></i>${eCity}</span>
         </div>
         <div style="display:flex;gap:4px;align-items:center">
+          ${l.uid && l.uid !== (currentUser && currentUser.uid) ? `
+          <button class="fav-btn" onclick="event.stopPropagation();_startChat('${l.uid}','${_esc(l.id)}','${_esc((l.title||'').replace(/'/g,\"\\'\")}');showPage('messages')"
+            title="Написати продавцю" style="color:var(--brand)">
+            <i class="fa-regular fa-comment-dots"></i>
+          </button>` : ''}
           <button class="fav-btn compare-btn-card" id="cmp-btn-${_esc(l.id)}"
             onclick="event.stopPropagation();toggleCompare('${_esc(l.id)}',this)"
             style="font-size:13px;opacity:.5" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438">
@@ -1201,7 +1241,15 @@ function renderHomeListings() {
     if (regular.length) {
       newEl.innerHTML = regular.slice(0, 6).map(function(l){ return createCard(l,'home'); }).join('');
     } else {
-      newEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:32px">Оголошень поки немає</p>';
+      newEl.innerHTML = `
+        <div style="text-align:center;padding:48px 24px;grid-column:1/-1">
+          <div style="font-size:64px;margin-bottom:16px">🛴</div>
+          <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:var(--text-main)">Оголошень поки немає</div>
+          <p style="color:var(--text-muted);margin-bottom:24px">Будь першим! Додай своє оголошення і знайди покупця.</p>
+          <button class="btn-primary" onclick="showPage('add')" style="padding:12px 24px">
+            <i class="fa-solid fa-plus" style="margin-right:8px"></i>Додати оголошення
+          </button>
+        </div>`;
     }
   }
 
