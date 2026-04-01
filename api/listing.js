@@ -1,5 +1,5 @@
 const PROJECT = 'ridego-6f981';
-const BASE = 'https://ridego-sigma.vercel.app';
+const BASE = 'https://ridego.com.ua';
 
 // Боти пошукових систем
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot/i;

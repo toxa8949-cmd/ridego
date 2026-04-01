@@ -1,5 +1,5 @@
 const PROJECT = 'ridego-6f981';
-const BASE = 'https://ridego-sigma.vercel.app';
+const BASE = 'https://ridego.com.ua';
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot/i;
 
 async function getNewsFromFirestore(id) {
