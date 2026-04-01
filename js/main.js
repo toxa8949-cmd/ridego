@@ -911,11 +911,6 @@ function createCard(l, backPage) {
           <span class="loc"><i class="fa-solid fa-location-dot"></i>${eCity}</span>
         </div>
         <div style="display:flex;gap:4px;align-items:center">
-          ${l.uid && l.uid !== (currentUser && currentUser.uid) ? `
-          <button class="fav-btn" onclick="event.stopPropagation();_startChat('${l.uid}','${_esc(l.id)}','${_esc((l.title||'').replace(/'/g,\"\\'\")}');showPage('messages')"
-            title="Написати продавцю" style="color:var(--brand)">
-            <i class="fa-regular fa-comment-dots"></i>
-          </button>` : ''}
           <button class="fav-btn compare-btn-card" id="cmp-btn-${_esc(l.id)}"
             onclick="event.stopPropagation();toggleCompare('${_esc(l.id)}',this)"
             style="font-size:13px;opacity:.5" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438">
