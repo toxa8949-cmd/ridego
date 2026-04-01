@@ -578,7 +578,7 @@ function showNewsDetail(id) {
     title: n.title,
     desc: n.excerpt || '',
     img: n.img || '',
-    url: 'https://ridego-sigma.vercel.app/news/' + id
+    url: 'https://ridego.com.ua/news/' + id
   });
   _setNewsSchema(n);
   var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA',{day:'numeric',month:'long',year:'numeric'}) : '';
@@ -593,7 +593,7 @@ function showNewsDetail(id) {
     + '</div>'
     + '<h1 style="font-size:clamp(22px,3vw,32px);font-weight:800;margin-bottom:20px;line-height:1.3">'+(n.title||'')+'</h1>'
     + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+(n.excerpt||'')+'</div>'
-    + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+\s*=/gi,'')+'</div>';
+    + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'')+'</div>';
 
 
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
@@ -662,8 +662,8 @@ function _subscribeChats() {
 function _updateSEO(opts) {
   var title = opts.title ? opts.title + ' — RideGO' : 'RideGO — Маркетплейс електротранспорту України';
   var desc = opts.desc || 'Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.';
-  var img = opts.img || 'https://ridego-sigma.vercel.app/og-image.jpg';
-  var url = opts.url || 'https://ridego-sigma.vercel.app/';
+  var img = opts.img || 'https://ridego.com.ua/og-image.jpg';
+  var url = opts.url || 'https://ridego.com.ua/';
 
   document.title = title;
   _setMeta('description', desc);
@@ -735,7 +735,7 @@ function _setNewsSchema(n) {
     'publisher': {
       '@type': 'Organization',
       'name': 'RideGO',
-      'url': 'https://ridego-sigma.vercel.app/'
+      'url': 'https://ridego.com.ua/'
     }
   };
   var s = document.createElement('script');

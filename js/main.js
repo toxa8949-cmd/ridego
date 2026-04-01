@@ -666,7 +666,7 @@ function showPage(page, sellerId) {
     privacy: { title: 'Політика конфіденційності', desc: 'Як RideGO зберігає та використовує ваші дані.' },
   };
   if (pageSEO[page]) {
-    var _pageUrl = 'https://ridego-sigma.vercel.app' + (page === 'home' ? '/' : '/' + page);
+    var _pageUrl = 'https://ridego.com.ua' + (page === 'home' ? '/' : '/' + page);
     _updateSEO({ title: pageSEO[page].title, desc: pageSEO[page].desc, url: _pageUrl });
     _setListingSchema(null);
     _setNewsSchema(null);
@@ -2193,7 +2193,7 @@ function _renderSellerByUid(uid) {
     renderSellerListings(listings, {name: sellerName, id: 'uid:' + uid});
 
     var urlEl = document.getElementById('seller-page-url');
-    if (urlEl) urlEl.textContent = 'https://ridego-sigma.vercel.app/seller/' + uid;
+    if (urlEl) urlEl.textContent = 'https://ridego.com.ua/seller/' + uid;
     _loadSellerReviews(uid);
     _initReviewForm(uid);
 
@@ -2482,7 +2482,7 @@ function showDetail(id, _skipPush) {
     title: l.title,
     desc: l.desc ? l.desc.substring(0,160) : (l.title + ' — ' + (l.cat||'') + ' в ' + (l.city||'Україні')),
     img: _cdnOg(l.img) || l.img || '',
-    url: 'https://ridego-sigma.vercel.app/listing/' + id
+    url: 'https://ridego.com.ua/listing/' + id
   });
   _setListingSchema(l);
 
@@ -6130,7 +6130,7 @@ function showServiceDetail(id){
   document.getElementById("page-service-detail").classList.add("active");
   window.scrollTo({top:0,behavior:"smooth"});
   _setPath('/service/' + id);
-  _updateSEO({ title: s.name, desc: s.desc ? s.desc.slice(0,160) : s.name + ' — сервісний центр у ' + (s.city||''), url: 'https://ridego-sigma.vercel.app/service/' + id });
+  _updateSEO({ title: s.name, desc: s.desc ? s.desc.slice(0,160) : s.name + ' — сервісний центр у ' + (s.city||''), url: 'https://ridego.com.ua/service/' + id });
 
   if (window._db && s.uid) {
     window._db.collection('reviews').where('sellerUid', '==', s.uid).get()
@@ -7073,7 +7073,7 @@ function _initPriceSlider() {
 function shareListing() {
   var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
   if (!l) return;
-  var url  = 'https://ridego-sigma.vercel.app/listing/' + l.id;
+  var url  = 'https://ridego.com.ua/listing/' + l.id;
   var text = l.title + ' — ' + l.price.toLocaleString('uk') + ' грн';
 
   if (navigator.share) {
@@ -7282,7 +7282,7 @@ function openCompareModal() {
 function shareListing() {
   var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
   if (!l) return;
-  var url  = 'https://ridego-sigma.vercel.app/listing/' + l.id;
+  var url  = 'https://ridego.com.ua/listing/' + l.id;
   var text = l.title + ' — ' + l.price.toLocaleString('uk') + ' грн';
 
   if (navigator.share) {
@@ -7620,7 +7620,7 @@ function _setListingSchema(l) {
     'itemCondition': l.condition === '\u041d\u043e\u0432\u0438\u0439'
       ? 'https://schema.org/NewCondition'
       : 'https://schema.org/UsedCondition',
-    'url': 'https://ridego-sigma.vercel.app/listing/' + l.id
+    'url': 'https://ridego.com.ua/listing/' + l.id
   };
 
   Object.keys(schema).forEach(function(k) { if (schema[k] === undefined) delete schema[k]; });
@@ -7646,7 +7646,7 @@ function _setSellerSchema(d, listings) {
     'description': d.about || d.desc || '',
     'address': d.city ? { '@type': 'PostalAddress', 'addressLocality': d.city, 'addressCountry': 'UA' } : undefined,
     'telephone': d.phone || undefined,
-    'url': 'https://ridego-sigma.vercel.app/seller/' + (d.uid || ''),
+    'url': 'https://ridego.com.ua/seller/' + (d.uid || ''),
     'image': d.photoUrl || undefined,
     'numberOfItems': listings ? listings.length : undefined
   };
@@ -7667,11 +7667,11 @@ function _setHomeBreadcrumbSchema() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     'name': 'RideGO',
-    'url': 'https://ridego-sigma.vercel.app',
+    'url': 'https://ridego.com.ua',
     'description': '\u041c\u0430\u0440\u043a\u0435\u0442\u043f\u043b\u0435\u0439\u0441 \u0435\u043b\u0435\u043a\u0442\u0440\u043e\u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u0443 \u0423\u043a\u0440\u0430\u0457\u043d\u0438',
     'potentialAction': {
       '@type': 'SearchAction',
-      'target': 'https://ridego-sigma.vercel.app/catalog?q={search_term_string}',
+      'target': 'https://ridego.com.ua/catalog?q={search_term_string}',
       'query-input': 'required name=search_term_string'
     }
   };
@@ -7770,7 +7770,6 @@ var IMPORT_COLS = [
   { key: 'range',     label: 'Запас ходу',    required: false },
   { key: 'year',      label: 'Рік',           required: false },
   { key: 'bargain',   label: 'Торг/Обмін',    required: false },
-  { key: 'photos',    label: 'Фото (URL через |)', required: false },
 ];
 
 var VALID_CATS = [
@@ -8103,87 +8102,49 @@ function _submitImport() {
     }
 
     var row = valid[i];
-    // Завантажити фото з URL на Cloudinary
-    function _uploadPhotoUrls(urls, cb) {
-      if (!urls || !urls.length) { cb([]); return; }
-      var results = [];
-      var idx = 0;
-      function _next() {
-        if (idx >= urls.length || idx >= 10) { cb(results); return; }
-        var url = urls[idx++].trim();
-        if (!url) { _next(); return; }
-        // Завантажити через Cloudinary upload by URL
-        var fd = new FormData();
-        fd.append('file', url);
-        fd.append('upload_preset', 'ridego_unsigned');
-        fd.append('folder', 'ridego');
-        fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
-          method: 'POST', body: fd
-        }).then(function(r){ return r.json(); })
-          .then(function(d){
-            if (d.secure_url) results.push(d.secure_url);
-            _next();
-          }).catch(function(){ _next(); });
-      }
-      _next();
-    }
+    var fbListing = {
+      title:      row.title.substring(0, 200),
+      price:      row.price || 0,
+      cat:        row.cat || '',
+      city:       (row.city || '').substring(0, 100),
+      condition:  row.condition || 'Хороший',
+      desc:       (row.desc || '').substring(0, 2000),
+      battery:    (row.battery || '').substring(0, 50),
+      speed:      (row.speed || '').substring(0, 50),
+      range:      (row.range || '').substring(0, 50),
+      year:       row.year || '',
+      bargain:    row.bargain || '',
+      badge:      '',
+      icon:       '',
+      img:        '',
+      imgs:       [],
+      specs:      {},
+      time:       new Date().toLocaleDateString('uk-UA'),
+      seller:     (currentUser.name || '').substring(0, 100),
+      sellerName: (currentUser.name || '').substring(0, 100),
+      sellerEmail:(currentUser.email || '').substring(0, 200),
+      uid:        currentUser.uid,
+      createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt:  firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
+      status:     'active'
+    };
 
-    var photoUrls = row.photos ? row.photos.split('|').map(function(u){ return u.trim(); }).filter(Boolean) : [];
-
-    function _saveListing(uploadedPhotos) {
-      var fbListing = {
-        title:      row.title.substring(0, 200),
-        price:      row.price || 0,
-        cat:        row.cat || '',
-        city:       (row.city || '').substring(0, 100),
-        condition:  row.condition || 'Хороший',
-        desc:       (row.desc || '').substring(0, 2000),
-        battery:    (row.battery || '').substring(0, 50),
-        speed:      (row.speed || '').substring(0, 50),
-        range:      (row.range || '').substring(0, 50),
-        year:       row.year || '',
-        bargain:    row.bargain || '',
-        badge:      '',
-        icon:       '',
-        img:        uploadedPhotos[0] || '',
-        imgs:       uploadedPhotos,
-        photos:     uploadedPhotos,
-        specs:      {},
-        time:       new Date().toLocaleDateString('uk-UA'),
-        seller:     (currentUser.name || '').substring(0, 100),
-        sellerName: (currentUser.name || '').substring(0, 100),
-        sellerEmail:(currentUser.email || '').substring(0, 200),
-        uid:        currentUser.uid,
-        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
-        expiresAt:  firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
-        status:     'active'
-      };
-
-      window._db.collection('listings').add(fbListing)
+    window._db.collection('listings').add(fbListing)
       .then(function(ref) {
-          done++;
-          fbListing.id = ref.id;
-          _fbListings.unshift(fbListing);
-          _consumeSlot();
-          var btn2 = document.getElementById('import-submit-btn');
-          if (btn2) btn2.textContent = 'Імпортуємо... ' + (i+1) + '/' + total;
-          setTimeout(function(){ _next(i+1); }, 300);
-        })
-        .catch(function(e) {
-          failed++;
-          console.error('Import error row ' + (i+1) + ':', e.message);
-          setTimeout(function(){ _next(i+1); }, 300);
-        });
-    }
-
-    // Спочатку завантажуємо фото, потім зберігаємо оголошення
-    if (photoUrls.length) {
-      var btn2 = document.getElementById('import-submit-btn');
-      if (btn2) btn2.textContent = 'Завантаження фото ' + (i+1) + '/' + total + '...';
-      _uploadPhotoUrls(photoUrls, _saveListing);
-    } else {
-      _saveListing([]);
-    }
+        done++;
+        fbListing.id = ref.id;
+        _fbListings.unshift(fbListing);
+        _consumeSlot();
+        // Оновити прогрес
+        var btn2 = document.getElementById('import-submit-btn');
+        if (btn2) btn2.textContent = 'Імпортуємо... ' + (i+1) + '/' + total;
+        setTimeout(function(){ _next(i+1); }, 300); // 300ms між записами щоб не перевантажити
+      })
+      .catch(function(e) {
+        failed++;
+        console.error('Import error row ' + (i+1) + ':', e.message);
+        setTimeout(function(){ _next(i+1); }, 300);
+      });
   }
   _next(0);
 }
@@ -8192,8 +8153,8 @@ function _submitImport() {
 function _downloadImportTemplate() {
   var headers = IMPORT_COLS.map(function(c){ return c.label.replace('*',''); }).join(';');
   var example = [
-    'Електросамокат Kugoo S3 Pro;15000;Електросамокати;Хороший;Київ;Хороший стан мінімальний пробіг;7.5 Ah;30 км/год;25 км;2022;Торг;https://example.com/photo1.jpg|https://example.com/photo2.jpg',
-    'Велосипед Trek 820;8500;Велосипеди;Відмінний;Львів;;;"";;"";2023;;',
+    'Електросамокат Kugoo S3 Pro;15000;Електросамокати;Хороший;Київ;Хороший стан мінімальний пробіг;7.5 Ah;30 км/год;25 км;2022;Торг',
+    'Велосипед Trek 820;8500;Велосипеди;Відмінний;Львів;;;"";;"";2023;',
   ].join('\n');
   var csv = headers + '\n' + example;
   var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
