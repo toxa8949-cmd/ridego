@@ -5,4 +5,4 @@ Allow: /
 Disallow: /ridego-admin.html
 Disallow: /api/
 
-Sitemap: https://ridego-sigma.vercel.app/sitemap.xml
+Sitemap: https://ridego.com.ua/sitemap.xml
