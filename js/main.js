@@ -102,7 +102,15 @@ function _checkMonthlyFreeSlot() {
   var shouldGive = !lastDate || (now - lastDate) >= 30 * 24 * 60 * 60 * 1000;
   if (!shouldGive) return;
 
-  if (!lastDate) return;
+  // Для нових користувачів (lastDate === null) — тільки ініціалізуємо lastFreeSlotAt,
+  // не нараховуємо слот (вони вже отримали slotsWelcome)
+  if (!lastDate) {
+    window._db.collection('users').doc(currentUser.uid).update({
+      lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(){});
+    _userSlots.lastFreeSlotAt = { seconds: Math.floor(Date.now() / 1000) };
+    return;
+  }
 
   _userSlots.slots = (_userSlots.slots || 0) + 1;
   window._db.collection('users').doc(currentUser.uid).update({
@@ -254,8 +262,6 @@ let currentUser = { name:'', email:'', initial:'' };
 
 const chats = [];
 
-const SELLERS = [];
-
 function getSellerById(name) {
   const map = {
     'Олег К.': 'oleg-k', 'Марія В.': 'maria-v', 'Auto-Market': 'auto-market',
@@ -297,10 +303,19 @@ function toggleFaq(el) {
   }
 }
 
+function _parseDate(val) {
+  if (!val) return null;
+  if (val.seconds) return new Date(val.seconds * 1000);
+  if (val.toDate) return val.toDate();
+  var d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function _isPromoActive(l) {
   if (!l || !l.promo) return false;
   if (!l.promoUntil) return true;
-  return new Date(l.promoUntil) > new Date();
+  var until = _parseDate(l.promoUntil);
+  return until ? until > new Date() : true;
 }
 
 function _cleanExpiredPromos(listings) {
@@ -310,9 +325,9 @@ function _cleanExpiredPromos(listings) {
     if (!l || !l.promo) return;
 
     if (!l.promoUntil) return;
-    var until = new Date(l.promoUntil);
+    var until = _parseDate(l.promoUntil);
 
-    if (isNaN(until.getTime())) return;
+    if (!until) return;
     if (until <= now) {
       expired.push(l.id);
       delete l.promo;
@@ -715,17 +730,6 @@ function showPage(page, sellerId) {
   _renderRoute({ page, id: sellerId || null });
 }
 
-const _origShowDetail = showDetail;
-
-function showSeller(sellerName) {
-  const s = getSellerById(sellerName);
-  if (s) {
-    _setHash('seller/' + s.id);
-    _renderRoute({ page: 'seller', id: s.id });
-  } else {
-    showToast('ℹ️ Сторінку продавця не знайдено');
-  }
-}
 
 function showSellerByUid(uid) {
   if (!uid) { showToast('ℹ️ Профіль продавця не знайдено'); return; }
@@ -2033,7 +2037,7 @@ function renderCatalog(catFilter) {
   var allLbl = document.getElementById('catalog-all-label');
   if (!allEl) return;
 
-  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted'; });
+  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive' && l.status !== 'sold'; });
 
   if (catFilter) all = all.filter(function(l){ return l.cat === catFilter; });
 
@@ -4814,7 +4818,7 @@ document.getElementById('headerSearch').addEventListener('keydown', e=>{
     showPage('catalog');
     currentCatFilter = 'all';
     setTimeout(()=>{
-      let data = _allListings().filter(l=>l.title.toLowerCase().includes(q)||l.cat.toLowerCase().includes(q)||l.city.toLowerCase().includes(q));
+      let data = _allListings().filter(l=>l && l.status !== 'deleted' && l.status !== 'sold' && (l.title.toLowerCase().includes(q)||l.cat.toLowerCase().includes(q)||l.city.toLowerCase().includes(q)));
       document.getElementById('catalog-listings').innerHTML = data.length
         ? data.map(l=>createCard(l,'catalog')).join('')
         : '<div class="empty-state"><i class="fa-solid fa-search"></i><h3>Нічого не знайдено</h3><p>Спробуйте інший запит</p></div>';
@@ -4854,7 +4858,7 @@ const CITY_COORDS = {
   "Червоноград":{"lat":50.3883,"lng":24.2344},"Зборів":{"lat":49.6572,"lng":25.1478},
   "Мелітополь":{"lat":46.8481,"lng":35.3699},"Бердянськ":{"lat":46.7597,"lng":36.7968},
   "Краматорськ":{"lat":48.7195,"lng":37.5291},"Слов'янськ":{"lat":48.8597,"lng":37.6228},
-  "Маріуполь":{"lat":47.0953,"lng":37.5402},"Покровськ":{"lat":48.2831,"lng":37.1731},
+  "Покровськ":{"lat":48.2831,"lng":37.1731},
   "Лисичанськ":{"lat":48.9028,"lng":38.4328},"Сєвєродонецьк":{"lat":48.9480,"lng":38.4897},
   "Рубіжне":{"lat":48.9931,"lng":38.3767},"Конотоп":{"lat":51.2303,"lng":33.2028},
   "Шостка":{"lat":51.8689,"lng":33.4658},"Охтирка":{"lat":50.3031,"lng":34.9028},
@@ -4867,7 +4871,7 @@ const CITY_COORDS = {
   "Чортків":{"lat":49.0161,"lng":25.7950},"Кременець":{"lat":50.0986,"lng":25.7278},
   "Богодухів":{"lat":50.1667,"lng":35.5500},"Ізюм":{"lat":49.2094,"lng":37.2783},
   "Куп'янськ":{"lat":49.7111,"lng":37.6189},"Лозова":{"lat":48.8889,"lng":36.3183},
-  "Хуст":{"lat":48.1822,"lng":23.2942},"Мукачево":{"lat":48.4414,"lng":22.7105},
+  "Хуст":{"lat":48.1822,"lng":23.2942},
   "Свалява":{"lat":48.5406,"lng":22.9769},"Рахів":{"lat":48.0528,"lng":24.2111},
 };
 
@@ -5302,7 +5306,6 @@ function submitListing() {
 
   const _savedCat = addSelectedCat;
   const rawSpecs = collectSpecs();
-  console.log('DEBUG specs cat:', _savedCat, 'rawSpecs keys:', Object.keys(rawSpecs));
 
   const SECTION_KEY_MAP = {
 
@@ -5437,15 +5440,19 @@ function submitListing() {
       expiresAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
       status: 'active'
     };
-    console.log('Saving to Firestore...', fbListing.title, fbListing.uid);
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
-        console.log('Saved OK:', docRef.id);
 
-        _consumeSlot();
+        _consumeSlot().then(function(ok) {
+          if (!ok) console.warn('consumeSlot failed after listing publish');
+          _renderSlotsUI();
+        }).catch(function(e) { console.warn('consumeSlot error:', e); });
         newL.id = docRef.id;
         _fbListings.unshift(newL);
-        if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = myListings.length;
+        if (document.getElementById('pstat-active')) {
+          var _activeCount = _allListings().filter(function(l){ return l && l.uid === currentUser.uid && l.status !== 'deleted' && l.status !== 'sold'; }).length;
+          document.getElementById('pstat-active').textContent = _activeCount;
+        }
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
         showToast('✅ Оголошення опубліковано!');
@@ -5738,7 +5745,7 @@ function deleteListing(id) {
 
   window._db.collection('listings').doc(id).update({
       status: 'deleted',
-      uid: currentUser.uid
+      deletedAt: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(function() {
       // Видалити з локальних масивів
@@ -7199,10 +7206,7 @@ function _copyShareUrl(url) {
   if (overlay) setTimeout(function(){ overlay.remove(); }, 1000);
 }
 
-function copySellerLink() {
-  var url = window.location.href;
-  _copyShareUrl(url);
-}
+// copySellerLink визначена вище (використовує currentSellerId)
 
 var _compareIds = [];
 var _compareMax = 3;
@@ -7336,214 +7340,9 @@ function openCompareModal() {
   document.body.appendChild(overlay);
 }
 
-function shareListing() {
-  var l = _allListings().find(function(x){ return x && x.id === currentDetailId; });
-  if (!l) return;
-  var url  = 'https://ridego.com.ua/listing/' + l.id;
-  var text = l.title + ' — ' + l.price.toLocaleString('uk') + ' грн';
 
-  if (navigator.share) {
-    navigator.share({ title: text, text: text, url: url })
-      .catch(function(){});
-  } else {
+// (duplicate shareListing/copySellerLink/toggleCompare/openCompareModal block removed)
 
-    _showShareModal(url, text, l.title);
-  }
-}
-
-function _showShareModal(url, text, title) {
-  var existing = document.getElementById('share-modal-overlay');
-  if (existing) existing.remove();
-
-  var tgUrl  = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
-  var vibUrl = 'viber://forward?text=' + encodeURIComponent(text + ' ' + url);
-  var fbUrl  = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
-
-  var overlay = document.createElement('div');
-  overlay.id = 'share-modal-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0 0 20px';
-  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
-
-  overlay.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:20px 20px 16px 16px;padding:24px;max-width:400px;width:100%;margin:0 16px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<div style="font-size:16px;font-weight:700">\uD83D\uDD17 \u041f\u043e\u0434\u0456\u043b\u0438\u0442\u0438\u0441\u044c</div>'
-    + '<button onclick="document.getElementById(\'share-modal-overlay\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);padding:0">\xd7</button>'
-    + '</div>'
-    + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + title + '</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
-    + _shareBtn('fa-brands fa-telegram', '#2ca5e0', '\u0422\u0435\u043b\u0435\u0433\u0440\u0430\u043c', "window.open('" + tgUrl + "','_blank')")
-    + _shareBtn('fa-brands fa-viber', '#7360f2', '\u0412\u0430\u0439\u0431\u0435\u0440', "window.open('" + vibUrl + "','_blank')")
-    + _shareBtn('fa-brands fa-facebook', '#1877f2', 'Facebook', "window.open('" + fbUrl + "','_blank')")
-    + _shareBtn('fa-solid fa-copy', 'var(--brand)', '\u041a\u043e\u043f\u0456\u044e\u0432\u0430\u0442\u0438', "_copyShareUrl('" + url + "')")
-    + '</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;background:var(--dark3);border-radius:10px;padding:10px 14px">'
-    + '<div style="font-size:12px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + url + '</div>'
-    + '<button onclick="_copyShareUrl(\'' + url + '\')" style="background:var(--brand);border:none;color:#000;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">\u0421\u043a\u043e\u043f\u0456\u044e\u0432\u0430\u0442\u0438</button>'
-    + '</div></div>';
-
-  document.body.appendChild(overlay);
-}
-
-function _shareBtn(icon, color, label, action) {
-  return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer" onclick="' + action + '">'
-    + '<div style="width:48px;height:48px;border-radius:50%;background:' + color + '20;display:flex;align-items:center;justify-content:center;font-size:22px;color:' + color + '">'
-    + '<i class="' + icon + '"></i></div>'
-    + '<div style="font-size:11px;color:var(--text-muted);text-align:center">' + label + '</div>'
-    + '</div>';
-}
-
-function _copyShareUrl(url) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(function() {
-      showToast('\u2705 \u041f\u043e\u0441\u0438\u043b\u0430\u043d\u043d\u044f \u0441\u043a\u043e\u043f\u0456\u0439\u043e\u0432\u0430\u043d\u043e!');
-    });
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = url; document.body.appendChild(ta);
-    ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('\u2705 \u041f\u043e\u0441\u0438\u043b\u0430\u043d\u043d\u044f \u0441\u043a\u043e\u043f\u0456\u0439\u043e\u0432\u0430\u043d\u043e!');
-  }
-  var overlay = document.getElementById('share-modal-overlay');
-  if (overlay) setTimeout(function(){ overlay.remove(); }, 1000);
-}
-
-function copySellerLink() {
-  var url = window.location.href;
-  _copyShareUrl(url);
-}
-
-var _compareIds = [];
-var _compareMax = 3;
-
-function toggleCompare(id, btn) {
-  var idx = _compareIds.indexOf(id);
-  if (idx >= 0) {
-    _compareIds.splice(idx, 1);
-    if (btn) { btn.style.opacity = '.6'; btn.style.color = ''; }
-  } else {
-    if (_compareIds.length >= _compareMax) {
-      showToast('\u041c\u0430\u043a\u0441\u0438\u043c\u0443\u043c ' + _compareMax + ' \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f \u0434\u043b\u044f \u043f\u043e\u0440\u0456\u0432\u043d\u044f\u043d\u043d\u044f');
-      return;
-    }
-    _compareIds.push(id);
-    if (btn) { btn.style.opacity = '1'; btn.style.color = 'var(--brand)'; }
-  }
-  _updateCompareBar();
-}
-
-function _updateCompareBar() {
-  var bar = document.getElementById('compare-bar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.id = 'compare-bar';
-    bar.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);z-index:8888;'
-      + 'background:var(--dark3);border:1px solid var(--brand);border-radius:50px;'
-      + 'padding:10px 20px;display:flex;align-items:center;gap:14px;'
-      + 'box-shadow:0 4px 20px rgba(0,200,83,.25);transition:all .3s;white-space:nowrap';
-    document.body.appendChild(bar);
-  }
-
-  if (_compareIds.length === 0) {
-    bar.style.display = 'none';
-    return;
-  }
-
-  bar.style.display = 'flex';
-  var listings = _compareIds.map(function(id) {
-    return _allListings().find(function(l){ return l && l.id === id; });
-  }).filter(Boolean);
-
-  var thumbs = listings.map(function(l) {
-    var src = l.img || (l.photos && l.photos[0]) || '';
-    return src
-      ? '<img src="' + src + '" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid var(--border)">'
-      : '<div style="width:28px;height:28px;border-radius:6px;background:var(--brand-dim);display:flex;align-items:center;justify-content:center;font-size:14px">\uD83D\uDCF7</div>';
-  }).join('');
-
-  bar.innerHTML = thumbs
-    + '<span style="font-size:13px;font-weight:600">' + _compareIds.length + '/' + _compareMax + ' \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f</span>'
-    + (_compareIds.length >= 2
-      ? '<button onclick="openCompareModal()" style="background:var(--brand);border:none;color:#000;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">'
-        + '<i class="fa-solid fa-scale-balanced" style="margin-right:5px"></i>\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438</button>'
-      : '<span style="font-size:12px;color:var(--text-muted)">\u0414\u043e\u0434\u0430\u0439\u0442\u0435 \u0449\u0435 1</span>')
-    + '<button onclick="clearCompare()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:0;line-height:1">\xd7</button>';
-}
-
-function clearCompare() {
-  _compareIds = [];
-  document.querySelectorAll('.compare-btn-card').forEach(function(b) {
-    b.style.opacity = '.6'; b.style.color = '';
-  });
-  _updateCompareBar();
-}
-
-function openCompareModal() {
-  var listings = _compareIds.map(function(id) {
-    return _allListings().find(function(l){ return l && l.id === id; });
-  }).filter(Boolean);
-  if (listings.length < 2) return;
-
-  var overlay = document.createElement('div');
-  overlay.id = 'compare-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;overflow-y:auto;padding:20px';
-  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
-
-  var cols = listings.map(function(l) {
-    var img = l.img || (l.photos && l.photos[0]) || '';
-    return '<div style="flex:1;min-width:0">'
-      + (img ? '<img src="' + img + '" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:12px">' : '')
-      + '<div style="font-weight:700;font-size:15px;margin-bottom:4px">' + (l.title||'') + '</div>'
-      + '<div style="font-size:20px;font-weight:800;color:var(--brand);margin-bottom:12px">' + (l.price||0).toLocaleString('uk') + ' \u0433\u0440\u043d</div>'
-      + '<button onclick="showDetail(\'' + l.id + '\');document.getElementById(\'compare-overlay\').remove()" '
-      + 'style="width:100%;padding:8px;border-radius:8px;background:var(--brand);border:none;color:#000;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">'
-      + '\u0414\u0438\u0432\u0438\u0442\u0438\u0441\u044c</button>'
-      + '</div>';
-  }).join('<div style="width:1px;background:var(--border);flex-shrink:0"></div>');
-
-  var rows = [
-    ['\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0456\u044f', function(l){ return l.cat || '\u2014'; }],
-    ['\u0421\u0442\u0430\u043d', function(l){ return l.condition || '\u2014'; }],
-    ['\u0420\u0456\u043a', function(l){ return l.year || '\u2014'; }],
-    ['\u041f\u0440\u043e\u0431\u0456\u0433', function(l){ return l.mileage ? l.mileage + ' \u043a\u043c' : '\u2014'; }],
-    ['\u0411\u0440\u0435\u043d\u0434', function(l){ return l.brand || '\u2014'; }],
-    ['\u041c\u043e\u0434\u0435\u043b\u044c', function(l){ return l.model || '\u2014'; }],
-    ['\u0411\u0430\u0442\u0430\u0440\u0435\u044f', function(l){ return l.battery || l.battAh ? (l.battAh||'') + ' Ah' : '\u2014'; }],
-    ['\u0428\u0432\u0438\u0434\u043a\u0456\u0441\u0442\u044c', function(l){ return l.speed || l.speedVal ? (l.speedVal||l.speed||'') + ' \u043a\u043c/\u0433\u043e\u0434' : '\u2014'; }],
-    ['\u0417\u0430\u043f\u0430\u0441 \u0445\u043e\u0434\u0443', function(l){ return l.range || l.rangeVal ? (l.rangeVal||'') + ' \u043a\u043c' : '\u2014'; }],
-    ['\u041c\u0456\u0441\u0442\u043e', function(l){ return l.city || '\u2014'; }],
-    ['\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446\u044c', function(l){ return l.sellerName || l.seller || '\u2014'; }],
-  ].map(function(row) {
-    var label = row[0]; var fn = row[1];
-    var vals = listings.map(fn);
-    var allSame = vals.every(function(v){ return v === vals[0]; });
-    var cells = listings.map(function(l, i) {
-      var v = fn(l);
-      var best = '';
-      if (label === '\u0426\u0456\u043d\u0430') {
-        var prices = listings.map(function(x){ return x.price; });
-        if (l.price === Math.min.apply(null, prices)) best = 'color:var(--brand);font-weight:700';
-      }
-      return '<td style="padding:10px 12px;text-align:center;' + (allSame?'':'') + best + '">' + v + '</td>';
-    }).join('<td style="width:1px;background:var(--border)"></td>');
-    return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:10px 12px;font-size:12px;color:var(--text-muted);font-weight:600;white-space:nowrap">' + label + '</td>' + cells + '</tr>';
-  }).join('');
-
-  overlay.innerHTML = '<div style="background:var(--card-bg);border-radius:20px;max-width:700px;margin:0 auto;overflow:hidden">'
-    + '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
-    + '<div style="font-size:18px;font-weight:700"><i class="fa-solid fa-scale-balanced" style="color:var(--brand);margin-right:8px"></i>\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u043d\u043d\u044f</div>'
-    + '<button onclick="document.getElementById(\'compare-overlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted)">\xd7</button>'
-    + '</div>'
-    + '<div style="display:flex;gap:16px;padding:20px 24px;border-bottom:1px solid var(--border)">' + cols + '</div>'
-    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
-    + '<tbody>' + rows + '</tbody></table></div>'
-    + '<div style="padding:16px 24px;display:flex;justify-content:center">'
-    + '<button onclick="clearCompare();document.getElementById(\'compare-overlay\').remove()" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:8px 20px;font-size:13px;cursor:pointer;font-family:inherit">'
-    + '\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0432\u0438\u0431\u0456\u0440</button></div>'
-    + '</div>';
-
-  document.body.appendChild(overlay);
-}
 
 var _currentSellerUid = null;
 

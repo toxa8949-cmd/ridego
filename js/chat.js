@@ -210,7 +210,7 @@
         + '<i class="fa-solid fa-lock" style="font-size:36px;display:block;margin-bottom:16px;color:var(--brand)"></i>'
         + '<div style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Вхід для повідомлень</div>'
         + '<p style="margin-bottom:20px;font-size:14px">Увійдіть в акаунт щоб переглянути та відправляти повідомлення</p>'
-        + '<button class="btn-primary" onclick="showPage('profile')" style="padding:11px 28px">'
+        + '<button class="btn-primary" onclick="showPage(\'profile\')" style="padding:11px 28px">'
         + '<i class="fa-solid fa-user" style="margin-right:8px"></i>Увійти</button>'
         + '</div>';
       var inp = document.getElementById('chat-input');
@@ -243,7 +243,7 @@
         ? '<div style="font-size:10px;color:var(--brand);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><i class="fa-solid fa-tag" style="font-size:9px;margin-right:3px"></i>' + esc(c.listingTitle) + '</div>'
         : '';
       return '<div class="chat-item ' + (isActive ? 'active' : '') + '" onclick="openChatById(this.dataset.id)" data-id="' + c.id + '">'
-        + '<div class="chat-avatar" style="cursor:pointer" onclick="event.stopPropagation();' + (otherId ? 'showSellerByUid(''+otherId+'')' : '') + '">' + initial + '</div>'
+        + '<div class="chat-avatar" style="cursor:pointer" onclick="event.stopPropagation();' + (otherId ? "showSellerByUid('" + otherId + "')" : '') + '">' + initial + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
         + '<div class="chat-name">' + esc(name) + '</div>'
@@ -264,7 +264,7 @@
 
     if (chat && chat.listingId && chat.listingTitle) {
       html += '<div style="margin-bottom:12px;display:flex;justify-content:center">'
-        + '<div onclick="showDetail(''+chat.listingId+'')" style="cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:12px 16px;max-width:320px;width:100%">'
+        + "<div onclick=\"showDetail('" + chat.listingId + "')\" style=\"cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:12px 16px;max-width:320px;width:100%\">"
         + '<div style="width:56px;height:56px;background:var(--dark3);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px">🛵</div>'
         + '<div style="min-width:0">'
         + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Оголошення</div>'

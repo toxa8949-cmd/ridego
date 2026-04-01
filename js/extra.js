@@ -148,25 +148,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var docId = 'visitors_' + today;
 
-        window._db.collection('analytics').doc(docId).get().then(function(snap) {
-          var data = snap.exists ? snap.data() : {};
-          var ids = data.browserIds || [];
-          if (ids.indexOf(browserId) >= 0) {
-
-            localStorage.setItem(storageKey, '1');
-            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
-            return;
-          }
-
-          window._db.collection('analytics').doc(docId).set({
-            count: firebase.firestore.FieldValue.increment(1),
-            browserIds: firebase.firestore.FieldValue.arrayUnion(browserId),
-            date: today,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true }).then(function() {
-            localStorage.setItem(storageKey, '1');
-            if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
-          }).catch(function(){});
+        // Тільки інкрементуємо лічильник — localStorage запобігає повторному підрахунку
+        window._db.collection('analytics').doc(docId).set({
+          count: firebase.firestore.FieldValue.increment(1),
+          date: today,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).then(function() {
+          localStorage.setItem(storageKey, '1');
+          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, '1');
         }).catch(function(){});
       }, 500);
 
@@ -346,30 +335,7 @@ function _loadSellerReviews(sellerUid) {
     }).catch(function(e){ console.error('reviews load:', e); });
 }
 
-function deleteListing(id) {
-
-  var overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML = `
-    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:400px;width:100%">
-      <div style="font-size:18px;font-weight:700;margin-bottom:6px">Видалити оголошення?</div>
-      <div style="font-size:14px;color:var(--text-muted);margin-bottom:20px">Вкажіть причину — це допоможе покращити сервіс</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-        ${['Продано через RideGO','Продано в іншому місці','Передумав продавати','Помилка в оголошенні','Інша причина'].map(r =>
-          `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
-            <input type="radio" name="del-reason" value="${r}" style="accent-color:var(--brand)"> ${r}
-          </label>`
-        ).join('')}
-      </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn-outline" style="flex:1;padding:11px" onclick="this.closest('[style*=fixed]').remove()">Скасувати</button>
-        <button class="btn-primary" style="flex:1;padding:11px;background:#ef4444;border-color:#ef4444" onclick="_confirmDelete('${id}', this)">
-          <i class="fa-solid fa-trash" style="margin-right:6px"></i>Видалити
-        </button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-}
+// deleteListing визначена в main.js
 
 function _confirmDelete(id, btn) {
   var reason = document.querySelector('input[name="del-reason"]:checked');
@@ -389,8 +355,7 @@ function _confirmDelete(id, btn) {
   myListings = myListings.filter(function(l){ return l.id !== id; });
   _fbListings = _fbListings.filter(function(l){ return l.id !== id; });
   if (typeof renderMyListings === 'function') renderMyListings();
-  var pstat = document.getElementById('pstat-active');
-  if (pstat) pstat.textContent = myListings.length;
+  if (typeof _updateActiveCount === 'function') _updateActiveCount();
   showToast('✅ Оголошення видалено');
 }
 
@@ -449,8 +414,9 @@ function handleSearch(query, immediate) {
 function doSearch(query) {
   if (!query) return;
   var q = query.toLowerCase();
-  var results = _fbListings.concat(myListings).filter(function(l) {
+  var results = (typeof _allListings === 'function' ? _allListings() : _fbListings.concat(myListings)).filter(function(l) {
     if (!l) return false;
+    if (l.status === 'deleted' || l.status === 'sold') return false;
     return (l.title && l.title.toLowerCase().includes(q)) ||
            (l.cat && l.cat.toLowerCase().includes(q)) ||
            (l.city && l.city.toLowerCase().includes(q)) ||
@@ -662,7 +628,7 @@ function _subscribeChats() {
 function _updateSEO(opts) {
   var title = opts.title ? opts.title + ' — RideGO' : 'RideGO — Маркетплейс електротранспорту України';
   var desc = opts.desc || 'Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.';
-  var img = opts.img || 'https://ridego.com.ua/og-image.jpg';
+  var img = opts.img || 'https://ridego.com.ua/og-image.png';
   var url = opts.url || 'https://ridego.com.ua/';
 
   document.title = title;
@@ -671,16 +637,15 @@ function _updateSEO(opts) {
   _setOG('description', desc);
   _setOG('image', img);
   _setOG('url', url);
-  _setMeta('twitter:title', title, true);
-  _setMeta('twitter:description', desc, true);
-  _setMeta('twitter:image', img, true);
+  _setMeta('twitter:title', title);
+  _setMeta('twitter:description', desc);
+  _setMeta('twitter:image', img);
 
   var canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = url;
 }
 
-function _setMeta(name, content, isTwitter) {
-  var attr = isTwitter ? 'name' : 'name';
+function _setMeta(name, content) {
   var el = document.querySelector('meta[name="'+name+'"]');
   if (!el) { el = document.createElement('meta'); el.setAttribute('name', name); document.head.appendChild(el); }
   el.setAttribute('content', content);
