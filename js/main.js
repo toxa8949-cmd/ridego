@@ -2554,6 +2554,32 @@ function showDetail(id, _skipPush) {
   document.getElementById('detail-breadcrumb').textContent = l.title;
   document.getElementById('detail-title').textContent = l.title;
 
+  // ── SEO: оновити title і meta description динамічно ───────
+  var _seoTitle = l.title
+    ? (l.title + (l.city ? ' — ' + l.city : '') + (l.price ? ' за ' + l.price.toLocaleString('uk') + ' грн' : '') + ' | RideGO')
+    : 'RideGO — Маркетплейс електротранспорту';
+  document.title = _seoTitle;
+  var _metaDesc = document.querySelector('meta[name="description"]');
+  if (_metaDesc) {
+    var _descParts = [];
+    if (l.condition) _descParts.push(l.condition);
+    if (l.cat) _descParts.push(l.cat);
+    if (l.city) _descParts.push('м. ' + l.city);
+    if (l.price) _descParts.push(l.price.toLocaleString('uk') + ' грн');
+    var _descStr = l.desc ? l.desc.slice(0, 160) : _descParts.join(' · ');
+    _metaDesc.setAttribute('content', _descStr);
+  }
+  // Canonical URL
+  var _canonical = document.querySelector('link[rel="canonical"]');
+  if (_canonical) _canonical.setAttribute('href', 'https://ridego.com.ua/listing/' + l.id);
+  // OG теги
+  var _ogTitle = document.querySelector('meta[property="og:title"]');
+  if (_ogTitle) _ogTitle.setAttribute('content', l.title + ' — RideGO');
+  var _ogImg = document.querySelector('meta[property="og:image"]');
+  if (_ogImg && l.img) _ogImg.setAttribute('content', l.img);
+  var _ogUrl = document.querySelector('meta[property="og:url"]');
+  if (_ogUrl) _ogUrl.setAttribute('content', 'https://ridego.com.ua/listing/' + l.id);
+
   document.getElementById('detail-price').textContent = l.price.toLocaleString('uk') + ' грн';
   var _usdEl = document.getElementById('detail-price-usd');
   if (_usdEl) {
