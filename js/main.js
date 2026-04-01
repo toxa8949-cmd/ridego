@@ -154,21 +154,7 @@ var SLOT_PACKAGES = [
 ];
 
 function buySlotPackage(count, price) {
-  if (!window._db || !currentUser || !currentUser.uid) {
-    showToast('⚠️ Увійдіть в акаунт'); return;
-  }
-
-  var confirmed = confirm('Купити ' + count + ' слот(ів) за ' + price + ' грн?\n(Тестовий режим — оплата не стягується)');
-  if (!confirmed) return;
-
-  window._db.collection('users').doc(currentUser.uid).update({
-    slots: firebase.firestore.FieldValue.increment(count)
-  }).then(function() {
-    _userSlots.slots = (_userSlots.slots || 0) + count;
-    _renderSlotsUI();
-    closeBuySlots();
-    showToast('✅ Куплено ' + count + ' слот(ів)!');
-  }).catch(function(e){ showToast('⚠️ Помилка: ' + e.message); });
+  showToast('⏳ Оплата розміщень скоро буде доступна! Слідкуйте за оновленнями.');
 }
 
 function _renderSlotsUI() {
@@ -5140,47 +5126,8 @@ function _updatePromoUI() {
 }
 
 function applyPromo() {
-  if (!_promoListingId) return;
-
-  var listing = (_allListings())
-    .find(function(x){ return x && (x.id === _promoListingId || x.id === +_promoListingId || String(x.id) === String(_promoListingId)); });
-
-  var promoUntilDate = new Date(Date.now() + _selectedPromoDays * 86400000);
-  var promoData = {
-    promo:      _selectedPromoType,
-    promoDays:  _selectedPromoDays,
-    promoUntil: promoUntilDate.toISOString()
-  };
-
-  var listingId = String(_promoListingId);
-
-  if (window._db && listingId) {
-    window._db.collection('listings').doc(listingId).update(promoData)
-      .then(function() {
-        console.log('Promo saved to Firestore:', listingId, promoData);
-        showToast('🚀 ' + PROMO_NAMES[_selectedPromoType] + ' активовано на ' + _selectedPromoDays + ' днів! (до ' + promoUntilDate.toLocaleDateString('uk-UA', {day:'numeric',month:'long'}) + ')');
-      })
-      .catch(function(e) {
-        showToast('⚠️ Помилка збереження промо: ' + e.message);
-        console.error('Promo save error:', e);
-      });
-  }
-
-  if (listing) {
-    Object.assign(listing, promoData);
-  }
-  var inFb = _fbListings.find(function(x){ return x && String(x.id) === listingId; });
-  if (inFb) Object.assign(inFb, promoData);
-  var inMy = myListings.find(function(x){ return x && String(x.id) === listingId; });
-  if (inMy) Object.assign(inMy, promoData);
-
+  showToast('⏳ Платне просування скоро буде доступне! Слідкуйте за оновленнями.');
   closePromoModal();
-  renderHomeListings();
-  if (typeof renderMyListings === 'function') renderMyListings();
-  if (typeof runSearch === 'function' && document.getElementById('catalog-results-wrap') &&
-      document.getElementById('catalog-results-wrap').style.display !== 'none') {
-    runSearch();
-  }
 }
 
 function submitListing() {
