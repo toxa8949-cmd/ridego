@@ -6324,8 +6324,11 @@ function openMysvcEditor(id) {
     var cities = [];
     Object.values(raions).forEach(function(r){r.cities.forEach(function(ci){if(cities.indexOf(ci)<0)cities.push(ci);});});
     cities.sort(function(a,b){return a.localeCompare(b,'uk');});
+    // Нормалізуємо апостроф для порівняння
+    var normalizeApos = function(str){ return str ? str.replace(/[\u2019\u0027\u2018\u02bc]/g, "\u2019") : str; };
+    var savedCity = normalizeApos(s.city || '');
     cities.forEach(function(ci){
-      var sel = (s.city===ci) ? ' selected' : '';
+      var sel = (normalizeApos(ci) === savedCity) ? ' selected' : '';
       cityOpts += '<option value="'+ci+'"'+sel+'>'+ci+'</option>';
     });
   }
@@ -6632,6 +6635,7 @@ function hideMysvcHint() {
 function onMysvcOblastChange() {
   var oblast  = document.getElementById("mysvc-oblast").value;
   var citySel = document.getElementById("mysvc-city");
+  var prevCity = citySel.value; // зберегти поточне місто
   citySel.innerHTML = '<option value="">\u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043c\u0456\u0441\u0442\u043e...</option>';
   citySel.disabled = !oblast;
   if (!oblast) return;
@@ -6644,6 +6648,10 @@ function onMysvcOblastChange() {
     citySel.appendChild(o);
   });
   citySel.disabled = false;
+  // Відновити попереднє місто якщо воно є в новому списку
+  if (prevCity && cities.indexOf(prevCity) >= 0) {
+    citySel.value = prevCity;
+  }
 }
 
 function saveMysvc() {
