@@ -22,6 +22,24 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing type or to' });
   }
 
+  // Базова валідація email
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
+
+  // Перевірка Origin — тільки з наших доменів
+  const origin = req.headers.origin || req.headers.referer || '';
+  const ALLOWED = ['ridego.com.ua', 'ridego-sigma.vercel.app', 'localhost'];
+  const isAllowed = ALLOWED.some(d => origin.includes(d));
+  if (!isAllowed && origin) {
+    return res.status(403).json({ error: 'Forbidden origin' });
+  }
+
+  // Обмеження типів email
+  if (!['welcome', 'new_message'].includes(type)) {
+    return res.status(400).json({ error: 'Unknown email type' });
+  }
+
   let subject = '';
   let html = '';
 

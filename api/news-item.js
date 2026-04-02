@@ -105,7 +105,7 @@ ${dateStr ? `<meta property="article:published_time" content="${dateStr}">` : ''
   <h1 style="margin:16px 0 8px;font-size:32px;line-height:1.3;color:#111">${escHtml(news.title)}</h1>
   ${news.excerpt ? `<p style="font-size:18px;color:#555;font-style:italic;margin:0 0 24px">${escHtml(news.excerpt)}</p>` : ''}
   ${news.img ? `<img src="${escHtml(news.img)}" alt="${escHtml(news.title)}" style="width:100%;border-radius:12px;margin-bottom:24px;object-fit:cover;max-height:400px">` : ''}
-  <div style="font-size:16px;line-height:1.8">${news.body || ''}</div>
+  <div style="font-size:16px;line-height:1.8">${(news.body || '').replace(/<script[\s\S]*?<\/script>/gi, '').replace(/\bon\w+\s*=/gi, 'data-removed=')}</div>
   <div style="margin-top:40px;padding:24px;background:#f0fdf4;border-radius:12px;text-align:center">
     <p style="margin:0 0 12px;font-weight:600">Купуй та продавай електротранспорт на RideGO</p>
     <a href="${BASE}" style="display:inline-block;background:#1db954;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600">Перейти на RideGO →</a>
