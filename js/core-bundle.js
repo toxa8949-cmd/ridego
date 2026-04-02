@@ -1,0 +1,1374 @@
+// ── HERO ПОШУК ─────────────────────────────────────────────
+function heroSearch() {
+  var q = (document.getElementById('hero-search-input') || {}).value || '';
+  if (!q.trim()) { showPage('catalog'); return; }
+  showPage('catalog');
+  setTimeout(function() {
+    var inp = document.getElementById('search-input') || document.getElementById('catalog-search-input');
+    if (inp) { inp.value = q.trim(); }
+    if (typeof runSearch === 'function') runSearch();
+    else if (typeof filterListings === 'function') filterListings();
+  }, 100);
+}
+
+function heroFilter(type, value) {
+  showPage('catalog');
+  setTimeout(function() {
+    if (type === 'category') {
+      var catEl = document.getElementById('fp-cat') || document.querySelector('[id*="cat"]');
+      if (catEl) { catEl.value = value; }
+    } else if (type === 'price') {
+      var priceEl = document.getElementById('fp-price-to') || document.getElementById('filter-price-to');
+      if (priceEl) { priceEl.value = value; }
+    } else if (type === 'condition') {
+      var condEl = document.getElementById('fp-condition') || document.querySelector('[id*="condition"]');
+      if (condEl) { condEl.value = value; }
+    } else if (type === 'city') {
+      var cityEl = document.getElementById('fp-city');
+      if (cityEl) { cityEl.value = value; }
+    }
+    if (typeof runSearch === 'function') runSearch();
+    else if (typeof filterListings === 'function') filterListings();
+    if (typeof updateActiveFilters === 'function') updateActiveFilters();
+  }, 100);
+}
+
+function _esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+var _userSlots = {
+  slots: 0,
+  slotsWelcome: 0,
+  slotsWelcomeExpiry: null,
+  lastFreeSlotAt: null,
+  loaded: false
+};
+
+function _totalSlots() {
+  var welcome = Math.max(0, _userSlots.slotsWelcome || 0);
+  var bought  = Math.max(0, _userSlots.slots || 0);
+  if (welcome > 0 && _userSlots.slotsWelcomeExpiry) {
+    var exp = _userSlots.slotsWelcomeExpiry;
+    var expDate = exp && exp.seconds ? new Date(exp.seconds * 1000)
+                : exp && exp.toDate  ? exp.toDate()
+                : new Date(exp);
+    if (!isNaN(expDate.getTime()) && new Date() > expDate) welcome = 0;
+  }
+  return bought + welcome;
+}
+
+function loadUserSlots() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
+    if (!snap.exists) return;
+    var d = snap.data();
+
+    _userSlots.slots             = Math.max(0, d.slots || 0);
+    _userSlots.slotsWelcome      = Math.max(0, d.slotsWelcome || 0);
+    _userSlots.slotsWelcomeExpiry= d.slotsWelcomeExpiry || null;
+    _userSlots.lastFreeSlotAt    = d.lastFreeSlotAt || null;
+    _userSlots.loaded            = true;
+
+    var fixUpdate = {};
+    if ((d.slots || 0) < 0)        { fixUpdate.slots = 0; }
+    if ((d.slotsWelcome || 0) < 0) { fixUpdate.slotsWelcome = 0; }
+    if (Object.keys(fixUpdate).length > 0) {
+      window._db.collection('users').doc(currentUser.uid).update(fixUpdate).catch(function(){});
+    }
+
+    _checkMonthlyFreeSlot();
+    _renderSlotsUI();
+  }).catch(function(e){ console.log('slots load:', e.message); });
+}
+
+function _checkMonthlyFreeSlot() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  var now = new Date();
+  var lastDate = _userSlots.lastFreeSlotAt
+    ? (_userSlots.lastFreeSlotAt.seconds
+        ? new Date(_userSlots.lastFreeSlotAt.seconds * 1000)
+        : new Date(_userSlots.lastFreeSlotAt))
+    : null;
+
+  var shouldGive = !lastDate || (now - lastDate) >= 30 * 24 * 60 * 60 * 1000;
+  if (!shouldGive) return;
+
+  // Для нових користувачів (lastDate === null) — тільки ініціалізуємо lastFreeSlotAt,
+  // не нараховуємо слот (вони вже отримали slotsWelcome)
+  if (!lastDate) {
+    window._db.collection('users').doc(currentUser.uid).update({
+      lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(){});
+    _userSlots.lastFreeSlotAt = { seconds: Math.floor(Date.now() / 1000) };
+    return;
+  }
+
+  _userSlots.slots = (_userSlots.slots || 0) + 1;
+  window._db.collection('users').doc(currentUser.uid).update({
+    slots: firebase.firestore.FieldValue.increment(1),
+    lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    _userSlots.lastFreeSlotAt = { seconds: Math.floor(Date.now() / 1000) };
+    _renderSlotsUI();
+    showToast('🎁 Нараховано 1 безкоштовний слот за цей місяць!');
+  }).catch(function(e){ console.log('monthly slot:', e.message); });
+}
+
+function _initNewUserSlots(uid) {
+  if (!window._db || !uid) return;
+  var expiry = new Date();
+  expiry.setDate(expiry.getDate() + 30);
+  window._db.collection('users').doc(uid).update({
+    slots: 0,
+    slotsWelcome: 10,
+    slotsWelcomeExpiry: firebase.firestore.Timestamp.fromDate(expiry),
+    lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp(),
+    totalListingsPublished: 0
+  }).catch(function(e){ console.log('init slots:', e.message); });
+  _userSlots.slots = 0;
+  _userSlots.slotsWelcome = 10;
+  _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
+
+  // Відправити вітальний email
+  if (currentUser && currentUser.email) {
+    fetch('/api/send-email', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        type: 'welcome',
+        to: currentUser.email,
+        data: { name: currentUser.displayName || currentUser.email.split('@')[0] }
+      })
+    }).catch(function(e){ console.log('welcome email error:', e.message); });
+  }
+  _userSlots.loaded = true;
+}
+
+function _consumeSlot() {
+  if (!window._db || !currentUser || !currentUser.uid) return Promise.resolve(false);
+  if (_totalSlots() <= 0) return Promise.resolve(false);
+
+  var now = new Date();
+  var welcomeCount = _userSlots.slotsWelcome || 0;
+  var welcomeValid = false;
+
+  if (welcomeCount > 0) {
+    if (!_userSlots.slotsWelcomeExpiry) {
+
+      welcomeValid = true;
+    } else {
+
+      var expiry = _userSlots.slotsWelcomeExpiry;
+      var expiryDate;
+      if (expiry && expiry.seconds) {
+        expiryDate = new Date(expiry.seconds * 1000);
+      } else if (expiry && expiry.toDate) {
+        expiryDate = expiry.toDate();
+      } else if (expiry instanceof Date) {
+        expiryDate = expiry;
+      } else {
+        expiryDate = new Date(expiry);
+      }
+      welcomeValid = !isNaN(expiryDate.getTime()) && now < expiryDate;
+    }
+  }
+
+  var update = {};
+  if (welcomeValid && welcomeCount > 0) {
+    update.slotsWelcome = firebase.firestore.FieldValue.increment(-1);
+    _userSlots.slotsWelcome = Math.max(0, welcomeCount - 1);
+  } else if ((_userSlots.slots || 0) > 0) {
+    update.slots = firebase.firestore.FieldValue.increment(-1);
+    _userSlots.slots = Math.max(0, (_userSlots.slots || 0) - 1);
+  } else {
+
+    return Promise.resolve(false);
+  }
+  update.totalListingsPublished = firebase.firestore.FieldValue.increment(1);
+
+  return window._db.collection('users').doc(currentUser.uid).update(update)
+    .then(function() { _renderSlotsUI(); return true; })
+    .catch(function(e) { console.log('consume slot:', e.message); return false; });
+}
+
+var SLOT_PACKAGES = [
+  { count: 1,  price: 15,  label: '1 слот',    discount: 0   },
+  { count: 3,  price: 43,  label: '3 слоти',   discount: 5   },
+  { count: 5,  price: 68,  label: '5 слотів',  discount: 10  },
+  { count: 10, price: 128, label: '10 слотів', discount: 15  },
+  { count: 20, price: 225, label: '20 слотів', discount: 25  },
+  { count: 50, price: 525, label: '50 слотів', discount: 30  },
+];
+
+function buySlotPackage(count, price) {
+  showToast('⏳ Оплата розміщень скоро буде доступна! Слідкуйте за оновленнями.');
+}
+
+function _renderSlotsUI() {
+  var total   = Math.max(0, _totalSlots());
+  var welcome = Math.max(0, Math.min(_userSlots.slotsWelcome || 0, total));
+  var bought  = Math.max(0, _userSlots.slots || 0);
+
+  var panel = document.getElementById('slots-panel');
+  if (!panel) return;
+
+  var welcomeExpiry = '';
+  if (welcome > 0 && _userSlots.slotsWelcomeExpiry) {
+    var exp = new Date(_userSlots.slotsWelcomeExpiry.seconds * 1000);
+    welcomeExpiry = ' (згорають ' + exp.toLocaleDateString('uk-UA', {day:'numeric',month:'long'}) + ')';
+  }
+
+  // Склонування: розміщення
+  var label = total === 1 ? 'розміщення' : total < 5 ? 'розміщення' : 'розміщень';
+
+  panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
+    + '<div>'
+    + '<div style="font-size:28px;font-weight:800;color:var(--brand)">' + total + '</div>'
+    + '<div style="font-size:13px;color:var(--text-muted)">доступних ' + label + '</div>'
+    + '</div>'
+    + '<button class="btn-primary" style="padding:10px 20px;font-size:14px" onclick="openBuySlots()">'
+    + '<i class="fa-solid fa-plus" style="margin-right:6px"></i>Купити розміщення</button>'
+    + '</div>'
+    + (welcome > 0 ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">🎁 Стартові: <b>' + welcome + '</b>' + welcomeExpiry + '</div>' : '')
+    + (bought > 0  ? '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">💳 Куплені: <b>' + bought + '</b> (не згорають)</div>' : '')
+    + (total === 0 ? '<div style="font-size:13px;color:#ff5252;margin-bottom:8px">⚠️ Розміщень немає — придбайте щоб публікувати оголошення</div>' : '');
+}
+
+function openBuySlots() {
+  var overlay = document.getElementById('buy-slots-overlay');
+  if (overlay) { overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+function closeBuySlots() {
+  var overlay = document.getElementById('buy-slots-overlay');
+  if (overlay) { overlay.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
+const LISTINGS = [];
+
+let favorites = [];
+let myListings = [];
+let activeChat = null;
+let isLoggedIn = false;
+let currentUser = { name:'', email:'', initial:'' };
+
+const chats = [];
+
+
+function getSellerById(name) {
+  const map = {
+    'Олег К.': 'oleg-k', 'Марія В.': 'maria-v', 'Auto-Market': 'auto-market',
+    'Велосипед Шоп': 'veloshop', 'Parts Store': 'parts-store', 'Moto Parts': 'parts-store',
+    'ElectroMax': 'electromax',
+  };
+  return _fbSellers.find(s => s.id === (map[name] || ''));
+}
+
+function updateProfileCats() {
+  var checked = [];
+  document.querySelectorAll('#set-cats-wrap input[type=checkbox]:checked').forEach(function(cb) {
+    checked.push(cb.value);
+  });
+  var hiddenEl = document.getElementById('set-cats-value');
+  if (hiddenEl) hiddenEl.value = JSON.stringify(checked);
+}
+function _fillProfileCats(cats) {
+  if (!cats || !cats.length) return;
+  document.querySelectorAll('#set-cats-wrap input[type=checkbox]').forEach(function(cb) {
+    cb.checked = cats.indexOf(cb.value) >= 0;
+  });
+  updateProfileCats();
+}
+
+function toggleFaq(el) {
+  var isOpen = el.classList.contains('open');
+
+  document.querySelectorAll('.faq-q').forEach(function(q) {
+    q.classList.remove('open');
+    var a = q.nextElementSibling;
+    if (a) a.classList.remove('open');
+  });
+
+  if (!isOpen) {
+    el.classList.add('open');
+    var answer = el.nextElementSibling;
+    if (answer) answer.classList.add('open');
+  }
+}
+
+function _parseDate(val) {
+  if (!val) return null;
+  if (val.seconds) return new Date(val.seconds * 1000);
+  if (val.toDate) return val.toDate();
+  var d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function _isPromoActive(l) {
+  if (!l || !l.promo) return false;
+  if (!l.promoUntil) return true;
+  var until = _parseDate(l.promoUntil);
+  return until ? until > new Date() : true;
+}
+
+function _cleanExpiredPromos(listings) {
+  var expired = [];
+  var now = new Date();
+  listings.forEach(function(l) {
+    if (!l || !l.promo) return;
+
+    if (!l.promoUntil) return;
+    var until = _parseDate(l.promoUntil);
+
+    if (!until) return;
+    if (until <= now) {
+      expired.push(l.id);
+      delete l.promo;
+      delete l.promoUntil;
+      delete l.promoDays;
+    }
+  });
+
+  if (window._db && expired.length) {
+    expired.forEach(function(id) {
+      if (!id) return;
+      window._db.collection('listings').doc(String(id)).update({
+        promo: firebase.firestore.FieldValue.delete(),
+        promoUntil: firebase.firestore.FieldValue.delete(),
+        promoDays: firebase.firestore.FieldValue.delete()
+      }).catch(function(){});
+    });
+  }
+  return listings;
+}
+
+var MAX_TOP_IN_ROW = 4;
+
+function _sortWithPromo(data, sortType) {
+
+  data.forEach(function(l) {
+    if (l.promo && !_isPromoActive(l)) {
+      delete l.promo;
+    }
+  });
+
+  var tops      = data.filter(function(l){ return l.promo === 'top'; });
+  var highlights= data.filter(function(l){ return l.promo === 'highlight'; });
+  var urgents   = data.filter(function(l){ return l.promo === 'urgent'; });
+  var regulars  = data.filter(function(l){ return !l.promo || l.promo === 'banner'; });
+
+  var byDate = function(a, b) {
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  };
+  var byDateAsc = function(a, b) { return byDate(b, a); };
+
+  tops.sort(byDate);
+  highlights.sort(byDate);
+  urgents.sort(byDate);
+
+  if (sortType === 'cheap') {
+    regulars.sort(function(a,b){ return a.price - b.price; });
+  } else if (sortType === 'expensive') {
+    regulars.sort(function(a,b){ return b.price - a.price; });
+  } else {
+    regulars.sort(byDate);
+  }
+
+  var mixed = [];
+  var urgIdx = 0, hlIdx = 0, regIdx = 0;
+  var regBatch = 3;
+
+  var topIdx = 0;
+  var totalItems = data.length;
+  var inserted = 0;
+
+  while (topIdx < tops.length || regIdx < regulars.length || urgIdx < urgents.length || hlIdx < highlights.length) {
+
+    var topBatch = Math.min(MAX_TOP_IN_ROW, tops.length - topIdx);
+    for (var i = 0; i < topBatch; i++) {
+      mixed.push(tops[topIdx++]);
+    }
+
+    if (urgIdx < urgents.length) mixed.push(urgents[urgIdx++]);
+
+    if (hlIdx < highlights.length) mixed.push(highlights[hlIdx++]);
+
+    for (var j = 0; j < regBatch && regIdx < regulars.length; j++) {
+      mixed.push(regulars[regIdx++]);
+    }
+
+    if (topBatch === 0 && urgIdx >= urgents.length && hlIdx >= highlights.length && regIdx >= regulars.length) break;
+    if (topBatch === 0 && tops.length === 0) {
+
+      while (regIdx < regulars.length) mixed.push(regulars[regIdx++]);
+      while (urgIdx < urgents.length) mixed.push(urgents[urgIdx++]);
+      while (hlIdx < highlights.length) mixed.push(highlights[hlIdx++]);
+      break;
+    }
+  }
+  return mixed;
+}
+
+function _allListings() {
+  var seen = {};
+  return _fbListings.concat(myListings).filter(function(l) {
+    if (!l || !l.id) return false;
+    if (seen[l.id]) return false;
+    seen[l.id] = true;
+    return true;
+  });
+}
+
+var _citySearchTimer = null;
+var _citySearchCache = {};
+
+function onCityInput(val) {
+  var sugEl = document.getElementById('city-suggestions');
+  if (!sugEl) return;
+  val = (val || '').trim();
+  if (val.length < 2) { sugEl.style.display = 'none'; return; }
+  clearTimeout(_citySearchTimer);
+  _citySearchTimer = setTimeout(function() { _searchCityNominatim(val); }, 350);
+
+  clearTimeout(_cityMapTimer);
+  _cityMapTimer = setTimeout(function() {
+    if (document.getElementById('new-city').value.trim().length >= 2) {
+      onCityChange();
+    }
+  }, 800);
+}
+
+var _cityMapTimer = null;
+
+function _searchCityNominatim(q) {
+  var sugEl = document.getElementById('city-suggestions');
+  if (!sugEl) return;
+  if (_citySearchCache[q]) { _renderCitySuggestions(_citySearchCache[q]); return; }
+  sugEl.style.display = '';
+  sugEl.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">Пошук...</div>';
+
+  var url = 'https://nominatim.openstreetmap.org/search'
+    + '?q=' + encodeURIComponent(q + ' Україна')
+    + '&countrycodes=ua'
+    + '&addressdetails=1'
+    + '&limit=10'
+    + '&format=json'
+    + '&accept-language=uk';
+
+  fetch(url, { headers: { 'Accept-Language': 'uk,en' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var results = [];
+      var seen = {};
+      data.forEach(function(p) {
+        var addr = p.address || {};
+
+        var name = addr.village || addr.hamlet || addr.city || addr.town
+                || addr.suburb || addr.municipality || addr.county
+                || p.display_name.split(',')[0];
+        if (!name) return;
+
+        var cleanName = name.replace(/ громада$/i, '').replace(/ рада$/i, '');
+        var oblast = (addr.state || '').replace(' область', ' обл.');
+        var raion  = (addr.county || '').replace(' район', ' р-н');
+        var sub    = [raion, oblast].filter(Boolean).join(', ');
+        var key    = cleanName.toLowerCase() + '|' + (addr.state || '');
+        if (seen[key]) return;
+        seen[key] = true;
+        results.push({ name: cleanName, sub: sub });
+      });
+      _citySearchCache[q] = results;
+      _renderCitySuggestions(results);
+    })
+    .catch(function() { sugEl.style.display = 'none'; });
+}
+
+function _renderCitySuggestions(results) {
+  var sugEl = document.getElementById('city-suggestions');
+  if (!sugEl) return;
+  if (!results.length) {
+    sugEl.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">Не знайдено — введіть назву вручну</div>';
+    sugEl.style.display = '';
+    return;
+  }
+  sugEl.innerHTML = results.map(function(r) {
+    var safe = r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div class="city-sug-item" onclick="selectCitySuggestion(\'' + safe + '\')">'
+      + '<div style="font-size:14px;font-weight:600">' + r.name + '</div>'
+      + (r.sub ? '<div style="font-size:12px;color:var(--text-muted)">' + r.sub + '</div>' : '')
+      + '</div>';
+  }).join('');
+  sugEl.style.display = '';
+}
+
+function selectCitySuggestion(name) {
+  var inp = document.getElementById('new-city');
+  if (inp) inp.value = name;
+  closeCitySuggestions();
+
+  setTimeout(onCityChange, 50);
+}
+
+function closeCitySuggestions() {
+  var s = document.getElementById('city-suggestions');
+  if (s) s.style.display = 'none';
+}
+
+function toggleMobileSearch() {
+  var bar = document.getElementById('mobileSearchBar');
+  if (!bar) return;
+  var isOpen = bar.style.display !== 'none';
+  bar.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) {
+    var inp = document.getElementById('headerSearchMobile');
+    if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 50); }
+  }
+}
+
+let _routerLock = false;
+
+function _setPath(path) {
+  if (location.pathname !== path) {
+    history.pushState(null, '', path);
+  }
+}
+
+var CAT_SLUGS = {
+  'elektrosamokaty':   'Електросамокати',
+  'velosypedy':        'Велосипеди',
+  'elektrovelosypedy': 'Електровелосипеди',
+  'elektroskutery':    'Електроскутери',
+  'elektromotocykly':  'Електромотоцикли',
+};
+var CAT_TO_SLUG = {};
+Object.keys(CAT_SLUGS).forEach(function(slug) { CAT_TO_SLUG[CAT_SLUGS[slug]] = slug; });
+
+function _parsePath(path) {
+  var p = (path || location.pathname).replace(/\/+$/, '') || '/';
+  if (p === '/' || p === '/home') return { page: 'home' };
+  if (p === '/catalog')   return { page: 'catalog' };
+  if (p === '/add')       return { page: 'add' };
+  if (p === '/services')  return { page: 'services' };
+  if (p === '/messages')  return { page: 'messages' };
+  if (p === '/profile')   return { page: 'profile' };
+  if (p === '/news')      return { page: 'news' };
+  if (p === '/faq')       return { page: 'faq' };
+  if (p === '/terms')     return { page: 'terms' };
+  if (p === '/privacy')   return { page: 'privacy' };
+
+  var listingMatch = p.match(/^\/listing\/(.+)$/);
+  if (listingMatch) return { page: 'detail', id: listingMatch[1] };
+
+  var serviceMatch = p.match(/^\/service\/(.+)$/);
+  if (serviceMatch) return { page: 'service-detail', id: serviceMatch[1] };
+
+  var sellerMatch = p.match(/^\/seller\/(.+)$/);
+  if (sellerMatch) return { page: 'seller', id: 'uid:' + sellerMatch[1] };
+
+  var catMatch = p.match(/^\/category\/(.+)$/);
+  if (catMatch && CAT_SLUGS[catMatch[1]]) return { page: 'catalog', cat: CAT_SLUGS[catMatch[1]] };
+
+  var newsMatch = p.match(/^\/news\/(.+)$/);
+  if (newsMatch) return { page: 'news-detail', id: newsMatch[1] };
+  return { page: 'home' };
+}
+
+function _setHash(hash) {
+  var pathMap = {
+    '': '/', 'home': '/', 'catalog': '/catalog', 'add': '/add',
+    'services': '/services', 'messages': '/messages', 'profile': '/profile', 'news': '/news'
+  };
+  if (pathMap[hash] !== undefined) { _setPath(pathMap[hash]); return; }
+  if (hash.startsWith('detail/')) { _setPath('/listing/' + hash.replace('detail/', '')); return; }
+  if (hash.startsWith('service/')) { _setPath('/service/' + hash.replace('service/', '')); return; }
+  if (hash.startsWith('seller/uid:')) { _setPath('/seller/' + hash.replace('seller/uid:', '')); return; }
+  if (hash.startsWith('seller/')) { _setPath('/seller/' + hash.replace('seller/', '')); return; }
+  _setPath('/' + hash);
+}
+
+function _parseHash(hash) { return _parsePath(); }
+
+function _renderRoute(route) {
+  _routerLock = true;
+  const { page, id, cat } = route;
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+
+  document.querySelectorAll('.mnav-item').forEach(b => b.classList.remove('active'));
+  const navMap = { home:0, catalog:1, services:2, profile:3 };
+  const navItems = document.querySelectorAll('.mnav-item');
+  if (navMap[page] !== undefined && navItems[navMap[page]]) navItems[navMap[page]].classList.add('active');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (page === 'home')     renderHomeListings();
+  if (page === 'messages') {
+
+    if (window._authInitialized && !isLoggedIn) {
+      showToast('⚠️ Увійдіть щоб переглянути повідомлення');
+      _renderRoute({ page: 'profile' });
+      return;
+    }
+    renderChats();
+  }
+  if (page === 'profile') {
+
+    var _authLoading = document.getElementById('auth-loading');
+    var _authWall    = document.getElementById('auth-wall');
+    var _profileWall = document.getElementById('profile-wall');
+    if (!window._authInitialized) {
+      if (_authLoading) _authLoading.style.display = '';
+      if (_authWall)    _authWall.style.display    = 'none';
+      if (_profileWall) _profileWall.style.display = 'none';
+    } else {
+      renderProfile();
+    }
+  }
+  if (page === 'catalog') {
+
+    if (!route.cat) {
+      selectedCat = null;
+      document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); });
+      var fp = document.getElementById('filter-panel');
+      if (fp) fp.classList.remove('open');
+      var rw = document.getElementById('catalog-results-wrap');
+      if (rw) rw.style.display = 'none';
+      var dv = document.getElementById('catalog-divider');
+      if (dv) dv.style.display = 'none';
+    }
+    setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150);
+  }
+  if (page === 'services')       renderServices();
+  if (page === 'service-detail' && id) showServiceDetail(id);
+  if (page === 'add') {
+
+    if (window._authInitialized && !isLoggedIn) {
+      showToast('⚠️ Увійдіть щоб подати оголошення');
+      setTimeout(function(){ showPage('profile'); }, 100);
+      return;
+    }
+    setTimeout(initOblastSelect, 50);
+  }
+  if (page === 'seller' && id) renderSellerPage(id);
+  if (page === 'detail' && id) showDetail(id, true);
+  if (page === 'news-detail' && id) {
+
+    if (typeof showNewsDetail === 'function') {
+      showNewsDetail(id);
+    } else {
+
+      setTimeout(function(){ if (typeof showNewsDetail === 'function') showNewsDetail(id); }, 500);
+    }
+  }
+
+  document.title = _pageTitle(page, id);
+  _routerLock = false;
+}
+
+function _pageTitle(page, id) {
+  const base = 'RideGO';
+  if (page === 'home')     return base + ' — Маркетплейс електротранспорту';
+  if (page === 'catalog')  return base + ' — Каталог';
+  if (page === 'add')      return base + ' — Подати оголошення';
+  if (page === 'services') return base + ' — Сервіси';
+  if (page === 'messages') return base + ' — Повідомлення';
+  if (page === 'profile')  return base + ' — Профіль';
+  if (page === 'faq')      return base + ' — FAQ';
+  if (page === 'terms')    return base + ' — Правила';
+  if (page === 'privacy')  return base + ' — Конфіденційність';
+  if (page === 'seller') {
+    const s = _fbSellers.find(x => x.id === id);
+    return s ? base + ' — ' + s.name : base + ' — Продавець';
+  }
+  if (page === 'detail') {
+    const l = _allListings().find(x => x && x.id === id);
+    return l ? base + ' — ' + l.title : base + ' — Оголошення';
+  }
+  return base;
+}
+
+window.addEventListener('popstate', function() {
+  if (_routerLock) return;
+  _renderRoute(_parsePath());
+});
+
+function showPage(page, sellerId) {
+  var pageSEO = {
+    home:    { title: 'Головна', desc: 'Купуй та продавай електросамокати, велосипеди, скутери в Україні.' },
+    catalog: { title: 'Каталог оголошень', desc: 'Всі оголошення електротранспорту в Україні. Електросамокати, велосипеди, скутери.' },
+    services:{ title: 'Сервісні центри', desc: 'Ремонт та обслуговування електротранспорту по всій Україні.' },
+    news:    { title: 'Новини та огляди', desc: 'Останні новини, огляди та поради про електротранспорт.' },
+    add:     { title: 'Подати оголошення', desc: 'Продайте свій електротранспорт на RideGO.' },
+    faq:     { title: 'FAQ — Часті запитання', desc: 'Відповіді на найпоширеніші питання про RideGO.' },
+    terms:   { title: 'Правила користування', desc: 'Правила використання маркетплейсу RideGO.' },
+    privacy: { title: 'Політика конфіденційності', desc: 'Як RideGO зберігає та використовує ваші дані.' },
+  };
+  if (pageSEO[page]) {
+    var _pageUrl = 'https://ridego.com.ua' + (page === 'home' ? '/' : '/' + page);
+    _updateSEO({ title: pageSEO[page].title, desc: pageSEO[page].desc, url: _pageUrl });
+    _setListingSchema(null);
+    _setNewsSchema(null);
+  }
+  if (page === 'seller' && sellerId) {
+    _setHash('seller/' + sellerId);
+  } else if (page === 'detail') {
+
+  } else {
+    _setHash(page === 'home' ? '' : page);
+  }
+  _renderRoute({ page, id: sellerId || null });
+}
+
+
+function showSellerByUid(uid) {
+  if (!uid) { showToast('ℹ️ Профіль продавця не знайдено'); return; }
+  _setPath('/seller/' + uid);
+  _renderRoute({ page: 'seller', id: 'uid:' + uid });
+}
+
+function _initRouter() {
+  var route = _parsePath();
+  _renderRoute(route);
+}
+
+function _skeletonCards(count) {
+  count = count || 4;
+  var card = '<div class="skel-card">'
+    + '<div class="skeleton skel-img"></div>'
+    + '<div class="skel-body">'
+    + '<div class="skeleton skel-line short"></div>'
+    + '<div class="skeleton skel-line full"></div>'
+    + '<div class="skeleton skel-line price"></div>'
+    + '<div class="skeleton skel-line short"></div>'
+    + '</div></div>';
+  return Array(count).fill(card).join('');
+}
+
+function showSkeletons() {
+  var homeEl   = document.getElementById('home-listings');
+  var catalogEl = document.getElementById('catalog-listings');
+  var svcEl    = document.getElementById('home-services-grid');
+  if (homeEl    && !homeEl.children.length)    homeEl.innerHTML    = _skeletonCards(6);
+  if (catalogEl && !catalogEl.children.length) catalogEl.innerHTML = _skeletonCards(4);
+  if (svcEl     && !svcEl.children.length)     svcEl.innerHTML     = _skeletonCards(3);
+}
+
+
+var _CLOUDINARY_BASE = 'https://res.cloudinary.com/dxgtpo5dq/image/upload';
+
+function _cdnImg(url, opts) {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  opts = opts || {};
+  var w = opts.w || 600;
+  var q = opts.q || 'auto';
+  var f = opts.f || 'auto';
+  var c = opts.c || 'fill';
+
+  var transforms = 'w_' + w + ',q_' + q + ',f_' + f + ',c_' + c;
+  return url.replace('/upload/', '/upload/' + transforms + '/');
+}
+
+function _cdnThumb(url) { return _cdnImg(url, { w: 400, q: 75, c: 'fill' }); }
+
+function _cdnTiny(url) { return _cdnImg(url, { w: 20, q: 30, c: 'fill' }); }
+
+function _cdnDetail(url) { return _cdnImg(url, { w: 1200, q: 85, c: 'limit' }); }
+
+function _cdnOg(url) { return _cdnImg(url, { w: 1200, q: 80, c: 'fill' }); }
+
+function createCard(l, backPage) {
+  const isFav    = favorites.includes(l.id);
+  const thumbSrc = _cdnThumb(l.img) || l.img;
+  // ── XSS: екрануємо всі поля що надходять від користувача ──
+  const eTitle      = _esc(l.title);
+  const eCity       = _esc(l.city);
+  const eCat        = _esc(l.cat);
+  const eCondition  = _esc(l.condition);
+  const eYear       = _esc(l.year);
+  const eSellerName = _esc(l.sellerName || l.seller || 'Продавець');
+  const eSellerUid  = _esc(l.uid || '');
+  const eBargain    = _esc(l.bargain);
+  const imgHtml  = l.img
+    ? `<div class="listing-img-wrap"><img class="listing-img lazy-img" src="${_cdnTiny(l.img)||thumbSrc}" data-src="${thumbSrc}" alt="${eTitle}" loading="lazy" decoding="async" onerror="this.style.display='none'" style="filter:blur(8px);transition:filter .4s ease"></div>`
+    : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
+  const badgeHtml = l.badge
+    ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
+    : '';
+
+  let promoClass = '';
+  let promoBadge = '';
+  const activePromo = _isPromoActive(l) ? l.promo : null;
+
+  if (l.status === 'sold') {
+    promoClass = 'is-sold';
+    // Overlay поверх всього фото
+    promoBadge = `<div class="promo-badge-sold"><i class="fa-solid fa-circle-check"></i> ПРОДАНО</div>`;
+  } else if (activePromo === 'top') {
+    promoClass = 'is-top';
+    promoBadge = `<div class="promo-badge-top"><i class="fa-solid fa-arrow-up"></i> TOP</div>`;
+  } else if (activePromo === 'highlight') {
+    promoClass = 'is-highlight';
+    promoBadge = `<div class="promo-badge-highlight"><i class="fa-solid fa-star"></i> Хіт</div>`;
+  } else if (activePromo === 'urgent') {
+    promoClass = 'is-urgent';
+    promoBadge = `<div class="promo-badge-urgent"><i class="fa-solid fa-fire"></i> Терміново</div>`;
+  }
+  // Нормалізація specs — завжди однакові одиниці
+  function _specVal(v, unit) {
+    if (!v || v === '—') return null;
+    var s = String(v).trim();
+    if (!s) return null;
+    // Якщо одиниця вже є — не дублювати
+    if (unit && !s.includes(unit.trim())) return s + ' ' + unit.trim();
+    return s;
+  }
+  const specBattery = _specVal(l.battery, 'Ah');
+  const specSpeed   = _specVal(l.speed, 'км/год');
+  const specRange   = _specVal(l.range, 'км');
+
+  // XSS: екрануємо spec значення
+  const eSpecBattery = _esc(specBattery);
+  const eSpecSpeed   = _esc(specSpeed);
+  const eSpecRange   = _esc(specRange);
+
+  const specsHtml = (specBattery || specSpeed || specRange) ? `
+    <div class="listing-specs">
+      ${eSpecBattery ? `<div class="spec"><i class="fa-solid fa-battery-full"></i>${eSpecBattery}</div>` : ''}
+      ${eSpecSpeed   ? `<div class="spec"><i class="fa-solid fa-gauge-high"></i>${eSpecSpeed}</div>`   : ''}
+      ${eSpecRange   ? `<div class="spec"><i class="fa-solid fa-road"></i>${eSpecRange}</div>`         : ''}
+    </div>` : '<div class="listing-specs-empty"></div>';
+
+  const yearHtml = eYear ? `<span class="lv-year" style="font-size:12px;color:var(--text-muted);margin-left:6px;font-weight:500">${eYear} р.</span>` : '';
+  const condHtml = eCondition
+    ? `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${eCondition}</span>`
+    : `<span class="lv-condition"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>Хороший</span>`;
+  // Метарядок: рік + стан — під назвою
+  const metaHtml = (eYear || eCondition)
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        ${eYear ? `<span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${eYear} р.</span>` : ''}
+        ${eCondition ? `<span style="font-size:12px;color:${l.condition==='Новий'?'var(--brand)':'var(--text-muted)'};display:flex;align-items:center;gap:4px"><i class="fa-solid fa-circle-check" style="font-size:10px"></i>${eCondition}</span>` : ''}
+       </div>`
+    : '';
+
+  const _sellerUid = eSellerUid;
+  const sellerBtn = `<button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${_esc((l.seller||'').replace(/'/g,"\\'"))}')` };"
+    style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);
+           display:inline-flex;align-items:center;gap:5px;padding:0;transition:color .15s;font-family:inherit"
+    onmouseover="this.style.color='var(--brand)'" onmouseout="this.style.color='var(--text-muted)'">
+    <i class="fa-solid fa-user-circle" style="color:var(--brand)"></i>${eSellerName}
+  </button>`;
+
+  return `
+  <div class="listing-card ${promoClass}" onclick="showDetail('${_esc(l.id)}')">
+
+    <!-- Photo — тільки promo badges (TOP/Хіт/Терміново) -->
+    <div style="position:relative;flex-shrink:0">${imgHtml}${promoBadge}</div>
+
+    <!-- Body -->
+    <div class="listing-body">
+
+      <!-- LIST MODE top row: category + price -->
+      <div class="lv-top-row">
+        <span class="tag tag-blue" style="font-size:11px">${eCat}</span>
+        <div class="listing-price" style="font-size:20px;margin:0;white-space:nowrap">
+          ${l.price.toLocaleString('uk')} грн
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="listing-title">${eTitle}</div>
+
+      <!-- Condition + year -->
+      <div class="card-pills-row">
+        ${eCondition ? `<span class="card-pill card-pill-${l.condition==='Новий'?'new':l.condition==='Хороший'?'good':'used'}">${eCondition}</span>` : ''}
+        ${eYear ? `<span class="card-pill card-pill-year"><i class="fa-regular fa-calendar" style="font-size:10px"></i>${eYear}</span>` : ''}
+      </div>
+
+      <!-- Price + ТОРГ/ОБМІН -->
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
+        ${eBargain==='Торг' ? `<span class="card-pill card-pill-bargain">Торг</span>` : ''}
+        ${eBargain==='Обмін' ? `<span class="card-pill card-pill-exchange">Обмін</span>` : ''}
+        ${eBargain==='Торг+Обмін' ? `<span class="card-pill card-pill-bargain">Торг</span><span class="card-pill card-pill-exchange">Обмін</span>` : ''}
+      </div>
+
+      <!-- Specs -->
+      ${specsHtml}
+
+      <!-- Footer: продавець + кнопки -->
+      <div class="listing-footer">
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+          <button onclick="event.stopPropagation();${_sellerUid ? `showSellerByUid('${_sellerUid}')` : `showSeller('${_esc((l.seller||'').replace(/'/g,"\\'"))}')` };"
+            class="card-seller-btn">
+            <i class="fa-solid fa-user-circle"></i>${eSellerName}
+          </button>
+          <span class="loc"><i class="fa-solid fa-location-dot"></i>${eCity}</span>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="fav-btn compare-btn-card" id="cmp-btn-${_esc(l.id)}"
+            onclick="event.stopPropagation();toggleCompare('${_esc(l.id)}',this)"
+            style="font-size:13px;opacity:.5" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438">
+            <i class="fa-solid fa-scale-balanced"></i>
+          </button>
+          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${_esc(l.id)}',this)">
+            <i class="fa-${isFav?'solid':'regular'} fa-heart"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- LIST MODE bottom row -->
+      <div class="lv-bottom-row">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          ${sellerBtn}
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted)">
+            <i class="fa-solid fa-location-dot" style="color:var(--brand);font-size:11px"></i>${eCity}
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <button class="lv-btn" onclick="event.stopPropagation();showDetail('${_esc(l.id)}')">
+            <i class="fa-solid fa-arrow-right" style="font-size:11px"></i> Переглянути
+          </button>
+          <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${_esc(l.id)}',this)" style="font-size:18px">
+            <i class="fa-${isFav?'solid':'regular'} fa-heart"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+
+const SERVICES = [];
+let myServices=[],currentServiceFilter="",currentServiceId=null,_svcRowId=0;
+
+let _fbListings = [];
+let _fbSellers  = [];
+let _fbServices = [];
+let _fbChats    = [];
+let _fbLoaded   = false;
+
+function _loadUserServices(uid) {
+  if (!window._db || !uid) return;
+  window._db.collection('services').where('uid','==',uid).get()
+    .then(function(snap) {
+      var loaded = snap.docs.map(function(d){
+        return Object.assign({id:d.id, _isOwn:true}, d.data());
+      });
+
+      myServices = myServices.filter(function(s){ return !s._isOwn; });
+      myServices = loaded.concat(myServices);
+
+      var myIds = loaded.map(function(s){ return s.id; });
+      _fbServices = _fbServices.filter(function(s){ return myIds.indexOf(s.id) < 0; });
+      renderMyServiceTab();
+      renderHomeServices();
+      if (typeof renderServices === 'function') renderServices();
+    }).catch(function(e){ console.log('services load:', e.message); });
+}
+
+var _fbDataLoadedAt = 0;
+var _FB_CACHE_TTL   = 10 * 60 * 1000;
+
+function loadFirebaseData(force) {
+  if (!window._db) return;
+  var now = Date.now();
+
+  if (!force && _fbListings.length && (now - _fbDataLoadedAt) < _FB_CACHE_TTL) {
+    renderHomeListings();
+    renderCatalog();
+    return;
+  }
+
+  if (!force) {
+    _idbGet('listings', 10 * 60 * 1000, function(cached) {
+      if (cached && cached.length) {
+        // Фільтруємо видалені з кешу
+        _fbListings = cached.filter(function(l){ return l && l.status !== 'deleted'; });
+        _fbDataLoadedAt = Date.now();
+        _idbGet('services', 15 * 60 * 1000, function(svcs) {
+          if (svcs) _fbServices = svcs;
+          renderHomeListings();
+          renderCatalog();
+          if (_fbServices.length) {
+            renderHomeServices();
+            if (typeof renderServices === 'function') renderServices();
+          }
+        });
+        // Завжди оновлюємо з Firestore у фоні через 2 сек
+        setTimeout(function() { loadFirebaseData(true); }, 2000);
+        return;
+      }
+      _loadFirebaseFromNetwork(force);
+    });
+    return;
+  }
+  _loadFirebaseFromNetwork(force);
+}
+
+function _loadFirebaseFromNetwork(force) {
+  var now = Date.now();
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    showToast('⚠️ Немає з\'єднання з інтернетом');
+    return;
+  }
+
+  window._db.collection('listings').orderBy('createdAt','desc').limit(50).get()
+    .then(function(snap) {
+      _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      _fbDataLoadedAt = Date.now();
+
+      _idbSet('listings', _fbListings);
+
+      var fbIds = {};
+      _fbListings.forEach(function(l){ if (l.id) fbIds[l.id] = true; });
+      myListings = myListings.filter(function(l){ return l && l.id && !fbIds[l.id]; });
+
+      renderHomeListings();
+      renderCatalog();
+      // Оновити лічильник активних оголошень в профілі
+      if (typeof _updateActiveCount === 'function') _updateActiveCount();
+
+      setTimeout(function() {
+        if (typeof _trackFavPrices === 'function') _trackFavPrices();
+      }, 1500);
+
+      var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
+      if (_lstPath) showDetail(_lstPath[1], true);
+
+      var _catPath = window.location.pathname.match(/^\/category\/(.+)$/);
+      if (_catPath && CAT_SLUGS[_catPath[1]]) {
+        var _catName = CAT_SLUGS[_catPath[1]];
+        setTimeout(function() { filterCatalog(_catName); }, 200);
+      }
+    }).catch(function(e){
+      console.log('listings:', e.message);
+      if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
+    });
+
+  window._db.collection('services').orderBy('rating','desc').limit(30).get()
+    .then(function(snap) {
+      var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      var myIds = myServices.map(function(s){ return s.id; });
+      _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
+      _idbSet('services', _fbServices);
+      renderHomeServices();
+      if (typeof renderServices === 'function') renderServices();
+      var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
+      if (_svcPath) showServiceDetail(_svcPath[1]);
+    }).catch(function(e){ console.log('services:', e.message); });
+}
+
+function _updateChatBadge() {
+  var unread = _fbChats.reduce(function(s, c){ return s + (c.unread || 0); }, 0);
+  ['header-msg-badge', 'mobile-msg-badge'].forEach(function(id) {
+    var badge = document.getElementById(id);
+    if (!badge) return;
+    if (unread > 0) {
+      badge.textContent = unread > 99 ? '99+' : unread;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  });
+  if (unread > 0) {
+    if (!document.title.match(/^\(\d/)) document.title = "(" + unread + ") " + document.title;
+  } else {
+    document.title = document.title.replace(/^\(\d+\)\s*/, '');
+  }
+}
+
+function _requestNotifPermission() {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().catch(function(){});
+  }
+}
+
+function _showMsgPush(senderName, text, chatId) {
+
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
+    try {
+      var n = new Notification('💬 ' + senderName + ' — RideGO', {
+        body: text, icon: '/favicon.ico',
+        tag: 'ridego-msg-' + chatId, renotify: true
+      });
+      n.onclick = function() {
+        window.focus();
+        if (typeof showPage === 'function') showPage('messages');
+        if (typeof openChatById === 'function') setTimeout(function(){ openChatById(chatId); }, 200);
+        n.close();
+      };
+    } catch(e) {}
+  }
+
+  if (_activeChatId === chatId) return;
+  var toast = document.getElementById('msg-push-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'msg-push-toast';
+    toast.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:9999;background:var(--card-bg);'
+      + 'border:1px solid var(--brand);border-radius:16px;padding:14px 18px;max-width:300px;'
+      + 'box-shadow:0 8px 32px rgba(0,200,83,.25);display:flex;align-items:center;gap:12px;'
+      + 'cursor:pointer;transition:opacity .3s;';
+    var _pushStyle = document.createElement('style');
+    _pushStyle.textContent = '@keyframes _slideInR{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}';
+    document.head.appendChild(_pushStyle);
+    toast.style.animation = '_slideInR .3s ease';
+    document.body.appendChild(toast);
+  }
+  toast.onclick = function() {
+    if (typeof showPage === 'function') showPage('messages');
+    if (typeof openChatById === 'function') setTimeout(function(){ openChatById(chatId); }, 200);
+    toast.style.opacity = '0';
+    setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  };
+  var initial = (senderName[0] || '?').toUpperCase();
+  var safeName = typeof _esc === 'function' ? _esc(senderName) : senderName;
+  var safeText = typeof _esc === 'function' ? _esc(text) : text;
+  toast.innerHTML = '<div style="width:40px;height:40px;border-radius:50%;background:var(--brand-dim);'
+    + 'border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;'
+    + 'font-weight:800;color:var(--brand);font-size:15px;flex-shrink:0">' + initial + '</div>'
+    + '<div style="min-width:0;flex:1"><div style="font-weight:700;font-size:14px">' + safeName + '</div>'
+    + '<div style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + safeText + '</div></div>'
+    + '<span onclick="event.stopPropagation();var t=document.getElementById(\'msg-push-toast\');if(t)t.style.opacity=\'0\';" '
+    + 'style="color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0;padding:4px">&times;</span>';
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(function() {
+    toast.style.opacity = '0';
+    setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  }, 5000);
+}
+
+function loadUserChats() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  window._db.collection('chats')
+    .where('participants','array-contains', currentUser.uid)
+    .limit(20).get()
+    .then(function(snap) {
+      _fbChats = snap.docs.map(function(d){
+        var data = Object.assign({id:d.id}, d.data());
+
+        var otherId = data.participants ? data.participants.find(function(p){ return p !== currentUser.uid; }) : null;
+        if (otherId) data.otherName = data[otherId + '_name'] || data.otherName || '';
+        return data;
+      });
+
+      _fbChats.sort(function(a,b){
+        var ta=a.lastMessageAt&&a.lastMessageAt.seconds?a.lastMessageAt.seconds:0;
+        var tb=b.lastMessageAt&&b.lastMessageAt.seconds?b.lastMessageAt.seconds:0;
+        return tb-ta;
+      });
+      renderChats();
+      if (typeof _updateChatBadge === "function") _updateChatBadge();
+    }).catch(function(e){ console.log('chats:', e.message); });
+}
+
+function renderHomeListings() {
+  var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive' && l.status !== 'sold'; });
+  _cleanExpiredPromos(all);
+
+  if (typeof _setHomeBreadcrumbSchema === 'function') _setHomeBreadcrumbSchema();
+
+  var cats = {
+    'Електросамокати': 'cnt-scooters',
+    'Велосипеди': 'cnt-bikes',
+    'Електровелосипеди': 'cnt-ebikes',
+    'Електроскутери': 'cnt-escooters',
+    'Електромотоцикли': 'cnt-emoto'
+  };
+  Object.keys(cats).forEach(function(cat) {
+    var el = document.getElementById(cats[cat]);
+    var cnt = all.filter(function(l){ return l.cat === cat; }).length;
+    if (el) el.textContent = cnt > 0 ? cnt + ' пропозицій' : 'Скоро буде';
+  });
+
+  var topEl = document.getElementById('home-top-listings');
+  var topEmpty = document.getElementById('home-top-empty');
+  var topList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'top'; });
+
+  topList.sort(function(a, b) {
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  });
+  var topShow = topList.slice(0, 4);
+  if (topEl) {
+    if (topShow.length) {
+      topEl.innerHTML = topShow.map(function(l){ return createCard(l,'home'); }).join('');
+      if (topEmpty) topEmpty.style.display = 'none';
+    } else {
+      topEl.innerHTML = '';
+      if (topEmpty) topEmpty.style.display = '';
+    }
+  }
+
+  var urgentEl = document.getElementById('home-urgent-listings');
+  var urgentEmpty = document.getElementById('home-urgent-empty');
+  var urgentList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'urgent'; });
+  var highlightList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'highlight'; });
+  var hotList = urgentList.concat(highlightList).slice(0, 4);
+  if (urgentEl) {
+    if (hotList.length) {
+      urgentEl.innerHTML = hotList.map(function(l){ return createCard(l,'home'); }).join('');
+      if (urgentEmpty) urgentEmpty.style.display = 'none';
+    } else {
+      urgentEl.innerHTML = '';
+      if (urgentEmpty) urgentEmpty.style.display = '';
+    }
+  }
+
+  var newEl = document.getElementById('home-listings');
+  var regular = all.filter(function(l){ return !_isPromoActive(l); });
+  regular.sort(function(a, b) {
+    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  });
+  if (newEl) {
+    if (regular.length) {
+      newEl.innerHTML = regular.slice(0, 6).map(function(l){ return createCard(l,'home'); }).join('');
+    } else {
+      newEl.innerHTML = `
+        <div style="text-align:center;padding:48px 24px;grid-column:1/-1">
+          <div style="font-size:64px;margin-bottom:16px">🛴</div>
+          <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:var(--text-main)">Оголошень поки немає</div>
+          <p style="color:var(--text-muted);margin-bottom:24px">Будь першим! Додай своє оголошення і знайди покупця.</p>
+          <button class="btn-primary" onclick="showPage('add')" style="padding:12px 24px">
+            <i class="fa-solid fa-plus" style="margin-right:8px"></i>Додати оголошення
+          </button>
+        </div>`;
+    }
+  }
+
+  _renderHomeShops();
+  renderHomeServices();
+}
+
+function _renderHomeShops() {
+  var shopsSection = document.getElementById('home-shops-section');
+  var shopsScroll = document.getElementById('home-shops-scroll');
+  if (!shopsScroll) return;
+  var shops = _fbServices.concat(myServices).filter(function(s){ return s && s.badge; });
+  if (!shops.length) {
+    if (shopsSection) shopsSection.style.display = 'none';
+    return;
+  }
+  if (shopsSection) shopsSection.style.display = '';
+  shopsScroll.innerHTML = shops.slice(0, 8).map(function(s) {
+    return '<div onclick="showServiceDetail(\'' + s.id + '\')" style="flex-shrink:0;width:160px;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:box-shadow .2s;text-align:center" onmouseover="this.style.boxShadow=\'0 4px 20px rgba(0,0,0,.15)\'" onmouseout="this.style.boxShadow=\'\'">'
+      + '<div style="font-size:32px;margin-bottom:8px">' + (s.icon || '🔧') + '</div>'
+      + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s.name + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted)">' + (s.city || '') + '</div>'
+      + (s.badge ? '<div style="margin-top:6px;font-size:10px;background:var(--brand-dim);color:var(--brand);padding:2px 8px;border-radius:50px;font-weight:700">' + (s.badgeLabel || s.badge) + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+function renderHomeServices() {
+  var grid = document.getElementById("home-services-grid");
+  if (!grid) return;
+  var all = _fbServices.concat(myServices);
+
+  var sorted = all.slice().sort(function(a,b) {
+    var wa = a.badge==="official"?0:a.badge==="verified"?1:2;
+    var wb = b.badge==="official"?0:b.badge==="verified"?1:2;
+    return wa - wb || b.rating - a.rating;
+  });
+  var top3 = sorted.slice(0,3);
+  grid.innerHTML = top3.map(function(s) { return createHomeSvcCard(s); }).join("");
+}
+
+function createHomeSvcCard(s) {
+
+  var allCats = _normalizeSvcs(s.services);
+  var items = [];
+  allCats.forEach(function(cat){ (cat.items||[]).forEach(function(i){ items.push(i); }); });
+  var preview = items.slice(0,3).map(function(item) {
+    return "<div class=\"home-svc-row\"><span>"+(item.name||"")+"</span><span>"+(item.price||"")+"</span></div>";
+  }).join("");
+  var cats = (s.cats||[]).slice(0,3).map(function(cat) {
+    return "<span class=\"home-svc-cat\">"+cat+"</span>";
+  }).join("");
+  var badge = s.badge
+    ? "<span class=\"home-svc-badge "+s.badge+"\">"+s.badgeLabel+"</span>"
+    : "";
+  var stars = s.rating > 0 ? "\u2605".repeat(Math.round(s.rating)) : "";
+  var rating = s.rating > 0
+    ? "<div class=\"home-svc-rating\"><span style=\"color:#ffa726\">"+stars+"</span> "+s.rating+"</div>"
+    : "";
+  return "<div class=\"home-svc-card\" onclick=\"showServiceDetail('"+s.id+"')\">"
+    +"<div class=\"home-svc-card-top\">"
+    +(s.photoUrl
+      ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
+      : "<div class=\"home-svc-icon\">"+s.icon+"</div>"
+    )
+    +"<div style=\"flex:1;min-width:0\">"
+    +"<div style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">"
+    +"<div class=\"home-svc-name\">"+s.name+"</div>"+badge+"</div>"
+    +"<div class=\"home-svc-city\">📍 "+(s.city||"")+(s.address?" \u00b7 "+s.address:"")+"</div>"
+    +"</div></div>"
+    +"<div class=\"home-svc-cats\">"+cats+"</div>"
+    +(preview ? "<div class=\"home-svc-services\">"+preview+"</div>" : "")
+    +(rating ? rating : "")
+    +"</div>";
+}
+
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  const knob = document.getElementById('themeKnob');
+  knob.textContent = isLight ? '☀️' : '🌙';
+  try { localStorage.setItem('eria-theme', isLight ? 'light' : 'dark'); } catch(e) {}
+  showToast(isLight ? '☀️ Денна тема увімкнена' : '🌙 Нічна тема увімкнена');
+}
+
+try {
+  var savedTheme = localStorage.getItem('eria-theme');
+
+  document.documentElement.style.setProperty('--transition-override', 'none');
+  var _noTransStyle = document.createElement('style');
+  _noTransStyle.textContent = '*, *::before, *::after { transition: none !important; }';
+  _noTransStyle.id = 'no-trans-init';
+  document.head.appendChild(_noTransStyle);
+
+  if (savedTheme === 'light' || savedTheme === null) {
+    document.body.classList.add('light');
+    var knob = document.getElementById('themeKnob');
+    if (knob) knob.textContent = '☀️';
+    if (savedTheme === null) localStorage.setItem('eria-theme', 'light');
+  }
+
+  document.documentElement.classList.remove('light-preload');
+
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      var el = document.getElementById('no-trans-init');
+      if (el) el.remove();
+    });
+  });
+} catch(e) {}
+
+// Чекаємо поки всі defer скрипти завантажаться
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    loadSavedProfile();
+    _initRouter();
+  });
+} else {
+  loadSavedProfile();
+  _initRouter();
+}
+
