@@ -1,6 +1,6 @@
 // RideGO Service Worker
-const CACHE_NAME = 'ridego-v5';
-const CACHE_STATIC = 'ridego-static-v5';
+const CACHE_NAME = 'ridego-v6';
+const CACHE_STATIC = 'ridego-static-v6';
 
 const STATIC_ASSETS = [
   '/',
@@ -73,10 +73,16 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  // JS і CSS — ЗАВЖДИ З МЕРЕЖІ, ніколи не кешуємо
+  // JS і CSS — МЕРЕЖА СПОЧАТКУ, кешуємо для офлайн fallback
   if (url.pathname.match(/\.(js|css)$/)) {
     e.respondWith(
-      fetch(req).catch(function() {
+      fetch(req).then(function(resp) {
+        if (resp && resp.status === 200) {
+          var respClone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(req, respClone); });
+        }
+        return resp;
+      }).catch(function() {
         return caches.match(req).then(function(c) {
           return c || new Response('', { status: 408 });
         });
