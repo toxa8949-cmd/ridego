@@ -32,6 +32,14 @@ try {
   });
 } catch(e) {}
 
-loadSavedProfile();
-_initRouter();
+// Чекаємо поки всі defer скрипти завантажаться
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    loadSavedProfile();
+    _initRouter();
+  });
+} else {
+  loadSavedProfile();
+  _initRouter();
+}
 
