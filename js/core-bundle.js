@@ -1362,13 +1362,6 @@ try {
 } catch(e) {}
 
 // Чекаємо поки всі defer скрипти завантажаться
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', function() {
-    loadSavedProfile();
-    _initRouter();
-  });
-} else {
-  loadSavedProfile();
-  _initRouter();
-}
+// loadSavedProfile() та _initRouter() викликаються в кінці features-bundle.js
+// (після завантаження всіх залежностей)
 

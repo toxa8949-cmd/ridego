@@ -2898,3 +2898,7 @@ function _downloadImportTemplate() {
 // BULK IMPORT END
 // ══════════════════════════════════════════════════════════════
 
+
+// ── Ініціалізація (після завантаження всіх бандлів) ──────────
+loadSavedProfile();
+_initRouter();
