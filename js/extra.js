@@ -1,4 +1,27 @@
 
+// ── Санітизація HTML для новин (allow-list підхід) ────────────
+function _sanitizeNewsHtml(html) {
+  if (!html) return '';
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  // Видаляємо небезпечні елементи
+  var dangerous = tmp.querySelectorAll('script,iframe,object,embed,form,input,textarea,button,link,meta,style');
+  dangerous.forEach(function(el) { el.remove(); });
+  // Видаляємо всі on* атрибути та javascript: href
+  tmp.querySelectorAll('*').forEach(function(el) {
+    Array.from(el.attributes).forEach(function(attr) {
+      if (attr.name.toLowerCase().startsWith('on')) el.removeAttribute(attr.name);
+      if (attr.name.toLowerCase() === 'href' && attr.value.trim().toLowerCase().startsWith('javascript:')) {
+        el.setAttribute('href', '#');
+      }
+      if (attr.name.toLowerCase() === 'src' && attr.value.trim().toLowerCase().startsWith('javascript:')) {
+        el.removeAttribute('src');
+      }
+    });
+  });
+  return tmp.innerHTML;
+}
+
 function _closeSoldOverlay() {
   var o = document.getElementById('sold-overlay');
   if (o) o.remove();
@@ -557,9 +580,9 @@ function showNewsDetail(id) {
     + '<span style="font-size:12px;background:var(--brand-dim);color:var(--brand);padding:3px 10px;border-radius:50px;font-weight:700">'+(n.cat||'Новини')+'</span>'
     + '<span style="font-size:13px;color:var(--text-muted)">'+date+'</span>'
     + '</div>'
-    + '<h1 style="font-size:clamp(22px,3vw,32px);font-weight:800;margin-bottom:20px;line-height:1.3">'+(n.title||'')+'</h1>'
-    + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+(n.excerpt||'')+'</div>'
-    + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+(n.body||'')+'</div>';
+    + '<h1 style="font-size:clamp(22px,3vw,32px);font-weight:800;margin-bottom:20px;line-height:1.3">'+_esc(n.title||'')+'</h1>'
+    + '<div style="font-size:16px;color:var(--text-muted);margin-bottom:24px;font-style:italic;border-left:3px solid var(--brand);padding-left:16px">'+_esc(n.excerpt||'')+'</div>'
+    + '<div class="news-article-body" style="font-size:16px;line-height:1.8">'+_sanitizeNewsHtml(n.body||'')+'</div>';
 
 
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });

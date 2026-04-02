@@ -317,29 +317,49 @@
   }
 
   // ── Patch renderGalleryImage to re-attach swipe after render ──
-  var _origRender = window.renderGalleryImage;
-  if (typeof _origRender === 'function') {
-    window.renderGalleryImage = function(l) {
-      _origRender(l);
-      setTimeout(_attachMainGallerySwipe, 50);
-    };
+  function _patchGalleryFunctions() {
+    var patched = false;
+
+    if (typeof window.renderGalleryImage === 'function' && !window.renderGalleryImage._patched) {
+      var _origRender = window.renderGalleryImage;
+      window.renderGalleryImage = function(l) {
+        _origRender(l);
+        setTimeout(_attachMainGallerySwipe, 50);
+      };
+      window.renderGalleryImage._patched = true;
+      patched = true;
+    }
+
+    // ── Patch galleryNav to update fullscreen if open ─────────────
+    if (typeof window.galleryNav === 'function' && !window.galleryNav._patched) {
+      var _origNav = window.galleryNav;
+      window.galleryNav = function(dir) {
+        _origNav(dir);
+        if (_fsOverlay && _fsOverlay.style.display !== 'none') _fsRender();
+      };
+      window.galleryNav._patched = true;
+      patched = true;
+    }
+
+    if (typeof window.setGalleryIdx === 'function' && !window.setGalleryIdx._patched) {
+      var _origSetIdx = window.setGalleryIdx;
+      window.setGalleryIdx = function(i) {
+        _origSetIdx(i);
+        if (_fsOverlay && _fsOverlay.style.display !== 'none') _fsRender();
+      };
+      window.setGalleryIdx._patched = true;
+      patched = true;
+    }
+
+    return patched;
   }
 
-  // ── Patch galleryNav to update fullscreen if open ─────────────
-  var _origNav = window.galleryNav;
-  if (typeof _origNav === 'function') {
-    window.galleryNav = function(dir) {
-      _origNav(dir);
-      if (_fsOverlay && _fsOverlay.style.display !== 'none') _fsRender();
-    };
-  }
-
-  var _origSetIdx = window.setGalleryIdx;
-  if (typeof _origSetIdx === 'function') {
-    window.setGalleryIdx = function(i) {
-      _origSetIdx(i);
-      if (_fsOverlay && _fsOverlay.style.display !== 'none') _fsRender();
-    };
+  // Спробувати патч одразу, якщо не вдалось — повторити через 500мс
+  if (!_patchGalleryFunctions()) {
+    var _patchRetries = 0;
+    var _patchInterval = setInterval(function() {
+      if (_patchGalleryFunctions() || ++_patchRetries > 10) clearInterval(_patchInterval);
+    }, 500);
   }
 
   // ── Init on DOMContentLoaded + MutationObserver for SPA ──────
