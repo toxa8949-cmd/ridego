@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 — Сторінку не знайдено | RideGO</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate icon" href="/favicon.ico">
+<meta name="theme-color" content="#00c853">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Animated grid background */
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,83,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,83,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridShift 20s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes gridShift {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(60px, 60px); }
+  }
+
+  /* Glowing orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .orb-1 { width: 400px; height: 400px; background: #00c853; top: -100px; right: -100px; animation: float1 8s ease-in-out infinite; }
+  .orb-2 { width: 300px; height: 300px; background: #00e676; bottom: -80px; left: -80px; animation: float2 10s ease-in-out infinite; }
+  .orb-3 { width: 200px; height: 200px; background: #1db954; top: 50%; left: 50%; transform: translate(-50%,-50%); animation: float3 6s ease-in-out infinite; }
+
+  @keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px,40px); } }
+  @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(40px,-30px); } }
+  @keyframes float3 { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.3); } }
+
+  .content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 20px;
+    max-width: 560px;
+    width: 100%;
+  }
+
+  .err-code {
+    font-size: clamp(100px, 20vw, 180px);
+    font-weight: 800;
+    letter-spacing: -6px;
+    line-height: 1;
+    background: linear-gradient(135deg, #00c853, #00e676 40%, #1db954 80%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    animation: glitch 3s ease-in-out infinite;
+    position: relative;
+  }
+  @keyframes glitch {
+    0%, 90%, 100% { transform: none; opacity: 1; }
+    92% { transform: translate(-3px, 2px) skewX(-1deg); opacity: 0.85; }
+    94% { transform: translate(3px, -2px) skewX(1deg); opacity: 0.9; }
+    96% { transform: translate(-1px, 1px); opacity: 0.95; }
+  }
+
+  /* Scooter icon with animation */
+  .icon-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+    background: rgba(0,200,83,0.1);
+    border: 1px solid rgba(0,200,83,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin: 0 auto 24px;
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  h1 {
+    font-size: clamp(22px, 4vw, 28px);
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .sub {
+    color: #8b949e;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 36px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 28px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
+  .btn-primary {
+    background: #00c853;
+    color: #0d1117;
+  }
+  .btn-primary:hover {
+    background: #00e676;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,200,83,0.3);
+  }
+  .btn-outline {
+    background: rgba(255,255,255,0.06);
+    color: #e6edf3;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .btn-outline:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(0,200,83,0.4);
+    transform: translateY(-2px);
+  }
+
+  .links {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .links a {
+    color: #8b949e;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+  .links a:hover {
+    color: #00c853;
+  }
+
+  /* Bottom brand */
+  .brand {
+    position: fixed;
+    bottom: 24px;
+    font-size: 16px;
+    font-weight: 800;
+    color: rgba(255,255,255,0.15);
+    letter-spacing: -0.3px;
+  }
+
+  /* Light theme support */
+  @media (prefers-color-scheme: light) {
+    body { background: #fff; color: #333; }
+    h1 { color: #111; }
+    .sub { color: #666; }
+    .grid-bg { background-image:
+      linear-gradient(rgba(0,200,83,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,83,0.06) 1px, transparent 1px); }
+    .orb { opacity: 0.08; }
+    .btn-outline { background: rgba(0,0,0,0.04); color: #333; border-color: rgba(0,0,0,0.1); }
+    .btn-outline:hover { background: rgba(0,0,0,0.06); }
+    .links a { color: #888; }
+    .brand { color: rgba(0,0,0,0.08); }
+  }
+
+  /* Check theme class from RideGO */
+  html.light-preload body,
+  html[data-theme="light"] body { background: #fff; color: #333; }
+  html.light-preload h1,
+  html[data-theme="light"] h1 { color: #111; }
+  html.light-preload .sub,
+  html[data-theme="light"] .sub { color: #666; }
+</style>
+</head>
+<body>
+
+  <div class="grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="content">
+    <div class="icon-wrap">🛴</div>
+    <div class="err-code">404</div>
+    <h1>Сторінку не знайдено</h1>
+    <p class="sub">
+      Здається, ця сторінка поїхала кататись і не повернулась.<br>
+      Перевірте адресу або поверніться на головну.
+    </p>
+
+    <div class="actions">
+      <a href="/" class="btn btn-primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"/></svg>
+        На головну
+      </a>
+      <a href="/catalog" class="btn btn-outline">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Каталог
+      </a>
+    </div>
+
+    <div class="links">
+      <a href="/catalog">Оголошення</a>
+      <a href="/news">Новини</a>
+      <a href="/services">Сервіси</a>
+      <a href="/faq">FAQ</a>
+      <a href="https://t.me/ridego_support" target="_blank">Підтримка</a>
+    </div>
+  </div>
+
+  <div class="brand">RideGO</div>
+
+  <script>
+    // Inherit theme from main RideGO app
+    try {
+      var t = localStorage.getItem('eria-theme');
+      if (t === 'light') {
+        document.documentElement.classList.add('light-preload');
+      }
+    } catch(e) {}
+  </script>
+</body>
+</html>

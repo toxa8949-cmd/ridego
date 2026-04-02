@@ -43,6 +43,7 @@ const COPY_FILES = [
   'favicon.ico',
   'sitemap.xml',
   'ridego-admin.html',
+  '404.html',
 ];
 
 COPY_FILES.forEach(f => {
@@ -54,7 +55,7 @@ COPY_FILES.forEach(f => {
 });
 
 // API файли
-['listing.js', 'news-item.js', 'sitemap.js', 'category.js', 'send-email.js', 'config.js'].forEach(f => {
+['listing.js', 'news-item.js', 'sitemap.js', 'category.js', 'send-email.js', 'config.js', 'home.js', 'catalog.js'].forEach(f => {
   const src = path.join(SRC, 'api', f);
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, path.join(DIST, 'api', f));

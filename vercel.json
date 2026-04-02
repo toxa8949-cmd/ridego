@@ -123,6 +123,19 @@
           "value": "no-store"
         }
       ]
+    },
+    {
+      "source": "/404.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
     }
   ],
   "rewrites": [
@@ -151,6 +164,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/",
+      "destination": "/api/home"
+    },
+    {
       "source": "/api/listing/:id",
       "destination": "/api/listing"
     },
@@ -159,12 +176,24 @@
       "destination": "/api/news-item"
     },
     {
+      "source": "/api/category/:slug",
+      "destination": "/api/category"
+    },
+    {
       "source": "/listing/:id",
-      "destination": "/index.html"
+      "destination": "/api/listing"
     },
     {
       "source": "/category/:slug",
-      "destination": "/index.html"
+      "destination": "/api/category"
+    },
+    {
+      "source": "/news/:id",
+      "destination": "/api/news-item"
+    },
+    {
+      "source": "/catalog",
+      "destination": "/api/catalog"
     },
     {
       "source": "/seller/:uid",
@@ -175,15 +204,7 @@
       "destination": "/index.html"
     },
     {
-      "source": "/news/:id",
-      "destination": "/index.html"
-    },
-    {
       "source": "/news-detail",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/catalog",
       "destination": "/index.html"
     },
     {
