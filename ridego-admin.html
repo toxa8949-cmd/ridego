@@ -600,8 +600,8 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
   <div class="login-card">
     <div class="login-logo">Ride<span>GO</span></div>
     <div class="login-sub">Адміністративна панель</div>
-    <label class="login-label">Логін</label>
-    <input class="login-input" type="text" id="login-user" placeholder="admin" autocomplete="username">
+    <label class="login-label">Email</label>
+    <input class="login-input" type="email" id="login-user" placeholder="admin@ridego.com.ua" autocomplete="username">
     <label class="login-label">Пароль</label>
     <input class="login-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="login-btn" onclick="doLogin()">Увійти в панель</button>
@@ -626,13 +626,16 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
       <button class="nav-item active" onclick="showAdminPage('dashboard',this)">
         <i class="fa-solid fa-chart-line"></i> Дашборд
       </button>
+      <button class="nav-item" onclick="showAdminPage('analytics',this)">
+        <i class="fa-solid fa-chart-pie"></i> Аналітика
+      </button>
       <button class="nav-item" onclick="showAdminPage('users',this)">
         <i class="fa-solid fa-users"></i> Користувачі
-        <span class="nav-badge green" id="nb-users">248</span>
+        <span class="nav-badge green" id="nb-users">0</span>
       </button>
       <button class="nav-item" onclick="showAdminPage('listings',this)">
         <i class="fa-solid fa-tags"></i> Оголошення
-        <span class="nav-badge" id="nb-listings">12</span>
+        <span class="nav-badge" id="nb-listings">0</span>
       </button>
       <button class="nav-item" onclick="showAdminPage('services',this)">
         <i class="fa-solid fa-wrench"></i> Сервіси
@@ -641,7 +644,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
       <div class="nav-section-title">Модерація</div>
       <button class="nav-item" onclick="showAdminPage('reports',this)">
         <i class="fa-solid fa-flag"></i> Скарги
-        <span class="nav-badge" id="nb-reports">3</span>
+        <span class="nav-badge" id="nb-reports">0</span>
       </button>
       <button class="nav-item" onclick="showAdminPage('blocked',this)">
         <i class="fa-solid fa-ban"></i> Заблоковані
@@ -664,9 +667,9 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 
     <div class="sidebar-footer">
       <div class="admin-user">
-        <div class="admin-avatar">A</div>
+        <div class="admin-avatar" id="admin-avatar">A</div>
         <div>
-          <div class="admin-name">Admin</div>
+          <div class="admin-name" id="admin-name">Admin</div>
           <div class="admin-role">Супер адміністратор</div>
         </div>
       </div>
@@ -681,20 +684,23 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 
     <!-- TOPBAR -->
     <header class="topbar">
+      <button class="topbar-icon-btn" onclick="toggleSidebar()" style="display:none" id="sidebar-toggle">
+        <i class="fa-solid fa-bars"></i>
+      </button>
       <div class="topbar-title" id="page-title">Дашборд</div>
       <div class="topbar-search">
         <i class="fa-solid fa-search"></i>
-        <input type="text" placeholder="Пошук по системі..." oninput="globalSearch(this.value)">
+        <input type="text" placeholder="Пошук по системі..." id="global-search" oninput="globalSearch(this.value)">
       </div>
       <div class="online-pill">
         <div class="online-dot"></div>
-        <span id="online-count">24</span> онлайн
+        <span id="online-count">0</span> онлайн
       </div>
       <button class="topbar-icon-btn" title="Оновити" onclick="refreshData()">
         <i class="fa-solid fa-rotate"></i>
       </button>
-      <button class="topbar-icon-btn" title="Сповіщення" onclick="showToast('Нових сповіщень немає','info')">
-        <i class="fa-solid fa-bell"></i>
+      <button class="topbar-icon-btn" title="Відкрити сайт" onclick="window.open('https://ridego.com.ua','_blank')">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
       </button>
     </header>
 
@@ -703,48 +709,51 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 
       <!-- ═══ PAGE: DASHBOARD ═══ -->
       <div id="page-dashboard" class="page active">
-
-        <!-- Stats -->
         <div class="stats-grid">
           <div class="stat-card green">
             <div class="stat-icon green"><i class="fa-solid fa-users"></i></div>
-            <div class="stat-value" id="stat-users">248</div>
+            <div class="stat-value" id="stat-users">—</div>
             <div class="stat-label">Всього користувачів</div>
-            <span class="stat-delta up" id="delta-users"><i class="fa-solid fa-arrow-up"></i>сьогодні: —</span>
+            <span class="stat-delta up" id="delta-users">завантаження...</span>
           </div>
           <div class="stat-card blue">
             <div class="stat-icon blue"><i class="fa-solid fa-tags"></i></div>
-            <div class="stat-value" id="stat-listings">1 847</div>
+            <div class="stat-value" id="stat-listings">—</div>
             <div class="stat-label">Активних оголошень</div>
-            <span class="stat-delta up" id="delta-listings"><i class="fa-solid fa-arrow-up"></i>сьогодні: —</span>
+            <span class="stat-delta up" id="delta-listings">завантаження...</span>
           </div>
           <div class="stat-card orange">
             <div class="stat-icon orange"><i class="fa-solid fa-wrench"></i></div>
-            <div class="stat-value" id="stat-services">32</div>
+            <div class="stat-value" id="stat-services">—</div>
             <div class="stat-label">Сервісних центрів</div>
-            <span class="stat-delta up" id="delta-services"><i class="fa-solid fa-arrow-up"></i>всього: —</span>
+            <span class="stat-delta up" id="delta-services">—</span>
           </div>
           <div class="stat-card purple">
             <div class="stat-icon purple"><i class="fa-solid fa-eye"></i></div>
             <div class="stat-value" id="stat-views">—</div>
             <div class="stat-label">Відвідувачів сьогодні</div>
-            <span class="stat-delta up" id="delta-views"><i class="fa-solid fa-eye"></i>переглядів: —</span>
+            <span class="stat-delta up" id="delta-views">—</span>
           </div>
           <div class="stat-card green">
             <div class="stat-icon green"><i class="fa-solid fa-mobile-screen"></i></div>
             <div class="stat-value" id="stat-pwa">—</div>
-            <div class="stat-label">Встановили додаток</div>
-            <span class="stat-delta up" id="delta-pwa"><i class="fa-solid fa-arrow-up"></i>PWA installs</span>
+            <div class="stat-label">Встановили PWA</div>
+            <span class="stat-delta up" id="delta-pwa">—</span>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-icon blue"><i class="fa-solid fa-coins"></i></div>
+            <div class="stat-value" id="stat-revenue">—</div>
+            <div class="stat-label">Дохід (грн)</div>
+            <span class="stat-delta up" id="delta-revenue">—</span>
           </div>
         </div>
 
         <!-- Charts row -->
         <div class="charts-row">
-          <!-- Bar chart: реєстрації + оголошення -->
           <div class="chart-card">
             <div class="card-header">
               <div>
-                <div class="card-title">Активність за 7 днів</div>
+                <div class="card-title">Активність</div>
                 <div class="card-sub">Нові оголошення та реєстрації</div>
               </div>
               <div class="period-select">
@@ -753,64 +762,33 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
                 <button class="period-btn" onclick="setPeriod(30,this)">30д</button>
               </div>
             </div>
-            <div class="bar-chart" id="bar-chart"></div>
+            <div class="bar-chart" id="bar-chart" style="height:160px"></div>
             <div class="chart-legend">
               <div class="legend-item"><div class="legend-dot" style="background:var(--brand)"></div>Оголошення</div>
               <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Реєстрації</div>
             </div>
           </div>
-
-          <!-- Donut: категорії -->
           <div class="chart-card">
             <div class="card-header">
-              <div>
-                <div class="card-title">Категорії</div>
-                <div class="card-sub">Розподіл оголошень</div>
-              </div>
+              <div><div class="card-title">Категорії</div><div class="card-sub">Розподіл оголошень</div></div>
             </div>
             <div class="donut-wrap">
               <div class="donut-chart">
-                <svg width="140" height="140" viewBox="0 0 140 140">
+                <svg width="140" height="140" viewBox="0 0 140 140" id="donut-svg">
                   <circle cx="70" cy="70" r="54" fill="none" stroke="var(--dark4)" stroke-width="16"/>
-                  <circle cx="70" cy="70" r="54" fill="none" stroke="var(--brand)" stroke-width="16"
-                    stroke-dasharray="339" stroke-dashoffset="0" id="donut-1"/>
-                  <circle cx="70" cy="70" r="54" fill="none" stroke="var(--blue)" stroke-width="16"
-                    stroke-dasharray="339" stroke-dashoffset="136" id="donut-2"/>
-                  <circle cx="70" cy="70" r="54" fill="none" stroke="var(--orange)" stroke-width="16"
-                    stroke-dasharray="339" stroke-dashoffset="238" id="donut-3"/>
-                  <circle cx="70" cy="70" r="54" fill="none" stroke="var(--purple)" stroke-width="16"
-                    stroke-dasharray="339" stroke-dashoffset="288" id="donut-4"/>
                 </svg>
                 <div class="donut-center">
-                  <div class="donut-num">1.8K</div>
+                  <div class="donut-num" id="donut-total">—</div>
                   <div class="donut-lbl">всього</div>
                 </div>
               </div>
-              <div class="donut-legend" style="width:100%">
-                <div class="donut-leg-item">
-                  <div class="donut-leg-left"><div class="donut-leg-dot" style="background:var(--brand)"></div>Самокати</div>
-                  <span class="donut-leg-pct">40%</span>
-                </div>
-                <div class="donut-leg-item">
-                  <div class="donut-leg-left"><div class="donut-leg-dot" style="background:var(--blue)"></div>Велосипеди</div>
-                  <span class="donut-leg-pct">30%</span>
-                </div>
-                <div class="donut-leg-item">
-                  <div class="donut-leg-left"><div class="donut-leg-dot" style="background:var(--orange)"></div>Скутери</div>
-                  <span class="donut-leg-pct">15%</span>
-                </div>
-                <div class="donut-leg-item">
-                  <div class="donut-leg-left"><div class="donut-leg-dot" style="background:var(--purple)"></div>Інше</div>
-                  <span class="donut-leg-pct">15%</span>
-                </div>
-              </div>
+              <div class="donut-legend" id="donut-legend" style="width:100%"></div>
             </div>
           </div>
         </div>
 
         <!-- Tables row -->
         <div class="tables-row">
-          <!-- Нові користувачі -->
           <div class="table-card">
             <div class="table-head">
               <div class="card-header" style="margin-bottom:0">
@@ -818,13 +796,9 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
                 <button class="btn btn-outline" style="padding:5px 12px;font-size:12px" onclick="showAdminPage('users',null)">Всі →</button>
               </div>
             </div>
-            <table>
-              <thead><tr><th>Користувач</th><th>Тип</th><th>Дата</th></tr></thead>
-              <tbody id="new-users-tbody"></tbody>
-            </table>
+            <table><thead><tr><th>Користувач</th><th>Тип</th><th>Дата</th></tr></thead>
+            <tbody id="new-users-tbody"></tbody></table>
           </div>
-
-          <!-- Активність -->
           <div class="table-card">
             <div class="table-head">
               <div class="card-header" style="margin-bottom:0">
@@ -839,215 +813,178 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
         </div>
       </div>
 
+      <!-- ═══ PAGE: ANALYTICS ═══ -->
+      <div id="page-analytics" class="page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Аналітика</h1>
+            <p>Доходи, конверсії, активність платформи</p>
+          </div>
+          <div class="period-select">
+            <button class="period-btn active" onclick="setAnalyticsPeriod(7,this)">7д</button>
+            <button class="period-btn" onclick="setAnalyticsPeriod(30,this)">30д</button>
+            <button class="period-btn" onclick="setAnalyticsPeriod(90,this)">90д</button>
+          </div>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-card green">
+            <div class="stat-icon green"><i class="fa-solid fa-coins"></i></div>
+            <div class="stat-value" id="an-revenue">—</div>
+            <div class="stat-label">Дохід за період</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-icon blue"><i class="fa-solid fa-ticket"></i></div>
+            <div class="stat-value" id="an-slots-sold">—</div>
+            <div class="stat-label">Слотів продано</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-icon orange"><i class="fa-solid fa-rocket"></i></div>
+            <div class="stat-value" id="an-promos">—</div>
+            <div class="stat-label">Промо активовано</div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-icon purple"><i class="fa-solid fa-user-plus"></i></div>
+            <div class="stat-value" id="an-new-users">—</div>
+            <div class="stat-label">Нових юзерів</div>
+          </div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-card" style="grid-column:1/-1">
+            <div class="card-title" style="margin-bottom:16px">Транзакції</div>
+            <div class="full-table-card" style="border:none">
+              <table><thead><tr><th>Дата</th><th>Юзер</th><th>Тип</th><th>Сума</th><th>Деталі</th></tr></thead>
+              <tbody id="transactions-tbody"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
       <!-- ═══ PAGE: USERS ═══ -->
       <div id="page-users" class="page">
         <div class="page-header">
-          <div class="page-header-left">
-            <h1>Користувачі</h1>
-            <p>Управління акаунтами та доступом</p>
-          </div>
+          <div class="page-header-left"><h1>Користувачі</h1><p>Управління акаунтами</p></div>
           <div style="display:flex;gap:10px">
-            <button class="btn btn-outline" onclick="exportUsers()"><i class="fa-solid fa-download"></i> Експорт CSV</button>
-            <button class="btn btn-primary" onclick="openAddUserModal()"><i class="fa-solid fa-plus"></i> Додати</button>
+            <button class="btn btn-outline" onclick="exportUsers()"><i class="fa-solid fa-download"></i> CSV</button>
           </div>
         </div>
-
         <div class="mini-stats">
-          <div class="mini-stat">
-            <div class="mini-stat-icon">👤</div>
-            <div><div class="mini-stat-val" id="mini-users-total">—</div><div class="mini-stat-lbl">Всього</div></div>
-          </div>
-          <div class="mini-stat">
-            <div class="mini-stat-icon">✅</div>
-            <div><div class="mini-stat-val" id="mini-users-active">—</div><div class="mini-stat-lbl">Активних</div></div>
-          </div>
-          <div class="mini-stat">
-            <div class="mini-stat-icon">🚫</div>
-            <div><div class="mini-stat-val" id="mini-users-blocked">—</div><div class="mini-stat-lbl">Заблоковано</div></div>
-          </div>
+          <div class="mini-stat"><div class="mini-stat-icon">👤</div><div><div class="mini-stat-val" id="mini-users-total">—</div><div class="mini-stat-lbl">Всього</div></div></div>
+          <div class="mini-stat"><div class="mini-stat-icon">✅</div><div><div class="mini-stat-val" id="mini-users-active">—</div><div class="mini-stat-lbl">Активних</div></div></div>
+          <div class="mini-stat"><div class="mini-stat-icon">🚫</div><div><div class="mini-stat-val" id="mini-users-blocked">—</div><div class="mini-stat-lbl">Заблоковано</div></div></div>
         </div>
-
         <div class="filter-bar">
-          <input class="search-input" type="text" placeholder="🔍 Пошук по імені, email..." oninput="filterUsers(this.value)">
-          <select class="filter-select" onchange="filterUserStatus(this.value)">
-            <option value="">Всі статуси</option>
-            <option value="active">Активні</option>
-            <option value="blocked">Заблоковані</option>
-            <option value="new">Нові (7 днів)</option>
+          <input class="search-input" type="text" placeholder="🔍 Пошук по імені, email..." id="users-search" oninput="applyUsersFilter()">
+          <select class="filter-select" id="users-status-filter" onchange="applyUsersFilter()">
+            <option value="">Всі статуси</option><option value="active">Активні</option><option value="blocked">Заблоковані</option>
           </select>
-          <select class="filter-select" onchange="filterUserType(this.value)">
-            <option value="">Всі типи</option>
-            <option value="personal">Фізособа</option>
-            <option value="business">Бізнес</option>
+          <select class="filter-select" id="users-type-filter" onchange="applyUsersFilter()">
+            <option value="">Всі типи</option><option value="personal">Фізособа</option><option value="business">Бізнес</option>
           </select>
         </div>
-
         <div class="full-table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Користувач</th>
-                <th>Тип</th>
-                <th>Оголошення</th>
-                <th>Реєстрація</th>
-                <th>Статус</th>
-                <th>Дії</th>
-              </tr>
-            </thead>
-            <tbody id="users-tbody"></tbody>
-          </table>
+          <table><thead><tr><th>Користувач</th><th>Тип</th><th>Оголошення</th><th>Реєстрація</th><th>Статус</th><th>Дії</th></tr></thead>
+          <tbody id="users-tbody"></tbody></table>
         </div>
       </div>
 
       <!-- ═══ PAGE: LISTINGS ═══ -->
       <div id="page-listings" class="page">
         <div class="page-header">
-          <div class="page-header-left">
-            <h1>Оголошення</h1>
-            <p>Перегляд і модерація оголошень</p>
-          </div>
-          <div style="display:flex;gap:10px">
-            <button class="btn btn-outline"><i class="fa-solid fa-download"></i> Експорт</button>
-          </div>
+          <div class="page-header-left"><h1>Оголошення</h1><p>Перегляд, модерація, редагування</p></div>
         </div>
-
         <div class="mini-stats">
-          <div class="mini-stat">
-            <div class="mini-stat-icon">📋</div>
-            <div><div class="mini-stat-val" id="mini-listings-active">—</div><div class="mini-stat-lbl">Активних</div></div>
-          </div>
-          <div class="mini-stat">
-            <div class="mini-stat-icon">⏳</div>
-            <div><div class="mini-stat-val" id="mini-listings-moderate">—</div><div class="mini-stat-lbl">На модерації</div></div>
-          </div>
-          <div class="mini-stat">
-            <div class="mini-stat-icon">🗑️</div>
-            <div><div class="mini-stat-val" id="mini-listings-deleted">—</div><div class="mini-stat-lbl">Видалено</div></div>
-          </div>
+          <div class="mini-stat"><div class="mini-stat-icon">📋</div><div><div class="mini-stat-val" id="mini-listings-active">—</div><div class="mini-stat-lbl">Активних</div></div></div>
+          <div class="mini-stat"><div class="mini-stat-icon">⏳</div><div><div class="mini-stat-val" id="mini-listings-moderate">—</div><div class="mini-stat-lbl">На модерації</div></div></div>
+          <div class="mini-stat"><div class="mini-stat-icon">🗑️</div><div><div class="mini-stat-val" id="mini-listings-deleted">—</div><div class="mini-stat-lbl">Видалено</div></div></div>
         </div>
-
         <div class="filter-bar">
-          <input class="search-input" type="text" placeholder="🔍 Назва, місто, категорія...">
-          <select class="filter-select">
-            <option>Всі категорії</option>
-            <option>Електросамокати</option>
-            <option>Велосипеди</option>
-            <option>Скутери</option>
+          <input class="search-input" type="text" placeholder="🔍 Назва, місто, продавець..." id="listings-search" oninput="applyListingsFilter()">
+          <select class="filter-select" id="listings-cat-filter" onchange="applyListingsFilter()">
+            <option value="">Всі категорії</option>
+            <option>Електросамокати</option><option>Велосипеди</option><option>Електровелосипеди</option><option>Електроскутери</option><option>Електромотоцикли</option>
           </select>
-          <select class="filter-select">
-            <option>Всі статуси</option>
-            <option>Активне</option>
-            <option>На модерації</option>
-            <option>Заблоковано</option>
+          <select class="filter-select" id="listings-status-filter" onchange="applyListingsFilter()">
+            <option value="">Всі статуси</option><option value="active">Активне</option><option value="moderate">Модерація</option><option value="sold">Продано</option><option value="deleted">Видалено</option>
           </select>
         </div>
-
         <div class="full-table-card">
-          <table>
-            <thead>
-              <tr><th>Оголошення</th><th>Продавець</th><th>Ціна</th><th>Місто</th><th>Дата</th><th>Статус</th><th>Дії</th></tr>
-            </thead>
-            <tbody id="listings-tbody"></tbody>
-          </table>
+          <table><thead><tr><th>Оголошення</th><th>Продавець</th><th>Ціна</th><th>Місто</th><th>Дата</th><th>Статус</th><th>Дії</th></tr></thead>
+          <tbody id="listings-tbody"></tbody></table>
         </div>
       </div>
 
       <!-- ═══ PAGE: SERVICES ═══ -->
       <div id="page-services" class="page">
-        <div class="page-header">
-          <div class="page-header-left">
-            <h1>Сервіси</h1>
-            <p>Сервісні центри на платформі</p>
-          </div>
-        </div>
+        <div class="page-header"><div class="page-header-left"><h1>Сервіси</h1><p>Сервісні центри на платформі</p></div></div>
         <div class="full-table-card">
-          <table>
-            <thead>
-              <tr><th>Назва</th><th>Місто</th><th>Категорії</th><th>Рейтинг</th><th>Статус</th><th>Дії</th></tr>
-            </thead>
-            <tbody id="services-tbody"></tbody>
-          </table>
+          <table><thead><tr><th>Назва</th><th>Місто</th><th>Категорії</th><th>Рейтинг</th><th>Статус</th><th>Дії</th></tr></thead>
+          <tbody id="services-tbody"></tbody></table>
         </div>
       </div>
 
       <!-- ═══ PAGE: REPORTS ═══ -->
       <div id="page-reports" class="page">
-        <div class="page-header">
-          <div class="page-header-left">
-            <h1>Скарги</h1>
-            <p>Скарги від користувачів на оголошення та акаунти</p>
-          </div>
-        </div>
+        <div class="page-header"><div class="page-header-left"><h1>Скарги</h1><p>Скарги від користувачів</p></div></div>
         <div class="full-table-card">
-          <table>
-            <thead>
-              <tr><th>Об'єкт скарги</th><th>Причина</th><th>Скаржник</th><th>Дата</th><th>Статус</th><th>Дії</th></tr>
-            </thead>
-            <tbody id="reports-tbody"></tbody>
-          </table>
+          <table><thead><tr><th>Оголошення</th><th>Причина</th><th>Від кого</th><th>Дата</th><th>Статус</th><th>Дії</th></tr></thead>
+          <tbody id="reports-tbody"></tbody></table>
         </div>
       </div>
 
       <!-- ═══ PAGE: BLOCKED ═══ -->
       <div id="page-blocked" class="page">
-        <div class="page-header">
-          <div class="page-header-left">
-            <h1>Заблоковані</h1>
-            <p>Заблоковані користувачі та оголошення</p>
-          </div>
-        </div>
+        <div class="page-header"><div class="page-header-left"><h1>Заблоковані</h1><p>Заблоковані користувачі</p></div></div>
         <div class="full-table-card">
-          <table>
-            <thead>
-              <tr><th>Користувач</th><th>Причина блокування</th><th>Ким заблоковано</th><th>Дата</th><th>Дії</th></tr>
-            </thead>
-            <tbody id="blocked-tbody"></tbody>
-          </table>
+          <table><thead><tr><th>Користувач</th><th>Причина</th><th>Дата</th><th>Дії</th></tr></thead>
+          <tbody id="blocked-tbody"></tbody></table>
         </div>
+      </div>
+
+      <!-- ═══ PAGE: NEWS ═══ -->
+      <div id="page-news" class="page">
+        <div class="page-header">
+          <div class="page-header-left"><h1>Новини</h1><p>Управління новинами</p></div>
+          <button class="btn btn-primary" onclick="openNewsModal()"><i class="fa-solid fa-plus"></i> Написати</button>
+        </div>
+        <div id="news-list" style="display:grid;gap:16px"></div>
       </div>
 
       <!-- ═══ PAGE: SETTINGS ═══ -->
       <div id="page-settings" class="page">
         <div class="page-header">
-          <div class="page-header-left">
-            <h1>Налаштування</h1>
-            <p>Конфігурація платформи</p>
-          </div>
+          <div class="page-header-left"><h1>Налаштування</h1><p>Конфігурація платформи</p></div>
           <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-save"></i> Зберегти</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div class="chart-card">
             <div class="card-title" style="margin-bottom:20px">🌐 Загальні</div>
-            <div class="form-group"><label class="form-label">Назва платформи</label><input class="form-input" value="RideGO"></div>
-            <div class="form-group"><label class="form-label">Email підтримки</label><input class="form-input" value="support@ridego.ua"></div>
-            <div class="form-group"><label class="form-label">Максимум фото на оголошення</label><input class="form-input" type="number" value="10"></div>
-            <div class="form-group"><label class="form-label">Модерація оголошень</label>
-              <select class="form-input"><option>Автоматична</option><option>Ручна</option><option>Комбінована</option></select>
+            <div class="form-group"><label class="form-label">Назва платформи</label><input class="form-input" id="set-platform-name" value="RideGO"></div>
+            <div class="form-group"><label class="form-label">Email підтримки</label><input class="form-input" id="set-support-email" value="support@ridego.com.ua"></div>
+            <div class="form-group"><label class="form-label">Макс. фото</label><input class="form-input" type="number" id="set-max-photos" value="10"></div>
+            <div class="form-group"><label class="form-label">Модерація</label>
+              <select class="form-input" id="set-moderation"><option>Автоматична</option><option>Ручна</option></select>
             </div>
           </div>
           <div class="chart-card">
-            <div class="card-title" style="margin-bottom:20px">💰 Тарифи просування</div>
-            <div class="form-group"><label class="form-label">TOP (7 днів), грн</label><input class="form-input" type="number" value="150"></div>
-            <div class="form-group"><label class="form-label">TOP (14 днів), грн</label><input class="form-input" type="number" value="250"></div>
-            <div class="form-group"><label class="form-label">Підсвічування (7 днів), грн</label><input class="form-input" type="number" value="80"></div>
-            <div class="form-group"><label class="form-label">Терміново (7 днів), грн</label><input class="form-input" type="number" value="100"></div>
+            <div class="card-title" style="margin-bottom:20px">💰 Тарифи (грн)</div>
+            <div class="form-group"><label class="form-label">TOP 7д</label><input class="form-input" type="number" id="set-price-top-7" value="150"></div>
+            <div class="form-group"><label class="form-label">TOP 14д</label><input class="form-input" type="number" id="set-price-top-14" value="250"></div>
+            <div class="form-group"><label class="form-label">Підсвічування 7д</label><input class="form-input" type="number" id="set-price-hl-7" value="80"></div>
+            <div class="form-group"><label class="form-label">Терміново 7д</label><input class="form-input" type="number" id="set-price-urg-7" value="100"></div>
+            <div class="form-group"><label class="form-label">Слот (1 оголошення)</label><input class="form-input" type="number" id="set-price-slot" value="15"></div>
+          </div>
+          <div class="chart-card">
+            <div class="card-title" style="margin-bottom:20px">🎁 Бонуси</div>
+            <div class="form-group"><label class="form-label">Стартових слотів</label><input class="form-input" type="number" id="set-welcome-slots" value="10"></div>
+            <div class="form-group"><label class="form-label">Термін стартових (днів)</label><input class="form-input" type="number" id="set-welcome-days" value="30"></div>
+            <div class="form-group"><label class="form-label">Безк. слотів/місяць</label><input class="form-input" type="number" id="set-monthly-free" value="1"></div>
           </div>
           <div class="chart-card">
             <div class="card-title" style="margin-bottom:20px">🔐 Безпека</div>
-            <div class="form-group"><label class="form-label">Новий пароль адміна</label><input class="form-input" type="password" placeholder="••••••••"></div>
-            <div class="form-group"><label class="form-label">Підтвердити пароль</label><input class="form-input" type="password" placeholder="••••••••"></div>
-            <div class="form-group"><label class="form-label">Двофакторна автентифікація</label>
-              <select class="form-input"><option>Вимкнено</option><option>Email</option><option>TOTP</option></select>
-            </div>
-          </div>
-          <div class="chart-card">
-            <div class="card-title" style="margin-bottom:20px">📊 Firebase / БД</div>
-            <div class="form-group"><label class="form-label">Firebase Project ID</label><input class="form-input" placeholder="ridego-production"></div>
-            <div class="form-group"><label class="form-label">API Key</label><input class="form-input" placeholder="AIza..."></div>
-            <div class="form-group"><label class="form-label">Storage Bucket</label><input class="form-input" placeholder="ridego.appspot.com"></div>
-            <button class="btn btn-outline" style="width:100%" onclick="showToast('З\'єднання успішне ✓','success')">
-              <i class="fa-solid fa-plug"></i> Перевірити з'єднання
-            </button>
+            <div class="form-group"><label class="form-label">Новий пароль</label><input class="form-input" type="password" id="set-new-pass" placeholder="••••••••"></div>
+            <div class="form-group"><label class="form-label">Підтвердити</label><input class="form-input" type="password" id="set-new-pass2" placeholder="••••••••"></div>
+            <button class="btn btn-outline" style="width:100%" onclick="changeAdminPass()"><i class="fa-solid fa-key"></i> Змінити пароль</button>
           </div>
         </div>
       </div>
@@ -1055,37 +992,13 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
       <!-- ═══ PAGE: LOGS ═══ -->
       <div id="page-logs" class="page">
         <div class="page-header">
-          <div class="page-header-left">
-            <h1>Системні логи</h1>
-            <p>Журнал дій адміністраторів і системи</p>
-          </div>
-          <button class="btn btn-danger" onclick="showToast('Логи очищено','success')"><i class="fa-solid fa-trash"></i> Очистити</button>
+          <div class="page-header-left"><h1>Логи</h1><p>Журнал дій адміністраторів</p></div>
+          <button class="btn btn-outline" onclick="loadLogs()"><i class="fa-solid fa-rotate"></i> Оновити</button>
         </div>
         <div class="full-table-card">
-          <table>
-            <thead>
-              <tr><th>Час</th><th>Адмін</th><th>Дія</th><th>Об'єкт</th><th>IP</th></tr>
-            </thead>
-            <tbody id="logs-tbody"></tbody>
-          </table>
+          <table><thead><tr><th>Час</th><th>Адмін</th><th>Дія</th><th>Деталі</th></tr></thead>
+          <tbody id="logs-tbody"></tbody></table>
         </div>
-      </div>
-
-
-      <!-- ═══ PAGE: NEWS ═══ -->
-      <div id="page-news" class="page">
-        <div class="page-header">
-          <div class="page-header-left">
-            <h1>Новини</h1>
-            <p>Управління новинами платформи</p>
-          </div>
-          <button class="btn btn-primary" onclick="openNewsModal()">
-            <i class="fa-solid fa-plus"></i> Написати новину
-          </button>
-        </div>
-
-        <!-- Список новин -->
-        <div id="news-list" style="display:grid;gap:16px"></div>
       </div>
 
     </div><!-- /content -->
@@ -1093,109 +1006,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 </div><!-- /app -->
 
 
-<!-- MODAL: News Editor -->
-<div class="modal-overlay" id="news-modal" onclick="if(event.target===this)closeModal('news-modal')">
-  <div class="modal" style="max-width:860px;width:100%;max-height:92vh;display:flex;flex-direction:column">
-    <div class="modal-header">
-      <div class="modal-title" id="news-modal-title">Написати новину</div>
-      <button class="modal-close" onclick="closeModal('news-modal')">×</button>
-    </div>
-    <div class="modal-body" style="overflow-y:auto;flex:1">
-      <input type="hidden" id="news-edit-id">
-
-      <!-- Рядок 1: Заголовок -->
-      <div class="form-group" style="margin-bottom:14px">
-        <label class="form-label">Заголовок *</label>
-        <input class="form-input" id="news-title" placeholder="Наприклад: Топ-5 електросамокатів 2026 року">
-      </div>
-
-      <!-- Рядок 2: Категорія + Опис -->
-      <div class="form-row" style="margin-bottom:14px">
-        <div class="form-group">
-          <label class="form-label">Категорія</label>
-          <select class="form-input" id="news-cat">
-            <option value="Новини">Новини</option>
-            <option value="Огляди">Огляди</option>
-            <option value="Поради">Поради</option>
-            <option value="Акції">Акції</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Короткий опис *</label>
-          <input class="form-input" id="news-excerpt" placeholder="1-2 речення для превью...">
-        </div>
-      </div>
-
-      <!-- Головне фото -->
-      <div class="form-group" style="margin-bottom:14px">
-        <label class="form-label">Головне фото</label>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div id="news-img-preview" style="display:none;width:100%;height:160px;border-radius:8px;overflow:hidden;background:var(--dark4)">
-            <img id="news-img-preview-el" style="width:100%;height:100%;object-fit:contain">
-          </div>
-          <div style="display:flex;gap:8px">
-            <button type="button" class="btn btn-outline" style="flex:1;padding:9px" onclick="document.getElementById('news-img-file').click()">
-              <i class="fa-solid fa-upload" style="margin-right:6px"></i><span id="news-img-btn-label">Завантажити фото</span>
-            </button>
-            <button type="button" class="action-btn danger" id="news-img-clear" style="display:none" onclick="clearNewsImg()" title="Видалити"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <input type="file" id="news-img-file" accept="image/*" style="display:none" onchange="uploadNewsImg(this)">
-          <input type="hidden" id="news-img">
-        </div>
-      </div>
-
-      <!-- Редактор тексту -->
-      <div class="form-group" style="margin-bottom:14px">
-        <label class="form-label">Текст новини *</label>
-
-        <!-- Панель інструментів -->
-        <div style="display:flex;gap:4px;flex-wrap:wrap;background:var(--dark4);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:8px">
-          <button type="button" class="action-btn" title="Жирний" onclick="newsFormat('bold')"><i class="fa-solid fa-bold"></i></button>
-          <button type="button" class="action-btn" title="Курсив" onclick="newsFormat('italic')"><i class="fa-solid fa-italic"></i></button>
-          <button type="button" class="action-btn" title="Підкреслений" onclick="newsFormat('underline')"><i class="fa-solid fa-underline"></i></button>
-          <div style="width:1px;background:var(--border);margin:0 4px"></div>
-          <button type="button" class="action-btn" title="Заголовок H2" onclick="newsFormat('h2')"><b>H2</b></button>
-          <button type="button" class="action-btn" title="Заголовок H3" onclick="newsFormat('h3')"><b>H3</b></button>
-          <button type="button" class="action-btn" title="Список" onclick="newsFormat('list')"><i class="fa-solid fa-list-ul"></i></button>
-          <button type="button" class="action-btn" title="Цитата" onclick="newsFormat('quote')"><i class="fa-solid fa-quote-left"></i></button>
-          <div style="width:1px;background:var(--border);margin:0 4px"></div>
-          <button type="button" class="action-btn" title="Додати фото в текст" onclick="document.getElementById('news-inline-img-file').click()">
-            <i class="fa-solid fa-image"></i> Фото
-          </button>
-          <input type="file" id="news-inline-img-file" accept="image/*" style="display:none" onchange="insertNewsImg(this)">
-          <div style="width:1px;background:var(--border);margin:0 4px"></div>
-          <button type="button" class="action-btn" title="Попередній перегляд" onclick="toggleNewsPreview()"><i class="fa-solid fa-eye"></i></button>
-        </div>
-
-        <!-- Редактор -->
-        <div id="news-editor"
-          contenteditable="true"
-          style="min-height:220px;background:var(--dark3);border:1px solid var(--border);border-radius:0 0 8px 8px;padding:16px;font-size:15px;line-height:1.8;outline:none;color:var(--text)"
-          data-placeholder="Почніть писати текст новини...">
-        </div>
-
-        <!-- Попередній перегляд -->
-        <div id="news-preview-panel" style="display:none;margin-top:12px;background:var(--dark3);border:1px solid var(--border);border-radius:8px;padding:20px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Попередній перегляд</div>
-          <div id="news-preview-content" style="font-size:15px;line-height:1.8"></div>
-        </div>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:12px">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
-          <input type="checkbox" id="news-published" checked style="accent-color:var(--brand)">
-          Опублікувати одразу
-        </label>
-      </div>
-    </div>
-    <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--border)">
-      <button class="btn btn-outline" onclick="closeModal('news-modal')">Скасувати</button>
-      <button class="btn btn-primary" onclick="saveNews()"><i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Зберегти</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Edit user -->
+<!-- MODAL: Edit User -->
 <div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeModal('user-modal')">
   <div class="modal">
     <div class="modal-header">
@@ -1205,42 +1016,167 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
     <div class="modal-body">
       <input type="hidden" id="edit-user-id">
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Ім'я</label><input class="form-input" id="edit-name" placeholder="Іван Іваненко"></div>
-        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="edit-email" placeholder="user@email.com"></div>
+        <div class="form-group"><label class="form-label">Ім'я</label><input class="form-input" id="edit-name"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="edit-email" readonly style="opacity:.6"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Телефон</label><input class="form-input" id="edit-phone" placeholder="+380..."></div>
-        <div class="form-group"><label class="form-label">Місто</label><input class="form-input" id="edit-city" placeholder="Київ"></div>
+        <div class="form-group"><label class="form-label">Телефон</label><input class="form-input" id="edit-phone"></div>
+        <div class="form-group"><label class="form-label">Місто</label><input class="form-input" id="edit-city"></div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Тип акаунту</label>
-          <select class="form-input" id="edit-type">
-            <option value="personal">Фізособа</option>
-            <option value="business">Бізнес</option>
+        <div class="form-group"><label class="form-label">Тип</label>
+          <select class="form-input" id="edit-type"><option value="personal">Фізособа</option><option value="business">Бізнес</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Статус</label>
+          <select class="form-input" id="edit-status"><option value="active">Активний</option><option value="blocked">Заблокований</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Причина блокування</label><input class="form-input" id="edit-block-reason" placeholder="Якщо блокуєте..."></div>
+      <div class="form-group"><label class="form-label">Слоти (куплені)</label><input class="form-input" type="number" id="edit-slots" min="0"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('user-modal')">Скасувати</button>
+      <button class="btn btn-primary" onclick="saveUser()"><i class="fa-solid fa-save"></i> Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Listing -->
+<div class="modal-overlay" id="listing-modal" onclick="if(event.target===this)closeModal('listing-modal')">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div class="modal-title" id="listing-modal-title">Редагувати оголошення</div>
+      <button class="modal-close" onclick="closeModal('listing-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-listing-id">
+      <div class="form-group"><label class="form-label">Назва</label><input class="form-input" id="el-title"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Ціна (грн)</label><input class="form-input" type="number" id="el-price"></div>
+        <div class="form-group"><label class="form-label">Категорія</label>
+          <select class="form-input" id="el-cat">
+            <option>Електросамокати</option><option>Велосипеди</option><option>Електровелосипеди</option><option>Електроскутери</option><option>Електромотоцикли</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Статус</label>
-          <select class="form-input" id="edit-status">
-            <option value="active">Активний</option>
-            <option value="blocked">Заблокований</option>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Місто</label><input class="form-input" id="el-city"></div>
+        <div class="form-group"><label class="form-label">Стан</label>
+          <select class="form-input" id="el-condition">
+            <option>Новий</option><option>Чудовий</option><option>Хороший</option><option>Задовільний</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Опис</label><textarea class="form-input" id="el-desc" rows="3"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Статус</label>
+          <select class="form-input" id="el-status">
+            <option value="active">Активне</option><option value="moderate">Модерація</option><option value="sold">Продано</option><option value="inactive">Неактивне</option><option value="deleted">Видалено</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Промо</label>
+          <select class="form-input" id="el-promo">
+            <option value="">Без промо</option><option value="top">TOP</option><option value="highlight">Підсвічування</option><option value="urgent">Терміново</option>
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Причина блокування (якщо є)</label>
-        <input class="form-input" id="edit-block-reason" placeholder="Порушення правил...">
+        <label class="form-label">Фото</label>
+        <div id="el-photos-grid" style="display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Нотатки адміна</label>
-        <textarea class="form-input" id="edit-notes" rows="2" placeholder="Внутрішні нотатки..."></textarea>
+      <div style="margin-top:12px;padding:14px;background:var(--dark4);border-radius:10px">
+        <div style="display:flex;gap:10px;font-size:12px;color:var(--text-muted)">
+          <span>UID: <span id="el-uid" style="font-family:'JetBrains Mono',monospace"></span></span>
+          <span>Продавець: <span id="el-seller"></span></span>
+          <span>Переглядів: <span id="el-views">0</span></span>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-danger" onclick="blockUser()"><i class="fa-solid fa-ban"></i> Заблокувати</button>
-      <button class="btn btn-outline" onclick="closeModal('user-modal')">Скасувати</button>
-      <button class="btn btn-primary" onclick="saveUser()"><i class="fa-solid fa-save"></i> Зберегти</button>
+      <button class="btn btn-danger" onclick="deleteListing()"><i class="fa-solid fa-trash"></i> Видалити</button>
+      <button class="btn btn-outline" onclick="closeModal('listing-modal')">Скасувати</button>
+      <button class="btn btn-primary" onclick="saveListing()"><i class="fa-solid fa-save"></i> Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: News Editor -->
+<div class="modal-overlay" id="news-modal" onclick="if(event.target===this)closeModal('news-modal')">
+  <div class="modal" style="max-width:860px;max-height:92vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title" id="news-modal-title">Написати новину</div>
+      <button class="modal-close" onclick="closeModal('news-modal')">×</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;flex:1">
+      <input type="hidden" id="news-edit-id">
+      <div class="form-group"><label class="form-label">Заголовок *</label><input class="form-input" id="news-title" placeholder="Топ-5 електросамокатів 2026"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Категорія</label>
+          <select class="form-input" id="news-cat"><option value="Новини">Новини</option><option value="Огляди">Огляди</option><option value="Поради">Поради</option><option value="Акції">Акції</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Короткий опис *</label><input class="form-input" id="news-excerpt" placeholder="1-2 речення..."></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Головне фото</label>
+        <div id="news-img-preview" style="display:none;width:100%;height:160px;border-radius:8px;overflow:hidden;background:var(--dark4);margin-bottom:8px">
+          <img id="news-img-preview-el" style="width:100%;height:100%;object-fit:contain">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('news-img-file').click()"><i class="fa-solid fa-upload"></i> <span id="news-img-btn-label">Завантажити фото</span></button>
+          <button class="action-btn danger" id="news-img-clear-btn" style="display:none" onclick="clearNewsImg()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <input type="file" id="news-img-file" accept="image/*" style="display:none" onchange="uploadNewsImg(this)">
+        <input type="hidden" id="news-img">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Текст *</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;background:var(--dark4);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:8px">
+          <button class="action-btn" onclick="newsCmd('bold')" title="Жирний"><i class="fa-solid fa-bold"></i></button>
+          <button class="action-btn" onclick="newsCmd('italic')" title="Курсив"><i class="fa-solid fa-italic"></i></button>
+          <button class="action-btn" onclick="newsCmd('formatBlock','h2')" title="H2"><b>H2</b></button>
+          <button class="action-btn" onclick="newsCmd('formatBlock','h3')" title="H3"><b>H3</b></button>
+          <button class="action-btn" onclick="newsCmd('insertUnorderedList')" title="Список"><i class="fa-solid fa-list-ul"></i></button>
+          <button class="action-btn" onclick="newsCmd('formatBlock','blockquote')" title="Цитата"><i class="fa-solid fa-quote-left"></i></button>
+          <button class="action-btn" onclick="document.getElementById('news-inline-img').click()" title="Фото"><i class="fa-solid fa-image"></i></button>
+          <input type="file" id="news-inline-img" accept="image/*" style="display:none" onchange="insertNewsInlineImg(this)">
+        </div>
+        <div id="news-editor" contenteditable="true" data-placeholder="Почніть писати..."
+          style="min-height:200px;background:var(--dark3);border:1px solid var(--border);border-radius:0 0 8px 8px;padding:16px;font-size:15px;line-height:1.8;outline:none;color:var(--text)"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="news-published" checked style="accent-color:var(--brand)"> Опублікувати
+      </label>
+    </div>
+    <div class="modal-footer" style="border-top:1px solid var(--border)">
+      <button class="btn btn-outline" onclick="closeModal('news-modal')">Скасувати</button>
+      <button class="btn btn-primary" onclick="saveNews()"><i class="fa-solid fa-floppy-disk"></i> Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Balance -->
+<div class="modal-overlay" id="balance-modal" onclick="if(event.target===this)closeModal('balance-modal')">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="balance-modal-title">Баланс</div>
+      <button class="modal-close" onclick="closeModal('balance-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;font-family:'JetBrains Mono',monospace">UID: <span id="balance-uid"></span></div>
+      <div id="balance-current" style="margin-bottom:18px"></div>
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="form-group"><label class="form-label">Дія</label>
+          <select class="form-input" id="balance-action"><option value="add">➕ Нарахувати</option><option value="remove">➖ Забрати</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Кількість слотів</label>
+          <input type="number" class="form-input" id="balance-amount" min="1" placeholder="10">
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Коментар</label><input class="form-input" id="balance-comment" placeholder="Причина..."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('balance-modal')">Скасувати</button>
+      <button class="btn btn-primary" onclick="applyBalance()"><i class="fa-solid fa-check"></i> Застосувати</button>
     </div>
   </div>
 </div>
@@ -1248,13 +1184,8 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 <!-- MODAL: Confirm -->
 <div class="modal-overlay" id="confirm-modal" onclick="if(event.target===this)closeModal('confirm-modal')">
   <div class="modal" style="max-width:400px">
-    <div class="modal-header">
-      <div class="modal-title" id="confirm-title">Підтвердження</div>
-      <button class="modal-close" onclick="closeModal('confirm-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <p id="confirm-text" style="font-size:14px;line-height:1.6;color:var(--text-muted)"></p>
-    </div>
+    <div class="modal-header"><div class="modal-title" id="confirm-title">Підтвердження</div><button class="modal-close" onclick="closeModal('confirm-modal')">×</button></div>
+    <div class="modal-body"><p id="confirm-text" style="font-size:14px;color:var(--text-muted)"></p></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Скасувати</button>
       <button class="btn btn-danger" id="confirm-ok-btn">Підтвердити</button>
@@ -1265,1484 +1196,780 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
 <!-- TOAST -->
 <div class="toast-container" id="toast-container"></div>
 
+<!-- News editor extra CSS -->
+<style>
+#news-editor:empty:before { content:attr(data-placeholder); color:var(--text-muted); pointer-events:none; }
+#news-editor h2 { font-size:22px; font-weight:700; margin:16px 0 8px; }
+#news-editor h3 { font-size:18px; font-weight:600; margin:14px 0 6px; }
+#news-editor blockquote { border-left:3px solid var(--brand); padding-left:16px; color:var(--text-muted); margin:12px 0; font-style:italic; }
+#news-editor img { max-width:100%; border-radius:8px; margin:12px 0; display:block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
 
 
-<!-- MODAL: View listing -->
-<div class="modal-overlay" id="listing-modal" onclick="if(event.target===this)closeModal('listing-modal')">
-  <div class="modal" style="max-width:640px">
-    <div class="modal-header">
-      <div class="modal-title" id="listing-modal-title">Оголошення</div>
-      <button class="modal-close" onclick="closeModal('listing-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Назва</div>
-          <div id="lm-title" style="font-size:16px;font-weight:700;margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Категорія</div>
-          <div id="lm-cat" style="margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Продавець</div>
-          <div id="lm-seller" style="margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Місто</div>
-          <div id="lm-city"></div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Ціна</div>
-          <div id="lm-price" style="font-size:22px;font-weight:800;color:var(--brand);margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Дата</div>
-          <div id="lm-date" style="margin-bottom:16px"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Статус</div>
-          <div id="lm-status"></div>
-        </div>
-      </div>
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Змінити статус</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline" onclick="setListingStatus('active')"><i class="fa-solid fa-check" style="color:var(--brand)"></i> Активне</button>
-          <button class="btn btn-outline" onclick="setListingStatus('moderate')"><i class="fa-solid fa-clock" style="color:var(--orange)"></i> Модерація</button>
-          <button class="btn btn-danger" onclick="setListingStatus('blocked')"><i class="fa-solid fa-ban"></i> Заблокувати</button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-danger" id="lm-delete-btn"><i class="fa-solid fa-trash"></i> Видалити</button>
-      <button class="btn btn-outline" onclick="closeModal('listing-modal')">Закрити</button>
-    </div>
-  </div>
-</div>
-
-
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+'use strict';
 
-// ═══════════════════════════════════════════════
-// DEMO DATA
-// ═══════════════════════════════════════════════
-// Авторизація через Firebase Auth — пароль більше не зберігається в коді
-
-// ═══ FIREBASE INIT ═══════════════════════════════
-var _db = null;
-(function() {
+// ═══ FIREBASE ═══
+var _db, _rtdb, _auth;
+(function(){
   var cfg = {
-    apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
-    authDomain: "ridego-6f981.firebaseapp.com",
-    projectId: "ridego-6f981",
-    databaseURL: "https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app",
-    storageBucket: "ridego-6f981.firebasestorage.app",
-    messagingSenderId: "769845611953",
-    appId: "1:769845611953:web:d21b7cf32f5fae84888190"
+    apiKey:"AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
+    authDomain:"ridego-6f981.firebaseapp.com",
+    projectId:"ridego-6f981",
+    databaseURL:"https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app",
+    storageBucket:"ridego-6f981.firebasestorage.app",
+    messagingSenderId:"769845611953",
+    appId:"1:769845611953:web:d21b7cf32f5fae84888190"
   };
-  if (!firebase.apps.length) firebase.initializeApp(cfg);
+  if(!firebase.apps.length) firebase.initializeApp(cfg);
   _db = firebase.firestore();
-  window._rtdb = firebase.database();
+  _rtdb = firebase.database();
+  _auth = firebase.auth();
 })();
 
-// ═══ LOAD REAL DATA FROM FIREBASE ════════════════
-function loadFirebaseData() {
-  if (!_db) return;
+// ═══ GLOBAL STATE ═══
+var _users=[], _listings=[], _services=[], _reports=[], _news=[];
+var COLORS=['#00c853','#58a6ff','#ffa726','#bc8cff','#ff4757','#26c6da'];
 
-  // Лічильники для дашборду
-  _db.collection('users').get().then(function(snap) {
-    var users = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-    var total = users.length;
-    var active = users.filter(function(u){ return u.status !== 'blocked'; }).length;
-    var blocked = users.filter(function(u){ return u.status === 'blocked'; }).length;
-    var today = new Date(); today.setHours(0,0,0,0);
-    var todayTs = today.getTime()/1000;
-    var newToday = users.filter(function(u){ return u.createdAt && u.createdAt.seconds >= todayTs; }).length;
-
-    var el = document.getElementById('stat-users');
-    if (el) el.textContent = total;
-    var d1 = document.getElementById('delta-users');
-    if (d1) d1.innerHTML = '<i class="fa-solid fa-arrow-up"></i>+'+newToday+' сьогодні';
-    var m1 = document.getElementById('mini-users-total'); if(m1) m1.textContent = total;
-    var m2 = document.getElementById('mini-users-active'); if(m2) m2.textContent = active;
-    var m3 = document.getElementById('mini-users-blocked'); if(m3) m3.textContent = blocked;
-
-    // Зберегти users глобально для графіку
-    window._adminUsers = users;
-
-    // Оновити графік якщо listings вже завантажені
-    if (window._adminListings) _updateBarChart(window._adminListings);
-
-    // Підрахувати оголошення для кожного юзера
-    _db.collection('listings').get().then(function(lSnap) {
-      var listingsByUid = {};
-      lSnap.docs.forEach(function(d) {
-        var l = d.data();
-        if (l.uid && l.status !== 'deleted') {
-          listingsByUid[l.uid] = (listingsByUid[l.uid] || 0) + 1;
-        }
-      });
-      users.forEach(function(u) { u.listings = listingsByUid[u.id] || 0; });
-      renderUsersTable(users);
-      renderBlockedTable(users);
-      renderNewUsers();
-    });
-  }).catch(function(e){ console.error('users:', e); });
-
-  _db.collection('listings').get().then(function(snap) {
-    var all = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-    var active = all.filter(function(l){ return l.status !== 'deleted' && l.status !== 'blocked'; });
-    var moderate = all.filter(function(l){ return l.status === 'moderate'; });
-    var deleted = all.filter(function(l){ return l.status === 'deleted'; });
-    // Нові сьогодні
-    var today = new Date(); today.setHours(0,0,0,0);
-    var todayTs = today.getTime()/1000;
-    var newToday = active.filter(function(l){ return l.createdAt && l.createdAt.seconds >= todayTs; }).length;
-
-    var el = document.getElementById('stat-listings');
-    if (el) el.textContent = active.length;
-    var d2 = document.getElementById('delta-listings');
-    if (d2) d2.innerHTML = '<i class="fa-solid fa-arrow-up"></i>+'+newToday+' сьогодні';
-    // Унікальні відвідувачі сьогодні
-    var todayStr = new Date().toISOString().slice(0,10);
-    _db.collection('analytics').doc('visitors_' + todayStr).get().then(function(snap) {
-      var visits = snap.exists ? (snap.data().count || 0) : 0;
-      var vEl = document.getElementById('stat-views');
-      if (vEl) vEl.textContent = visits > 999 ? (visits/1000).toFixed(1)+'K' : visits;
-      var dv = document.getElementById('delta-views');
-      if (dv) dv.innerHTML = '<i class="fa-solid fa-user"></i> унікальних браузерів: ' + visits;
-    }).catch(function(){});
-
-    // PWA встановлення — загальна кількість
-    _db.collection('analytics').doc('pwa_installs').get().then(function(snap) {
-      var total = snap.exists ? (snap.data().count || 0) : 0;
-      var el = document.getElementById('stat-pwa');
-      if (el) el.textContent = total;
-      // Сьогоднішні
-      _db.collection('analytics').doc('pwa_' + todayStr).get().then(function(s2) {
-        var today = s2.exists ? (s2.data().count || 0) : 0;
-        var dEl = document.getElementById('delta-pwa');
-        if (dEl) dEl.innerHTML = '<i class="fa-solid fa-mobile-screen"></i> сьогодні: +' + today;
-      }).catch(function(){});
-    }).catch(function(){});
-    var m4 = document.getElementById('mini-listings-active'); if(m4) m4.textContent = active.length;
-    var m5 = document.getElementById('mini-listings-moderate'); if(m5) m5.textContent = moderate.length;
-    var m6 = document.getElementById('mini-listings-deleted'); if(m6) m6.textContent = deleted.length;
-
-    renderListingsTable(active);
-    // Зберегти listings глобально і оновити графік
-    window._adminListings = all;
-    _updateBarChart(all);
-  }).catch(function(e){ console.error('listings:', e); });
-
-  _db.collection('services').get().then(function(snap) {
-    var el = document.getElementById('stat-services');
-    if (el) el.textContent = snap.size;
-    renderServicesTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
-  }).catch(function(e){ console.error('services:', e); });
-
-  loadNews();
-  _db.collection('reports').get().then(function(snap) {
-    renderReportsTable(snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }));
-  }).catch(function(e){ console.warn('reports: no access -', e.message); renderReportsTable([]); });
-
-  // Реальний час — слухати нові оголошення
-  _db.collection('listings').orderBy('createdAt','desc').limit(5)
-    .onSnapshot(function(snap) {
-      var items = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-      var actEl = document.getElementById('activity-log');
-      if (!actEl) return;
-      actEl.innerHTML = items.map(function(l) {
-        var ago = l.createdAt ? _timeAgo(l.createdAt.seconds) : '';
-        return '<div class="activity-item">'
-          + '<div class="activity-dot" style="background:#58a6ff"></div>'
-          + '<div class="activity-body"><div class="activity-title">Нове оголошення: ' + (l.title||'—') + '</div>'
-          + '<div class="activity-meta">' + (l.sellerName||l.seller||'') + ' · ' + ago + '</div></div></div>';
-      }).join('');
-    }, function(e){ console.error('snapshot:', e); });
-}
-
-function _timeAgo(seconds) {
-  var diff = Math.floor(Date.now()/1000) - seconds;
-  if (diff < 60) return diff + ' с тому';
-  if (diff < 3600) return Math.floor(diff/60) + ' хв тому';
-  if (diff < 86400) return Math.floor(diff/3600) + ' год тому';
-  return Math.floor(diff/86400) + ' дн тому';
-}
-
-function _updateBarChart(listings) {
-  _updateBarChartN(listings, 7);
-}
-
-// ═══ OVERRIDE RENDER TABLES ═══════════════════════
-function renderUsersTable(data) {
-  var tbody = document.getElementById('users-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">Немає користувачів</td></tr>'; return; }
-  tbody.innerHTML = data.slice(0,50).map(function(u) {
-    var name = u.name || u.email || '—';
-    var email = u.email || '—';
-    var city = u.city || '—';
-    var type = u.type === 'business' ? '<span style="color:var(--blue)">Магазин</span>' : 'Фізособа';
-    var status = u.status === 'blocked'
-      ? '<span style="color:var(--red)">Заблокований</span>'
-      : '<span style="color:var(--brand)">Активний</span>';
-    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    return '<tr>'
-      + '<td>' + name + '</td>'
-      + '<td style="color:var(--text-muted)">' + email + '</td>'
-      + '<td>' + city + '</td>'
-      + '<td>' + type + '</td>'
-      + '<td>' + status + '</td>'
-      + '<td>' + reg + '</td>'
-      + '<td><button class="action-btn" onclick="blockUser(\'' + u.id + '\',\'' + name + '\')">Блок</button></td>'
-      + '</tr>';
-  }).join('');
-}
-
-function renderListingsTable(data) {
-  var tbody = document.getElementById('listings-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">Немає оголошень</td></tr>'; return; }
-  tbody.innerHTML = data.slice(0,50).map(function(l) {
-    var statusColor = l.status === 'deleted' ? 'var(--red)' : l.status === 'moderate' ? 'var(--orange)' : 'var(--brand)';
-    var statusLabel = l.status === 'deleted' ? 'Видалено' : l.status === 'moderate' ? 'Модерація' : 'Активне';
-    var date = l.createdAt ? new Date(l.createdAt.seconds*1000).toLocaleDateString('uk-UA') : (l.time||'—');
-    return '<tr>'
-      + '<td>' + (l.title||'—') + '</td>'
-      + '<td style="color:var(--text-muted)">' + (l.cat||'—') + '</td>'
-      + '<td>' + (l.sellerName||l.seller||'—') + '</td>'
-      + '<td>' + (l.price ? l.price.toLocaleString() + ' грн' : '—') + '</td>'
-      + '<td>' + (l.city||'—') + '</td>'
-      + '<td>' + date + '</td>'
-      + '<td><span style="color:' + statusColor + '">' + statusLabel + '</span></td>'
-      + '<td><button class="action-btn danger" onclick="deleteListing(\'' + l.id + '\')">Видалити</button></td>'
-      + '</tr>';
-  }).join('');
-}
-
-function renderServicesTable(data) {
-  var tbody = document.getElementById('services-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає сервісів</td></tr>'; return; }
-  tbody.innerHTML = data.map(function(s) {
-    return '<tr>'
-      + '<td>' + (s.name||'—') + '</td>'
-      + '<td>' + (s.city||'—') + '</td>'
-      + '<td style="color:var(--text-muted)">' + (Array.isArray(s.cats)?s.cats.join(', '):'—') + '</td>'
-      + '<td>' + (s.rating||'—') + '</td>'
-      + '<td><span style="color:var(--brand)">Активний</span></td>'
-      + '<td><button class="action-btn danger" onclick="deleteService(\'' + s.id + '\')">Видалити</button></td>'
-      + '</tr>';
-  }).join('');
-}
-
-function renderReportsTable(data) {
-  var tbody = document.getElementById('reports-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Скарг немає</td></tr>'; return; }
-  tbody.innerHTML = data.map(function(r) {
-    var date = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    var statusColor = r.status === 'resolved' ? 'var(--brand)' : 'var(--orange)';
-    var statusLabel = r.status === 'resolved' ? 'Вирішено' : 'Нова';
-    return '<tr>'
-      + '<td>' + (r.listingId||'—') + '</td>'
-      + '<td>Оголошення</td>'
-      + '<td>' + (r.reason||'—') + '</td>'
-      + '<td style="color:var(--text-muted)">' + date + '</td>'
-      + '<td><span style="color:' + statusColor + '">' + statusLabel + '</span></td>'
-      + '<td><button class="action-btn" onclick="resolveReport(\'' + r.id + '\')">Вирішити</button></td>'
-      + '</tr>';
-  }).join('');
-}
-
-// ═══ ADMIN ACTIONS ════════════════════════════════
-function blockUser(uid, name) {
-  if (!confirm('Заблокувати користувача ' + name + '?')) return;
-  _db.collection('users').doc(uid).update({ status: 'blocked' })
-    .then(function(){ showAdminToast('Користувача заблоковано'); loadFirebaseData(); })
-    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
-}
-
-function deleteListing(id) {
-  if (!confirm('Видалити оголошення?')) return;
-  _db.collection('listings').doc(id).update({ status: 'deleted' })
-    .then(function(){ showAdminToast('Оголошення видалено'); loadFirebaseData(); })
-    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
-}
-
-function deleteService(id) {
-  if (!confirm('Видалити сервіс?')) return;
-  _db.collection('services').doc(id).delete()
-    .then(function(){ showAdminToast('Сервіс видалено'); loadFirebaseData(); })
-    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
-}
-
-function resolveReport(id) {
-  _db.collection('reports').doc(id).update({ status: 'resolved' })
-    .then(function(){ showAdminToast('Скаргу вирішено'); loadFirebaseData(); })
-    .catch(function(e){ showAdminToast('Помилка: ' + e.message); });
-}
-
-function showAdminToast(msg) {
-  var tc = document.getElementById('toast-container');
-  if (!tc) return;
-  var t = document.createElement('div');
-  t.className = 'toast show';
-  t.textContent = msg;
-  tc.appendChild(t);
-  setTimeout(function(){ t.remove(); }, 3000);
-}
-
-
-const COLORS = ['#00c853','#58a6ff','#ffa726','#bc8cff','#ff4757','#26c6da','#ef5350'];
-
-const USERS = [
-  {id:1, name:'Антон М.',    email:'anton@gmail.com',   phone:'+380671234567', city:'Київ',   type:'personal', status:'active',  listings:3, reg:'17.03.2026', notes:''},
-  {id:2, name:'Оля Д.',      email:'olya@ukr.net',      phone:'+380502345678', city:'Львів',  type:'personal', status:'active',  listings:1, reg:'16.03.2026', notes:''},
-  {id:3, name:'ElectroShop', email:'shop@electro.ua',   phone:'+380443456789', city:'Київ',   type:'business', status:'active',  listings:47,reg:'10.03.2026', notes:'Перевірений продавець'},
-  {id:4, name:'Спам-акаунт', email:'spam@mail.ru',      phone:'+380674567890', city:'Одеса',  type:'personal', status:'blocked', listings:0, reg:'15.03.2026', notes:'Розсилка спаму', blockReason:'Спам'},
-  {id:5, name:'Vasyl K.',    email:'vasyl@proton.me',   phone:'+380505678901', city:'Харків', type:'personal', status:'active',  listings:5, reg:'14.03.2026', notes:''},
-  {id:6, name:'VeloStore',   email:'velo@store.com.ua', phone:'+380326789012', city:'Львів',  type:'business', status:'active',  listings:23,reg:'01.02.2026', notes:''},
-  {id:7, name:'Дмитро П.',   email:'dima@ukr.net',      phone:'+380677890123', city:'Дніпро', type:'personal', status:'active',  listings:2, reg:'12.03.2026', notes:''},
-  {id:8, name:'Бот-акаунт',  email:'bot123@tmp.com',    phone:'+380998901234', city:'—',      type:'personal', status:'blocked', listings:0, reg:'17.03.2026', notes:'Підозріла активність', blockReason:'Підозра у фроді'},
-];
-
-const LISTINGS_DATA = [
-  {id:1,  title:'Ninebot Max G30P',    cat:'Електросамокати', seller:'Антон М.', price:'18 500', city:'Київ',   date:'17.03.2026', status:'active'},
-  {id:2,  title:'Trek FX 3',           cat:'Велосипеди',      seller:'Оля Д.',   price:'24 900', city:'Львів',  date:'16.03.2026', status:'active'},
-  {id:3,  title:'NIU MQi+ Sport',      cat:'Скутери',         seller:'Vasyl K.', price:'38 000', city:'Харків', date:'15.03.2026', status:'moderate'},
-  {id:4,  title:'Xiaomi Mi 3',         cat:'Електросамокати', seller:'Дмитро П.',price:'8 500',  city:'Дніпро', date:'17.03.2026', status:'active'},
-  {id:5,  title:'Cannondale Quick',    cat:'Велосипеди',      seller:'VeloStore',price:'32 000', city:'Львів',  date:'14.03.2026', status:'active'},
-  {id:6,  title:'Kaabo Mantis 10',     cat:'Електросамокати', seller:'ElectroShop',price:'55 000',city:'Київ',  date:'13.03.2026', status:'blocked'},
-  {id:7,  title:'Zero FXE 2024',       cat:'Мотоцикли',       seller:'Vasyl K.', price:'285 000',city:'Харків', date:'12.03.2026', status:'moderate'},
-];
-
-const SERVICES_DATA = [
-  {id:1, name:'ScooterFix Київ',    city:'Київ',  cats:'Самокати, Е-байки', rating:4.9, status:'active'},
-  {id:2, name:'VeloMaster Львів',   city:'Львів', cats:'Велосипеди',         rating:4.8, status:'active'},
-  {id:3, name:'Battery Lab Харків', city:'Харків',cats:'Акумулятори',         rating:4.8, status:'active'},
-  {id:4, name:'ScooterDoc Одеса',   city:'Одеса', cats:'Скутери',            rating:4.7, status:'active'},
-];
-
-const REPORTS_DATA = [
-  {id:1, obj:'Ninebot Max G30P', type:'Оголошення', reason:'Неправдива інформація', reporter:'Оля Д.', date:'17.03.2026', status:'new'},
-  {id:2, obj:'Бот-акаунт',      type:'Користувач',  reason:'Спам',                 reporter:'Vasyl K.',date:'17.03.2026', status:'resolved'},
-  {id:3, obj:'Kaabo Mantis 10', type:'Оголошення', reason:'Завищена ціна',         reporter:'Антон М.',date:'16.03.2026', status:'new'},
-];
-
-const BLOCKED_DATA = USERS.filter(u => u.status === 'blocked');
-
-const LOGS_DATA = [
-  {time:'17.03.2026 14:52', admin:'Admin', action:'Заблоковано', obj:'Бот-акаунт (#8)', ip:'192.168.1.1'},
-  {time:'17.03.2026 13:10', admin:'Admin', action:'Змінено тарифи', obj:'TOP — 150→200 грн', ip:'192.168.1.1'},
-  {time:'16.03.2026 18:44', admin:'Admin', action:'Видалено оголошення', obj:'Kaabo Mantis (#6)', ip:'192.168.1.1'},
-  {time:'16.03.2026 15:22', admin:'Admin', action:'Підтверджено скаргу', obj:'Report #1', ip:'192.168.1.1'},
-  {time:'15.03.2026 09:11', admin:'Admin', action:'Авторизація', obj:'Вхід у панель', ip:'192.168.1.1'},
-];
-
-const ACTIVITY = [
-  {type:'user',    color:'#00c853', title:'Новий користувач ElectroShop', meta:'3 хв тому'},
-  {type:'listing', color:'#58a6ff', title:'Додано оголошення "NIU MQi+"',  meta:'12 хв тому'},
-  {type:'report',  color:'#ff4757', title:'Нова скарга на оголошення',      meta:'28 хв тому'},
-  {type:'listing', color:'#58a6ff', title:'Оголошення "Trek FX 3" активне', meta:'1 год тому'},
-  {type:'user',    color:'#ffa726', title:'Заблоковано акаунт #8',          meta:'2 год тому'},
-];
-
-// Chart data (7 days)
-const CHART_DATA = {
-  7:  { labels:['11','12','13','14','15','16','17'], listings:[28,35,22,41,38,45,38], users:[8,12,6,14,10,16,14] },
-  14: { labels:['04','05','06','07','08','09','10','11','12','13','14','15','16','17'], listings:[18,24,20,30,28,35,22,41,38,45,38,32,44,38], users:[5,7,4,9,8,12,6,14,10,16,14,11,15,14] },
-  30: { labels:['16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','01','02','03','04','05','06','07','08','09','10','11','12','13','17'], listings:[12,15,18,20,22,19,25,28,24,32,30,28,35,22,41,38,45,38,32,44,38,30,35,40,45,38,42,48,44,38], users:[3,4,5,6,7,5,8,9,7,10,9,8,12,6,14,10,16,14,11,15,14,10,12,14,16,14,15,18,16,14] },
-};
-
-// ═══════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════
-function doLogin() {
-  var email = document.getElementById('login-user').value.trim();
-  var pass  = document.getElementById('login-pass').value;
-  var btn   = document.querySelector('.login-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Вхід...'; }
-
-  firebase.auth().signInWithEmailAndPassword(email, pass)
-    .then(function(cred) {
-      // Перевіряємо чи є uid в колекції admins
-      return firebase.firestore()
-        .collection('admins').doc(cred.user.uid).get();
-    })
-    .then(function(snap) {
-      if (!snap.exists) {
-        firebase.auth().signOut();
-        throw new Error('Немає прав адміна');
-      }
-      document.getElementById('login-screen').style.display = 'none';
+// ═══ AUTH ═══
+function doLogin(){
+  var email=document.getElementById('login-user').value.trim();
+  var pass=document.getElementById('login-pass').value;
+  var btn=document.querySelector('.login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Вхід...';}
+  _auth.signInWithEmailAndPassword(email,pass)
+    .then(function(cred){ return _db.collection('admins').doc(cred.user.uid).get(); })
+    .then(function(snap){
+      if(!snap.exists){_auth.signOut();throw new Error('Немає прав адміна');}
+      document.getElementById('login-screen').style.display='none';
       document.getElementById('app').classList.add('shown');
+      var u=_auth.currentUser;
+      var nEl=document.getElementById('admin-name');if(nEl)nEl.textContent=u.displayName||u.email;
+      var aEl=document.getElementById('admin-avatar');if(aEl)aEl.textContent=(u.displayName||u.email||'A')[0].toUpperCase();
       initApp();
     })
-    .catch(function(e) {
-      var errEl = document.getElementById('login-error');
-      if (errEl) {
-        errEl.textContent = e.code === 'auth/invalid-credential' ? 'Невірний email або пароль' : e.message;
-        errEl.style.display = 'block';
-        setTimeout(function(){ errEl.style.display = 'none'; }, 4000);
-      }
-      document.getElementById('login-pass').value = '';
-      if (btn) { btn.disabled = false; btn.textContent = 'Увійти'; }
+    .catch(function(e){
+      var err=document.getElementById('login-error');
+      if(err){err.textContent=e.code==='auth/invalid-credential'?'Невірний email або пароль':e.message;err.style.display='block';setTimeout(function(){err.style.display='none';},4000);}
+      document.getElementById('login-pass').value='';
+      if(btn){btn.disabled=false;btn.textContent='Увійти в панель';}
     });
 }
+function doLogout(){if(confirm('Вийти?')){_auth.signOut();location.reload();}}
 
-function doLogout() {
-  confirm('Вийти з адмін панелі?') && location.reload();
+// ═══ INIT ═══
+function initApp(){
+  loadAllData();
+  setInterval(loadAllData,30000);
+  // Online counter
+  _rtdb.ref('presence').on('value',function(s){
+    var el=document.getElementById('online-count');if(el)el.textContent=s.numChildren()||0;
+  });
+  // Realtime activity
+  _db.collection('listings').orderBy('createdAt','desc').limit(8)
+    .onSnapshot(function(snap){renderActivity(snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}));});
 }
 
-// ═══════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════
-function initApp() {
-  renderBarChart(7);
-  renderNewUsers();
-  renderActivityLog();
-  // Завантажити реальні дані з Firebase
-  loadFirebaseData();
-  // Оновлювати кожні 30 секунд
-  setInterval(loadFirebaseData, 30000);
-  // Реальний лічильник онлайн через Realtime Database
-  if (window._rtdb) {
-    window._rtdb.ref('presence').on('value', function(snap) {
-      var count = snap.numChildren();
-      var el = document.getElementById('online-count');
-      if (el) el.textContent = count || 0;
-    });
-  }
-}
+// ═══ LOAD ALL DATA ═══
+function loadAllData(){
+  // Users
+  _db.collection('users').get().then(function(snap){
+    _users=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    updateUserStats();
+    renderUsersTable();
+    renderBlockedTable();
+    renderNewUsersWidget();
+  }).catch(function(e){console.error('users:',e);});
 
-// ═══════════════════════════════════════════════
-// NAV
-// ═══════════════════════════════════════════════
-var pageTitles = {
-  dashboard:'Дашборд', users:'Користувачі', listings:'Оголошення',
-  services:'Сервіси', reports:'Скарги', blocked:'Заблоковані',
-  settings:'Налаштування', logs:'Системні логи'
-};
+  // Listings
+  _db.collection('listings').get().then(function(snap){
+    _listings=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    updateListingStats();
+    renderListingsTable();
+    updateDonut();
+    updateBarChart(7);
+  }).catch(function(e){console.error('listings:',e);});
 
-function showAdminPage(page, btn) {
-  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-  document.getElementById('page-'+page).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(function(b){ b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  document.getElementById('page-title').textContent = pageTitles[page] || page;
-}
+  // Services
+  _db.collection('services').get().then(function(snap){
+    _services=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var el=document.getElementById('stat-services');if(el)el.textContent=_services.length;
+    renderServicesTable();
+  }).catch(function(e){console.error('services:',e);});
 
-// ═══════════════════════════════════════════════
-// BAR CHART
-// ═══════════════════════════════════════════════
-function renderBarChart(days) {
-  var data = CHART_DATA[days];
-  var maxL = Math.max.apply(null, data.listings);
-  var maxU = Math.max.apply(null, data.users);
-  var html = '';
-  for (var i=0; i<data.labels.length; i++) {
-    var lh = Math.round((data.listings[i]/maxL)*100);
-    var uh = Math.round((data.users[i]/maxU)*100);
-    html += '<div class="bar-group">'
-      + '<div class="bar-wrap">'
-      + '<div class="bar-listings" style="height:'+lh+'%" title="Оголошення: '+data.listings[i]+'"></div>'
-      + '<div class="bar-users" style="height:'+uh+'%" title="Реєстрації: '+data.users[i]+'"></div>'
-      + '</div>'
-      + '<div class="bar-label">'+data.labels[i]+'</div></div>';
-  }
-  document.getElementById('bar-chart').innerHTML = html;
-}
+  // Reports
+  _db.collection('reports').get().then(function(snap){
+    _reports=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    renderReportsTable();
+  }).catch(function(e){_reports=[];renderReportsTable();});
 
-function setPeriod(days, btn) {
-  document.querySelectorAll('.period-btn').forEach(function(b){ b.classList.remove('active'); });
-  btn.classList.add('active');
-  // Оновити заголовок
-  var titleEl = document.querySelector('.chart-card .card-title');
-  if (titleEl) titleEl.textContent = 'Активність за ' + days + ' днів';
-  // Перерахувати з реальними даними
-  if (window._adminListings) {
-    _updateBarChartN(window._adminListings, days);
-  } else {
-    renderBarChart(days);
-  }
-}
+  // News
+  loadNews();
 
-function _updateBarChartN(listings, days) {
-  var labels = [], listingCounts = [], userCounts = [];
-  var users = window._adminUsers || [];
-
-  for (var i = days - 1; i >= 0; i--) {
-    var d = new Date();
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    var nextD = new Date(d); nextD.setDate(nextD.getDate() + 1);
-    var dayName = days <= 7
-      ? d.toLocaleDateString('uk-UA', { weekday: 'short' }) + ' ' + d.getDate()
-      : d.getDate() + '/' + (d.getMonth() + 1);
-    labels.push(dayName);
-
-    listingCounts.push(listings.filter(function(l) {
-      if (!l.createdAt || !l.createdAt.seconds) return false;
-      var ts = l.createdAt.seconds * 1000;
-      return ts >= d.getTime() && ts < nextD.getTime();
-    }).length);
-
-    userCounts.push(users.filter(function(u) {
-      if (!u.createdAt || !u.createdAt.seconds) return false;
-      var ts = u.createdAt.seconds * 1000;
-      return ts >= d.getTime() && ts < nextD.getTime();
-    }).length);
-  }
-
-  var maxC = Math.max.apply(null, listingCounts.concat(userCounts).concat([1]));
-  var CHART_H = 120; // px — висота зони стовпців
-
-  var html = '';
-  for (var j = 0; j < labels.length; j++) {
-    var lPx = listingCounts[j] > 0 ? Math.max(Math.round((listingCounts[j] / maxC) * CHART_H), 6) : 0;
-    var uPx = userCounts[j]    > 0 ? Math.max(Math.round((userCounts[j]    / maxC) * CHART_H), 6) : 0;
-    var showLabel = days <= 14 || j % 5 === 0;
-
-    html += '<div class="bar-group" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:' + (CHART_H + 24) + 'px">'
-      // Числа над стовпцями
-      + '<div style="display:flex;gap:2px;align-items:flex-end;height:' + CHART_H + 'px">'
-      + '<div title="Оголошення: ' + listingCounts[j] + '" style="width:10px;height:' + lPx + 'px;background:var(--brand);border-radius:3px 3px 0 0;transition:height .4s;cursor:pointer" onclick=""></div>'
-      + '<div title="Реєстрації: '  + userCounts[j]    + '" style="width:10px;height:' + uPx + 'px;background:var(--blue);border-radius:3px 3px 0 0;transition:height .4s;cursor:pointer"></div>'
-      + '</div>'
-      + '<div style="font-size:' + (days > 14 ? '8' : '9') + 'px;color:var(--text-muted);font-family:monospace;text-align:center;white-space:nowrap">'
-      + (showLabel ? labels[j] : '') + '</div>'
-      + '</div>';
-  }
-
-  var bc = document.getElementById('bar-chart');
-  if (bc) {
-    bc.style.alignItems = 'flex-end';
-    bc.style.height = (CHART_H + 24) + 'px';
-    bc.innerHTML = html;
-  }
-}
-
-// ═══════════════════════════════════════════════
-// DASHBOARD WIDGETS
-// ═══════════════════════════════════════════════
-function renderNewUsers() {
-  var tbody = document.getElementById('new-users-tbody');
-  if (!_db) return;
-  _db.collection('users').orderBy('createdAt','desc').limit(5).get().then(function(snap) {
-    if (!snap.size) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Немає даних</td></tr>'; return; }
-    tbody.innerHTML = snap.docs.map(function(d,i) {
-      var u = d.data();
-      var name = u.name || u.email || '—';
-      var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-      return '<tr>'
-        +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%COLORS.length]+'22;color:'+COLORS[i%COLORS.length]+'">'+(name[0]||'?')+'</div>'
-        +'<div><div class="user-name">'+name+'</div><div class="user-email">'+(u.email||'—')+'</div></div></div></td>'
-        +'<td><span class="badge '+(u.type==='business'?'badge-purple':'badge-blue')+'">'+(u.type==='business'?'Бізнес':'Фізособа')+'</span></td>'
-        +'<td><span style="font-size:12px;color:var(--text-muted)">'+reg+'</span></td>'
-        +'</tr>';
-    }).join('');
-  }).catch(function() { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Помилка завантаження</td></tr>'; });
-}
-
-function renderActivityLog() {
-  var el = document.getElementById('activity-log');
-  if (!_db || !el) return;
-  _db.collection('listings').orderBy('createdAt','desc').limit(8).get().then(function(snap) {
-    el.innerHTML = snap.docs.map(function(d) {
-      var l = d.data();
-      var ago = l.createdAt ? _timeAgo(l.createdAt.seconds) : '';
-      return '<div class="tl-item"><div class="tl-dot" style="background:#58a6ff"></div>'
-        +'<div class="tl-content"><div class="tl-title">Нове оголошення: '+(l.title||'—')+'</div>'
-        +'<div class="tl-meta">'+(l.sellerName||l.seller||'')+(ago?' · '+ago:'')+'</div></div></div>';
-    }).join('') || '<div style="color:var(--text-muted);padding:16px">Активності поки немає</div>';
+  // Analytics — visitors today
+  var today=new Date().toISOString().slice(0,10);
+  _db.collection('analytics').doc('visitors_'+today).get().then(function(s){
+    var v=s.exists?(s.data().count||0):0;
+    var el=document.getElementById('stat-views');if(el)el.textContent=v>999?(v/1000).toFixed(1)+'K':v;
+    var d=document.getElementById('delta-views');if(d)d.innerHTML='<i class="fa-solid fa-user"></i> унікальних: '+v;
   }).catch(function(){});
+
+  // PWA installs
+  _db.collection('analytics').doc('pwa_installs').get().then(function(s){
+    var t=s.exists?(s.data().count||0):0;
+    var el=document.getElementById('stat-pwa');if(el)el.textContent=t;
+    _db.collection('analytics').doc('pwa_'+today).get().then(function(s2){
+      var n=s2.exists?(s2.data().count||0):0;
+      var d=document.getElementById('delta-pwa');if(d)d.innerHTML='<i class="fa-solid fa-mobile-screen"></i> +'+n+' сьогодні';
+    }).catch(function(){});
+  }).catch(function(){});
+
+  // Logs
+  loadLogs();
 }
 
-// ═══════════════════════════════════════════════
-// USERS TABLE
-// ═══════════════════════════════════════════════
-function renderUsersTable(data) {
-  _cachedUsers = data; // зберегти для фільтрації
-  var tbody = document.getElementById('users-tbody');
-  if (!tbody) return;
-  var nb = document.getElementById('nb-users');
-  if (nb) nb.textContent = data.length;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає користувачів</td></tr>'; return; }
-  tbody.innerHTML = data.slice(0,100).map(function(u,i) {
-    var name = u.name || u.email || '—';
-    var statusBadge = u.status === 'blocked'
-      ? '<span class="badge badge-red">Заблокований</span>'
-      : '<span class="badge badge-green">Активний</span>';
-    var typeBadge = u.type === 'business'
-      ? '<span class="badge badge-purple">Бізнес</span>'
-      : '<span class="badge badge-blue">Фізособа</span>';
-    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    var uid = u.id || u.uid || '';
+// ═══ STATS ═══
+function updateUserStats(){
+  var total=_users.length;
+  var active=_users.filter(function(u){return u.status!=='blocked';}).length;
+  var blocked=total-active;
+  var today=new Date();today.setHours(0,0,0,0);var ts=today.getTime()/1000;
+  var newToday=_users.filter(function(u){return u.createdAt&&u.createdAt.seconds>=ts;}).length;
+  _set('stat-users',total);_set('nb-users',total);
+  _set('delta-users','<i class="fa-solid fa-arrow-up"></i> +'+newToday+' сьогодні');
+  _set('mini-users-total',total);_set('mini-users-active',active);_set('mini-users-blocked',blocked);
+  // Count listings per user
+  var byUid={};_listings.forEach(function(l){if(l.uid&&l.status!=='deleted')byUid[l.uid]=(byUid[l.uid]||0)+1;});
+  _users.forEach(function(u){u._listingCount=byUid[u.id]||0;});
+}
+function updateListingStats(){
+  var active=_listings.filter(function(l){return l.status==='active';}).length;
+  var moderate=_listings.filter(function(l){return l.status==='moderate';}).length;
+  var deleted=_listings.filter(function(l){return l.status==='deleted';}).length;
+  var today=new Date();today.setHours(0,0,0,0);var ts=today.getTime()/1000;
+  var newToday=_listings.filter(function(l){return l.status==='active'&&l.createdAt&&l.createdAt.seconds>=ts;}).length;
+  _set('stat-listings',active);_set('nb-listings',active);
+  _set('delta-listings','<i class="fa-solid fa-arrow-up"></i> +'+newToday+' сьогодні');
+  _set('mini-listings-active',active);_set('mini-listings-moderate',moderate);_set('mini-listings-deleted',deleted);
+}
+
+// ═══ NAV ═══
+var _pageTitles={dashboard:'Дашборд',analytics:'Аналітика',users:'Користувачі',listings:'Оголошення',services:'Сервіси',reports:'Скарги',blocked:'Заблоковані',news:'Новини',settings:'Налаштування',logs:'Логи'};
+function showAdminPage(page,btn){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  var el=document.getElementById('page-'+page);if(el)el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  else{document.querySelectorAll('.nav-item').forEach(function(b){if(b.textContent.trim().includes(_pageTitles[page]))b.classList.add('active');});}
+  _set('page-title',_pageTitles[page]||page);
+}
+
+// ═══ USERS TABLE ═══
+function renderUsersTable(){
+  var data=getFilteredUsers();
+  var tbody=document.getElementById('users-tbody');if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає</td></tr>';return;}
+  tbody.innerHTML=data.slice(0,200).map(function(u,i){
+    var name=u.name||u.email||'—';
+    var statusB=u.status==='blocked'?'<span class="badge badge-red">Блок</span>':'<span class="badge badge-green">Актив</span>';
+    var typeB=u.type==='business'?'<span class="badge badge-purple">Бізнес</span>':'<span class="badge badge-blue">Фізособа</span>';
+    var reg=u.createdAt?new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
     return '<tr>'
-      +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%COLORS.length]+'22;color:'+COLORS[i%COLORS.length]+'">'+(name[0]||'?').toUpperCase()+'</div>'
-      +'<div><div class="user-name">'+name+'</div><div class="user-email">'+(u.email||'—')+'</div></div></div></td>'
-      +'<td>'+typeBadge+'</td>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px">'+(u.listings||0)+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+reg+'</span></td>'
-      +'<td>'+statusBadge+'</td>'
+      +'<td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%6]+'22;color:'+COLORS[i%6]+'">'+(name[0]||'?').toUpperCase()+'</div>'
+      +'<div><div class="user-name">'+_esc(name)+'</div><div class="user-email">'+_esc(u.email||'')+'</div></div></div></td>'
+      +'<td>'+typeB+'</td>'
+      +'<td style="font-family:\'JetBrains Mono\',monospace;font-size:12px">'+(u._listingCount||0)+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+reg+'</td>'
+      +'<td>'+statusB+'</td>'
       +'<td>'
+      +'<button class="action-btn" title="Редагувати" onclick="editUser(\''+u.id+'\')"><i class="fa-solid fa-pen"></i></button>'
+      +'<button class="action-btn" title="Баланс" onclick="openBalanceModal(\''+u.id+'\',\''+_esc(name)+'\')" style="color:var(--brand)"><i class="fa-solid fa-coins"></i></button>'
       +(u.status==='blocked'
-        ? '<button class="action-btn" title="Розблокувати" onclick="unblockUserFb(\''+uid+'\')"><i class="fa-solid fa-lock-open"></i></button>'
-        : '<button class="action-btn danger" title="Заблокувати" onclick="blockUserFb(\''+uid+'\',\''+name+'\')"><i class="fa-solid fa-ban"></i></button>')
-      +'<button class="action-btn" title="Управління балансом" onclick="openBalanceModal(\''+uid+'\',\''+name+'\')" style="background:rgba(0,200,83,.15);color:var(--brand);border-color:var(--border-brand)"><i class="fa-solid fa-coins"></i></button>'
+        ?'<button class="action-btn" title="Розблокувати" onclick="toggleUserBlock(\''+u.id+'\',false)"><i class="fa-solid fa-lock-open"></i></button>'
+        :'<button class="action-btn danger" title="Блок" onclick="toggleUserBlock(\''+u.id+'\',true)"><i class="fa-solid fa-ban"></i></button>')
       +'</td></tr>';
   }).join('');
 }
-
-// Кеш для фільтрації
-var _cachedUsers = [];
-var _cachedListings = [];
-
-function filterUsers(q) {
-  var filtered = _cachedUsers.filter(function(u){
-    var name = (u.name||'').toLowerCase();
-    var email = (u.email||'').toLowerCase();
-    return name.includes(q.toLowerCase()) || email.includes(q.toLowerCase());
+function getFilteredUsers(){
+  var q=(document.getElementById('users-search')||{}).value||'';
+  var st=(document.getElementById('users-status-filter')||{}).value||'';
+  var tp=(document.getElementById('users-type-filter')||{}).value||'';
+  return _users.filter(function(u){
+    if(q){var ql=q.toLowerCase();if(!(u.name||'').toLowerCase().includes(ql)&&!(u.email||'').toLowerCase().includes(ql))return false;}
+    if(st&&u.status!==st)return false;
+    if(tp&&u.type!==tp)return false;
+    return true;
   });
-  renderUsersTable(filtered);
 }
-function filterUserStatus(v) {
-  var filtered = v ? _cachedUsers.filter(function(u){ return u.status === v; }) : _cachedUsers;
-  renderUsersTable(filtered);
-}
-function filterUserType(v) {
-  var filtered = v ? _cachedUsers.filter(function(u){ return u.type === v; }) : _cachedUsers;
-  renderUsersTable(filtered);
-}
+function applyUsersFilter(){renderUsersTable();}
 
-function editUser(id) {
-  var u = USERS.find(function(x){ return x.id===id; });
-  if (!u) return;
-  document.getElementById('edit-user-id').value = id;
-  document.getElementById('edit-name').value = u.name;
-  document.getElementById('edit-email').value = u.email;
-  document.getElementById('edit-phone').value = u.phone||'';
-  document.getElementById('edit-city').value = u.city||'';
-  document.getElementById('edit-type').value = u.type;
-  document.getElementById('edit-status').value = u.status;
-  document.getElementById('edit-block-reason').value = u.blockReason||'';
-  document.getElementById('edit-notes').value = u.notes||'';
-  document.getElementById('user-modal-title').textContent = 'Редагувати: '+u.name;
+function editUser(uid){
+  var u=_users.find(function(x){return x.id===uid;});if(!u)return;
+  document.getElementById('edit-user-id').value=uid;
+  document.getElementById('edit-name').value=u.name||'';
+  document.getElementById('edit-email').value=u.email||'';
+  document.getElementById('edit-phone').value=u.phone||'';
+  document.getElementById('edit-city').value=u.city||'';
+  document.getElementById('edit-type').value=u.type||'personal';
+  document.getElementById('edit-status').value=u.status||'active';
+  document.getElementById('edit-block-reason').value=u.blockReason||'';
+  document.getElementById('edit-slots').value=u.slots||0;
+  document.getElementById('user-modal-title').textContent='Редагувати: '+(u.name||u.email);
   openModal('user-modal');
 }
-
-function saveUser() {
-  var uid = document.getElementById('edit-user-id').value;
-  if (!uid) return;
-  var data = {
-    name:   document.getElementById('edit-name').value,
-    email:  document.getElementById('edit-email').value,
-    phone:  document.getElementById('edit-phone').value,
-    city:   document.getElementById('edit-city').value,
-    type:   document.getElementById('edit-type').value,
-    status: document.getElementById('edit-status').value,
+function saveUser(){
+  var uid=document.getElementById('edit-user-id').value;if(!uid)return;
+  var data={
+    name:document.getElementById('edit-name').value,
+    phone:document.getElementById('edit-phone').value,
+    city:document.getElementById('edit-city').value,
+    type:document.getElementById('edit-type').value,
+    status:document.getElementById('edit-status').value,
+    slots:parseInt(document.getElementById('edit-slots').value)||0
   };
-  var blockReason = document.getElementById('edit-block-reason').value;
-  if (blockReason) data.blockReason = blockReason;
+  var reason=document.getElementById('edit-block-reason').value;
+  if(reason)data.blockReason=reason;
   closeModal('user-modal');
   _db.collection('users').doc(uid).update(data)
-    .then(function(){ showToast('Збережено','success'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+    .then(function(){showToast('Збережено','success');logAction('edit_user',uid+' → '+data.name);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
-
-function blockUser() {
-  var uid = document.getElementById('edit-user-id').value;
-  if (!uid) return;
-  var reason = document.getElementById('edit-block-reason').value || 'Порушення правил';
-  closeModal('user-modal');
-  _db.collection('users').doc(uid).update({ status: 'blocked', blockReason: reason })
-    .then(function(){ showToast('Заблоковано','error'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+function toggleUserBlock(uid,block){
+  var u=_users.find(function(x){return x.id===uid;});
+  var name=u?(u.name||u.email):'';
+  if(block&&!confirm('Заблокувати '+name+'?'))return;
+  _db.collection('users').doc(uid).update({status:block?'blocked':'active'})
+    .then(function(){showToast(block?'Заблоковано':'Розблоковано','success');logAction(block?'block_user':'unblock_user',name);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
-
-function toggleBlock(id) {
-  var u = USERS.find(function(x){ return x.id===id; });
-  if (!u) return;
-  if (u.status === 'blocked') {
-    u.status = 'active';
-    showToast('Розблоковано: '+u.name,'success');
-    LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Розблоковано', obj:u.name, ip:'127.0.0.1'});
-  } else {
-    confirmAction('Заблокувати '+u.name+'?','Користувач втратить доступ до платформи.', function(){
-      u.status = 'blocked';
-      renderUsersTable(USERS);
-      showToast('Заблоковано: '+u.name,'error');
-      LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Заблоковано', obj:u.name, ip:'127.0.0.1'});
-      renderLogsTable(LOGS_DATA);
-    });
-    return;
-  }
-  renderUsersTable(USERS);
-  renderLogsTable(LOGS_DATA);
-}
-
-function deleteUser(uid) {
-  if (!uid || !confirm('Видалити цього користувача? Ця дія незворотна.')) return;
-  _db.collection('users').doc(uid).delete()
-    .then(function(){ showToast('Користувача видалено','error'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
-}
-
-function openAddUserModal() {
-  document.getElementById('edit-user-id').value = '';
-  document.getElementById('edit-name').value = '';
-  document.getElementById('edit-email').value = '';
-  document.getElementById('edit-phone').value = '';
-  document.getElementById('edit-city').value = '';
-  document.getElementById('user-modal-title').textContent = 'Додати користувача';
-  openModal('user-modal');
-}
-
-function exportUsers() {
-  var csv = 'ID,Імя,Email,Телефон,Місто,Тип,Статус,Оголошення,Реєстрація\n';
-  _cachedUsers.forEach(function(u){
-    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    csv += [u.id,u.name||'',u.email||'',u.phone||'',u.city||'',u.type||'',u.status||'',u.listings||0,reg].join(',') + '\n';
+function exportUsers(){
+  var csv='Ім\'я,Email,Телефон,Місто,Тип,Статус,Оголошень,Реєстрація\n';
+  _users.forEach(function(u){
+    var reg=u.createdAt?new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'';
+    csv+=[u.name||'',u.email||'',u.phone||'',u.city||'',u.type||'',u.status||'',u._listingCount||0,reg].join(',')+'\n';
   });
-  var a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'ridego-users-' + Date.now() + '.csv';
-  a.click();
-  showToast('Експортовано '+USERS.length+' користувачів','success');
+  _downloadCSV(csv,'ridego-users');
+  showToast('Експортовано '+_users.length+' юзерів','success');
 }
 
-// ═══════════════════════════════════════════════
-// LISTINGS TABLE
-// ═══════════════════════════════════════════════
-var CAT_ICONS = {'Електросамокати':'⚡','Велосипеди':'🚲','Скутери':'🛵','Мотоцикли':'🏍'};
-
-function renderListingsTable(data) {
-  _cachedListings = data; // зберегти для фільтрації
-  var tbody = document.getElementById('listings-tbody');
-  if (!tbody) return;
-  var nb = document.getElementById('nb-listings');
-  if (nb) nb.textContent = data.length;
-  // Оновити донат по категоріях
-  _updateDonut(data);
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">Немає оголошень</td></tr>'; return; }
-  tbody.innerHTML = data.slice(0,100).map(function(l) {
-    var icon = {'Електросамокати':'⚡','Велосипеди':'🚲','Електровелосипеди':'🔋','Електроскутери':'🛵','Електромотоцикли':'🏍'}[l.cat] || '🔧';
-    var statusBadge = l.status === 'deleted' ? '<span class="badge badge-red">Видалено</span>'
-      : l.status === 'moderate' ? '<span class="badge badge-orange">Модерація</span>'
-      : '<span class="badge badge-green">Активне</span>';
-    var date = l.createdAt ? new Date(l.createdAt.seconds*1000).toLocaleDateString('uk-UA') : (l.time||'—');
+// ═══ LISTINGS TABLE ═══
+function renderListingsTable(){
+  var data=getFilteredListings();
+  var tbody=document.getElementById('listings-tbody');if(!tbody)return;
+  var icons={'Електросамокати':'⚡','Велосипеди':'🚲','Електровелосипеди':'🔋','Електроскутери':'🛵','Електромотоцикли':'🏍'};
+  if(!data.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">Немає</td></tr>';return;}
+  tbody.innerHTML=data.slice(0,200).map(function(l){
+    var icon=icons[l.cat]||'🔧';
+    var sBadge={'active':'<span class="badge badge-green">Активне</span>','moderate':'<span class="badge badge-orange">Модерація</span>','sold':'<span class="badge badge-blue">Продано</span>','deleted':'<span class="badge badge-red">Видалено</span>','inactive':'<span class="badge badge-gray">Неактивне</span>','expired':'<span class="badge badge-gray">Закінчилось</span>'}[l.status]||'<span class="badge badge-gray">'+_esc(l.status||'?')+'</span>';
+    var date=l.createdAt?new Date(l.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
     return '<tr>'
-      +'<td><div class="user-cell"><div class="listing-thumb">'+icon+'</div>'
-      +'<div><div class="user-name">'+(l.title||'—')+'</div><div class="user-email">'+(l.cat||'—')+'</div></div></div></td>'
-      +'<td><span style="font-size:13px">'+(l.sellerName||l.seller||'—')+'</span></td>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--brand)">'+(l.price?l.price.toLocaleString()+' грн':'—')+'</span></td>'
-      +'<td><span style="font-size:13px">'+(l.city||'—')+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+date+'</span></td>'
-      +'<td>'+statusBadge+'</td>'
-      +'<td><button class="action-btn danger" title="Видалити" onclick="deleteListing(\''+l.id+'\')"><i class="fa-solid fa-trash"></i></button></td>'
-      +'</tr>';
-  }).join('');
-}
-
-function _updateDonut(listings) {
-  var cats = {};
-  listings.forEach(function(l){ if(l.cat) cats[l.cat] = (cats[l.cat]||0)+1; });
-  var total = listings.length || 1;
-  var catList = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0,4);
-  var colors = ['var(--brand)','var(--blue)','var(--orange)','var(--purple)'];
-  // Оновити центр донату
-  var numEl = document.querySelector('.donut-num');
-  if (numEl) numEl.textContent = total > 999 ? (total/1000).toFixed(1)+'K' : total;
-  // Оновити легенду
-  var legend = document.querySelector('.donut-legend');
-  if (legend) {
-    legend.innerHTML = catList.map(function(cat,i) {
-      var pct = Math.round(cats[cat]/total*100);
-      return '<div class="donut-leg-item">'
-        +'<div class="donut-leg-left"><div class="donut-leg-dot" style="background:'+colors[i]+'"></div>'+cat+'</div>'
-        +'<span class="donut-leg-pct">'+pct+'%</span></div>';
-    }).join('');
-  }
-  // Оновити SVG arcs
-  var circumference = 339;
-  var offset = 0;
-  catList.forEach(function(cat,i) {
-    var arc = document.getElementById('donut-'+(i+1));
-    if (!arc) return;
-    var pct = cats[cat]/total;
-    arc.style.stroke = colors[i].replace('var(','').replace(')','');
-    arc.setAttribute('stroke-dashoffset', offset);
-    arc.setAttribute('stroke-dasharray', (pct*circumference)+' '+(circumference - pct*circumference));
-    offset += pct*circumference;
-  });
-}
-
-function deleteListing(id) {
-  if (!confirm('Видалити це оголошення?')) return;
-  _db.collection('listings').doc(id).update({ status: 'deleted' })
-    .then(function(){ showToast('Оголошення видалено','success'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
-}
-
-function renderServicesTable(data) {
-  var tbody = document.getElementById('services-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає сервісів</td></tr>'; return; }
-  tbody.innerHTML = data.map(function(s) {
-    var stars = s.rating ? '★'.repeat(Math.round(s.rating)) : '—';
-    return '<tr>'
-      +'<td><div class="user-name">'+(s.name||'—')+'</div></td>'
-      +'<td>'+(s.city||'—')+'</td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+(Array.isArray(s.cats)?s.cats.join(', '):'—')+'</span></td>'
-      +'<td><span style="color:var(--orange);font-size:13px">'+stars+'</span>'+(s.rating?' <span style="font-size:12px">'+s.rating+'</span>':'')+'</td>'
-      +'<td><span class="badge badge-green">Активний</span></td>'
-      +'<td><button class="action-btn danger" onclick="deleteServiceFb(\''+s.id+'\')"><i class="fa-solid fa-trash"></i></button></td>'
-      +'</tr>';
-  }).join('');
-}
-
-function deleteServiceFb(id) {
-  if (!confirm('Видалити сервіс?')) return;
-  _db.collection('services').doc(id).delete()
-    .then(function(){ showToast('Сервіс видалено','success'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
-}
-
-function renderReportsTable(data) {
-  var tbody = document.getElementById('reports-tbody');
-  var nb = document.getElementById('nb-reports');
-  if (nb) nb.textContent = data.filter(function(r){ return r.status !== 'resolved'; }).length;
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Скарг немає</td></tr>'; return; }
-  tbody.innerHTML = data.map(function(r) {
-    var date = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    var statusBadge = r.status === 'resolved'
-      ? '<span class="badge badge-green">Вирішена</span>'
-      : '<span class="badge badge-orange">Нова</span>';
-    return '<tr>'
-      +'<td><div class="user-name">'+(r.listingId||'—')+'</div><div class="user-email">Оголошення</div></td>'
-      +'<td>'+(r.reason||'—')+'</td>'
-      +'<td>'+(r.reporterUid||'—')+'</td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+date+'</span></td>'
-      +'<td>'+statusBadge+'</td>'
+      +'<td><div class="user-cell"><div class="listing-thumb">'+icon+'</div><div><div class="user-name">'+_esc(l.title||'—')+'</div><div class="user-email">'+_esc(l.cat||'')+'</div></div></div></td>'
+      +'<td style="font-size:13px">'+_esc(l.sellerName||l.seller||'—')+'</td>'
+      +'<td style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--brand)">'+(l.price?Number(l.price).toLocaleString()+' грн':'—')+'</td>'
+      +'<td style="font-size:13px">'+_esc(l.city||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+date+'</td>'
+      +'<td>'+sBadge+'</td>'
       +'<td>'
-      +(r.status !== 'resolved' ? '<button class="action-btn" onclick="resolveReportFb(\''+r.id+'\')"><i class="fa-solid fa-check"></i></button>' : '')
+      +'<button class="action-btn" title="Редагувати" onclick="editListing(\''+l.id+'\')"><i class="fa-solid fa-pen"></i></button>'
+      +'<button class="action-btn danger" title="Видалити" onclick="quickDeleteListing(\''+l.id+'\')"><i class="fa-solid fa-trash"></i></button>'
       +'</td></tr>';
   }).join('');
 }
-
-function resolveReportFb(id) {
-  _db.collection('reports').doc(id).update({ status: 'resolved' })
-    .then(function(){ showToast('Скаргу вирішено','success'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+function getFilteredListings(){
+  var q=(document.getElementById('listings-search')||{}).value||'';
+  var cat=(document.getElementById('listings-cat-filter')||{}).value||'';
+  var st=(document.getElementById('listings-status-filter')||{}).value||'';
+  return _listings.filter(function(l){
+    if(q){var ql=q.toLowerCase();if(!(l.title||'').toLowerCase().includes(ql)&&!(l.city||'').toLowerCase().includes(ql)&&!(l.sellerName||l.seller||'').toLowerCase().includes(ql))return false;}
+    if(cat&&l.cat!==cat)return false;
+    if(st&&l.status!==st)return false;
+    return true;
+  });
 }
+function applyListingsFilter(){renderListingsTable();}
 
-function renderBlockedTable(data) {
-  var tbody = document.getElementById('blocked-tbody');
-  if (!tbody) return;
-  var blocked = data.filter ? data.filter(function(u){ return u.status === 'blocked'; }) : data;
-  if (!blocked.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Заблокованих немає</td></tr>'; return; }
-  tbody.innerHTML = blocked.map(function(u) {
-    var name = u.name || u.email || '—';
-    var reg = u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    return '<tr>'
-      +'<td><div class="user-cell"><div class="user-ava" style="background:rgba(255,71,87,.1);color:var(--red)">'+(name[0]||'?').toUpperCase()+'</div>'
-      +'<div><div class="user-name">'+name+'</div><div class="user-email">'+(u.email||'—')+'</div></div></div></td>'
-      +'<td><span class="badge badge-red">'+(u.blockReason||'Заблокований')+'</span></td>'
-      +'<td><span style="font-size:12px">Admin</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+reg+'</span></td>'
-      +'<td><button class="action-btn" title="Розблокувати" onclick="unblockUserFb(\''+(u.id||u.uid||'')+'\')"><i class="fa-solid fa-lock-open"></i></button></td>'
-      +'</tr>';
-  }).join('');
-}
-
-function blockUserFb(uid, name) {
-  if (!confirm('Заблокувати '+name+'?')) return;
-  _db.collection('users').doc(uid).update({ status: 'blocked' })
-    .then(function(){ showToast('Заблоковано: '+name,'success'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
-}
-
-function unblockUserFb(uid) {
-  _db.collection('users').doc(uid).update({ status: 'active' })
-    .then(function(){ showToast('Розблоковано','success'); loadFirebaseData(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
-}
-
-function renderLogsTable(data) {
-  var tbody = document.getElementById('logs-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = (data||[]).map(function(l) {
-    return '<tr>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted)">'+(l.time||'—')+'</span></td>'
-      +'<td><span class="badge badge-blue">'+(l.admin||'Admin')+'</span></td>'
-      +'<td><span style="font-size:13px">'+(l.action||'—')+'</span></td>'
-      +'<td><span style="font-size:12px;color:var(--text-muted)">'+(l.obj||'—')+'</span></td>'
-      +'<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-sub)">'+(l.ip||'—')+'</span></td>'
-      +'</tr>';
-  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Логів немає</td></tr>';
-}
-
-// ═══════════════════════════════════════════════
-// MODALS
-// ═══════════════════════════════════════════════
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-var _confirmCb = null;
-function confirmAction(title, text, cb) {
-  document.getElementById('confirm-title').textContent = title;
-  document.getElementById('confirm-text').textContent  = text;
-  _confirmCb = cb;
-  document.getElementById('confirm-ok-btn').onclick = function(){ closeModal('confirm-modal'); if(_confirmCb) _confirmCb(); };
-  openModal('confirm-modal');
-}
-
-// ═══════════════════════════════════════════════
-// TOAST
-// ═══════════════════════════════════════════════
-function showToast(msg, type) {
-  type = type || 'info';
-  var icons = { success:'✅', error:'❌', info:'ℹ️' };
-  var tc = document.getElementById('toast-container');
-  var t  = document.createElement('div');
-  t.className = 'toast ' + type;
-  t.innerHTML = '<span class="toast-icon">'+icons[type]+'</span>' + msg;
-  tc.appendChild(t);
-  setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='all .3s'; setTimeout(function(){ t.remove(); }, 300); }, 3000);
-}
-
-// ═══════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════
-function nowStr() {
-  var d = new Date();
-  return d.toLocaleDateString('uk-UA') + ' ' + d.toLocaleTimeString('uk-UA').slice(0,5);
-}
-
-function globalSearch(q) {
-  if (!q) return;
-  q = q.toLowerCase();
-  var uResults = _cachedUsers.filter(function(u){ return (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q); });
-  var lResults = _cachedListings.filter(function(l){ return (l.title||'').toLowerCase().includes(q)||(l.city||'').toLowerCase().includes(q); });
-  if (uResults.length) { showAdminPage('users', document.querySelector('[onclick*="users"]')); renderUsersTable(uResults); }
-  else if (lResults.length) { showAdminPage('listings', document.querySelector('[onclick*="listings"]')); renderListingsTable(lResults); }
-  else showToast('Нічого не знайдено','info');
-  return;
-}
-function _old_globalSearch(q) {
-  if (!q.trim()) return;
-  // Search in users
-  var found = USERS.filter(function(u){ return u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase()); });
-  if (found.length) showToast('Знайдено '+found.length+' користувачів','info');
-}
-
-function refreshData() {
-  var btn = event.currentTarget;
-  btn.querySelector('i').style.animation = 'spin 1s linear infinite';
-  setTimeout(function(){
-    btn.querySelector('i').style.animation = '';
-    showToast('Дані оновлено','success');
-    // Онлайн оновлюється автоматично через Realtime DB
-  }, 800);
-}
-
-function saveSettings() {
-  showToast('Налаштування збережено','success');
-  LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Змінено налаштування', obj:'Система', ip:'127.0.0.1'});
-  renderLogsTable(LOGS_DATA);
-}
-
-
-// ═══════════════════════════════════════════════
-// VIEW LISTING
-// ═══════════════════════════════════════════════
-var _currentListingId = null;
-
-function viewListing(id) {
-  var l = LISTINGS_DATA.find(function(x){ return x.id===id; });
-  if (!l) return;
-  _currentListingId = id;
-  document.getElementById('listing-modal-title').textContent = l.title;
-  document.getElementById('lm-title').textContent  = l.title;
-  document.getElementById('lm-cat').textContent    = l.cat;
-  document.getElementById('lm-seller').textContent = l.seller;
-  document.getElementById('lm-city').textContent   = l.city;
-  document.getElementById('lm-price').textContent  = l.price + ' грн';
-  document.getElementById('lm-date').textContent   = l.date;
-  var statusMap = {active:'<span class="badge badge-green">Активне</span>', moderate:'<span class="badge badge-orange">Модерація</span>', blocked:'<span class="badge badge-red">Заблоковано</span>'};
-  document.getElementById('lm-status').innerHTML  = statusMap[l.status] || l.status;
-  document.getElementById('lm-delete-btn').onclick = function(){ closeModal('listing-modal'); deleteListing(id); };
+function editListing(id){
+  var l=_listings.find(function(x){return x.id===id;});if(!l)return;
+  document.getElementById('edit-listing-id').value=id;
+  document.getElementById('el-title').value=l.title||'';
+  document.getElementById('el-price').value=l.price||'';
+  document.getElementById('el-cat').value=l.cat||'Електросамокати';
+  document.getElementById('el-city').value=l.city||'';
+  document.getElementById('el-condition').value=l.condition||'Хороший';
+  document.getElementById('el-desc').value=l.desc||'';
+  document.getElementById('el-status').value=l.status||'active';
+  document.getElementById('el-promo').value=l.promo||'';
+  document.getElementById('el-uid').textContent=l.uid||'—';
+  document.getElementById('el-seller').textContent=l.sellerName||l.seller||'—';
+  document.getElementById('el-views').textContent=l.views||0;
+  // Photos
+  var grid=document.getElementById('el-photos-grid');
+  var photos=l.photos||[];if(l.img&&!photos.length)photos=[l.img];
+  grid.innerHTML=photos.map(function(p,i){
+    return '<div style="position:relative;width:60px;height:60px;border-radius:8px;overflow:hidden;background:var(--dark4)">'
+      +'<img src="'+_esc(p)+'" style="width:100%;height:100%;object-fit:cover">'
+      +'</div>';
+  }).join('')||'<span style="color:var(--text-muted);font-size:12px">Немає фото</span>';
+  document.getElementById('listing-modal-title').textContent='Редагувати: '+(l.title||'');
   openModal('listing-modal');
 }
-
-function setListingStatus(status) {
-  if (!_currentListingId) return;
-  var l = LISTINGS_DATA.find(function(x){ return x.id===_currentListingId; });
-  if (!l) return;
-  l.status = status;
-  var statusMap = {active:'<span class="badge badge-green">Активне</span>', moderate:'<span class="badge badge-orange">Модерація</span>', blocked:'<span class="badge badge-red">Заблоковано</span>'};
-  document.getElementById('lm-status').innerHTML = statusMap[status];
-  renderListingsTable(LISTINGS_DATA);
-  var labels = {active:'Активне', moderate:'На модерації', blocked:'Заблоковано'};
-  showToast('Статус змінено: ' + labels[status], status==='blocked' ? 'error' : 'success');
-  LOGS_DATA.unshift({time:nowStr(), admin:'Admin', action:'Статус оголошення → '+labels[status], obj:l.title+' (#'+l.id+')', ip:'127.0.0.1'});
-  renderLogsTable(LOGS_DATA);
+function saveListing(){
+  var id=document.getElementById('edit-listing-id').value;if(!id)return;
+  var data={
+    title:document.getElementById('el-title').value,
+    price:parseInt(document.getElementById('el-price').value)||0,
+    cat:document.getElementById('el-cat').value,
+    city:document.getElementById('el-city').value,
+    condition:document.getElementById('el-condition').value,
+    desc:document.getElementById('el-desc').value,
+    status:document.getElementById('el-status').value,
+    promo:document.getElementById('el-promo').value||null
+  };
+  closeModal('listing-modal');
+  _db.collection('listings').doc(id).update(data)
+    .then(function(){showToast('Оголошення збережено','success');logAction('edit_listing',id+' → '+data.title);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+function deleteListing(){
+  var id=document.getElementById('edit-listing-id').value;if(!id)return;
+  if(!confirm('Видалити оголошення?'))return;
+  closeModal('listing-modal');
+  _db.collection('listings').doc(id).update({status:'deleted'})
+    .then(function(){showToast('Видалено','success');logAction('delete_listing',id);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+function quickDeleteListing(id){
+  if(!confirm('Видалити це оголошення?'))return;
+  _db.collection('listings').doc(id).update({status:'deleted'})
+    .then(function(){showToast('Видалено','success');logAction('delete_listing',id);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
 
-// Spin animation for refresh
-var style = document.createElement('style');
-style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-document.head.appendChild(style);
-
-
-// ═══ NEWS ════════════════════════════════════════
-function loadNews() {
-  if (!_db) return;
-  _db.collection('news').orderBy('createdAt','desc').get().then(function(snap) {
-    var news = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-    var nb = document.getElementById('nb-news');
-    if (nb) nb.textContent = news.length;
-    renderNewsList(news);
-  }).catch(function(e){ console.error('news:', e); });
+// ═══ SERVICES TABLE ═══
+function renderServicesTable(){
+  var tbody=document.getElementById('services-tbody');if(!tbody)return;
+  if(!_services.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає</td></tr>';return;}
+  tbody.innerHTML=_services.map(function(s){
+    return '<tr>'
+      +'<td><div class="user-name">'+_esc(s.name||'—')+'</div></td>'
+      +'<td>'+_esc(s.city||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+(Array.isArray(s.cats)?s.cats.join(', '):'—')+'</td>'
+      +'<td style="color:var(--orange)">'+((s.rating||0)?'★'.repeat(Math.round(s.rating))+' '+s.rating:'—')+'</td>'
+      +'<td><span class="badge badge-green">Активний</span></td>'
+      +'<td><button class="action-btn danger" onclick="deleteService(\''+s.id+'\')"><i class="fa-solid fa-trash"></i></button></td>'
+      +'</tr>';
+  }).join('');
+}
+function deleteService(id){
+  if(!confirm('Видалити сервіс?'))return;
+  _db.collection('services').doc(id).delete()
+    .then(function(){showToast('Видалено','success');logAction('delete_service',id);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
 
-function renderNewsList(news) {
-  var el = document.getElementById('news-list');
-  if (!el) return;
-  if (!news.length) {
-    el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--text-muted)"><i class="fa-solid fa-newspaper" style="font-size:32px;margin-bottom:12px;display:block"></i>Новин ще немає. Напишіть першу!</div>';
-    return;
-  }
-  el.innerHTML = news.map(function(n) {
-    var date = n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA') : '—';
-    var statusColor = n.published ? 'var(--brand)' : 'var(--text-muted)';
-    var statusLabel = n.published ? 'Опубліковано' : 'Чернетка';
-    return '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;gap:16px;align-items:flex-start">'
-      + (n.img ? '<img src="'+n.img+'" style="width:120px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '<div style="width:120px;height:80px;background:var(--dark4);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fa-solid fa-newspaper"></i></div>')
-      + '<div style="flex:1;min-width:0">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      + '<span style="font-size:11px;background:var(--brand-dim);color:var(--brand);padding:2px 8px;border-radius:50px;font-weight:600">'+(n.cat||'Новини')+'</span>'
-      + '<span style="font-size:11px;color:'+statusColor+'">● '+statusLabel+'</span>'
-      + '<span style="font-size:11px;color:var(--text-muted);margin-left:auto">'+date+'</span>'
-      + '</div>'
-      + '<div style="font-weight:700;font-size:15px;margin-bottom:4px">'+(n.title||'—')+'</div>'
-      + '<div style="font-size:13px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(n.excerpt||'')+'</div>'
-      + '</div>'
-      + '<div style="display:flex;gap:6px;flex-shrink:0">'
-      + '<button class="action-btn" title="Редагувати" onclick="editNews(this.dataset.id)" data-id="'+n.id+'"><i class="fa-solid fa-pen"></i></button>'
-      + '<button class="action-btn danger" title="Видалити" onclick="deleteNews(this.dataset.id)" data-id="'+n.id+'"><i class="fa-solid fa-trash"></i></button>'
-      + '</div>'
-      + '</div>';
+// ═══ REPORTS TABLE ═══
+function renderReportsTable(){
+  var tbody=document.getElementById('reports-tbody');if(!tbody)return;
+  var nb=document.getElementById('nb-reports');
+  if(nb)nb.textContent=_reports.filter(function(r){return r.status!=='resolved';}).length;
+  if(!_reports.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Скарг немає</td></tr>';return;}
+  tbody.innerHTML=_reports.map(function(r){
+    var date=r.createdAt?new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
+    var sB=r.status==='resolved'?'<span class="badge badge-green">Вирішена</span>':'<span class="badge badge-orange">Нова</span>';
+    return '<tr>'
+      +'<td>'+_esc(r.listingTitle||r.listingId||'—')+'</td>'
+      +'<td>'+_esc(r.reason||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+_esc(r.reporterName||r.reporterUid||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+date+'</td>'
+      +'<td>'+sB+'</td>'
+      +'<td>'+(r.status!=='resolved'?'<button class="action-btn" onclick="resolveReport(\''+r.id+'\')"><i class="fa-solid fa-check"></i></button>':'')+'</td>'
+      +'</tr>';
+  }).join('');
+}
+function resolveReport(id){
+  _db.collection('reports').doc(id).update({status:'resolved'})
+    .then(function(){showToast('Вирішено','success');logAction('resolve_report',id);loadAllData();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+
+// ═══ BLOCKED TABLE ═══
+function renderBlockedTable(){
+  var tbody=document.getElementById('blocked-tbody');if(!tbody)return;
+  var blocked=_users.filter(function(u){return u.status==='blocked';});
+  if(!blocked.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">Немає</td></tr>';return;}
+  tbody.innerHTML=blocked.map(function(u){
+    var name=u.name||u.email||'—';
+    var reg=u.createdAt?new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
+    return '<tr>'
+      +'<td><div class="user-cell"><div class="user-ava" style="background:rgba(255,71,87,.1);color:var(--red)">'+(name[0]||'?').toUpperCase()+'</div>'
+      +'<div><div class="user-name">'+_esc(name)+'</div><div class="user-email">'+_esc(u.email||'')+'</div></div></div></td>'
+      +'<td><span class="badge badge-red">'+_esc(u.blockReason||'Заблокований')+'</span></td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+reg+'</td>'
+      +'<td><button class="action-btn" onclick="toggleUserBlock(\''+u.id+'\',false)"><i class="fa-solid fa-lock-open"></i> Розблокувати</button></td>'
+      +'</tr>';
   }).join('');
 }
 
-function openNewsModal() {
-  document.getElementById('news-edit-id').value = '';
-  document.getElementById('news-title').value = '';
-  document.getElementById('news-excerpt').value = '';
-  document.getElementById('news-cat').value = 'Новини';
-  document.getElementById('news-published').checked = true;
-  document.getElementById('news-modal-title').textContent = 'Написати новину';
-  document.getElementById('news-editor').innerHTML = '';
-  document.getElementById('news-preview-panel').style.display = 'none';
+// ═══ DASHBOARD WIDGETS ═══
+function renderNewUsersWidget(){
+  var tbody=document.getElementById('new-users-tbody');if(!tbody)return;
+  var sorted=_users.slice().sort(function(a,b){return(b.createdAt&&b.createdAt.seconds||0)-(a.createdAt&&a.createdAt.seconds||0);}).slice(0,5);
+  tbody.innerHTML=sorted.map(function(u,i){
+    var name=u.name||u.email||'—';
+    var reg=u.createdAt?new Date(u.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
+    return '<tr><td><div class="user-cell"><div class="user-ava" style="background:'+COLORS[i%6]+'22;color:'+COLORS[i%6]+'">'+(name[0]||'?')+'</div>'
+      +'<div><div class="user-name">'+_esc(name)+'</div><div class="user-email">'+_esc(u.email||'')+'</div></div></div></td>'
+      +'<td><span class="badge '+(u.type==='business'?'badge-purple':'badge-blue')+'">'+(u.type==='business'?'Бізнес':'Фіз.')+'</span></td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+reg+'</td></tr>';
+  }).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">—</td></tr>';
+}
+function renderActivity(items){
+  var el=document.getElementById('activity-log');if(!el)return;
+  el.innerHTML=items.map(function(l){
+    var ago=l.createdAt?_timeAgo(l.createdAt.seconds):'';
+    return '<div class="tl-item"><div class="tl-dot" style="background:#58a6ff"></div>'
+      +'<div class="tl-content"><div class="tl-title">'+_esc(l.title||'—')+'</div>'
+      +'<div class="tl-meta">'+_esc(l.sellerName||l.seller||'')+(ago?' · '+ago:'')+'</div></div></div>';
+  }).join('')||'<div style="color:var(--text-muted);padding:16px">Активності немає</div>';
+}
+
+// ═══ BAR CHART ═══
+function updateBarChart(days){
+  var labels=[],lCounts=[],uCounts=[];
+  for(var i=days-1;i>=0;i--){
+    var d=new Date();d.setDate(d.getDate()-i);d.setHours(0,0,0,0);
+    var nd=new Date(d);nd.setDate(nd.getDate()+1);
+    labels.push(days<=7?d.toLocaleDateString('uk-UA',{weekday:'short'})+' '+d.getDate():d.getDate()+'/'+(d.getMonth()+1));
+    lCounts.push(_listings.filter(function(l){if(!l.createdAt||!l.createdAt.seconds)return false;var t=l.createdAt.seconds*1000;return t>=d.getTime()&&t<nd.getTime();}).length);
+    uCounts.push(_users.filter(function(u){if(!u.createdAt||!u.createdAt.seconds)return false;var t=u.createdAt.seconds*1000;return t>=d.getTime()&&t<nd.getTime();}).length);
+  }
+  var maxC=Math.max.apply(null,lCounts.concat(uCounts).concat([1]));
+  var H=130;
+  var bc=document.getElementById('bar-chart');if(!bc)return;
+  bc.style.height=H+24+'px';
+  bc.innerHTML=labels.map(function(_,j){
+    var lH=lCounts[j]>0?Math.max(Math.round(lCounts[j]/maxC*H),6):0;
+    var uH=uCounts[j]>0?Math.max(Math.round(uCounts[j]/maxC*H),6):0;
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:'+(H+24)+'px">'
+      +'<div style="display:flex;gap:2px;align-items:flex-end;height:'+H+'px">'
+      +'<div title="Оголошення: '+lCounts[j]+'" style="width:10px;height:'+lH+'px;background:var(--brand);border-radius:3px 3px 0 0;cursor:pointer"></div>'
+      +'<div title="Реєстрації: '+uCounts[j]+'" style="width:10px;height:'+uH+'px;background:var(--blue);border-radius:3px 3px 0 0;cursor:pointer"></div>'
+      +'</div><div style="font-size:9px;color:var(--text-muted);font-family:monospace">'+(days<=14||j%3===0?labels[j]:'')+'</div></div>';
+  }).join('');
+}
+function setPeriod(days,btn){
+  document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  updateBarChart(days);
+}
+
+// ═══ DONUT ═══
+function updateDonut(){
+  var cats={};
+  _listings.filter(function(l){return l.status!=='deleted';}).forEach(function(l){if(l.cat)cats[l.cat]=(cats[l.cat]||0)+1;});
+  var total=Object.values(cats).reduce(function(a,b){return a+b;},0)||1;
+  var sorted=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];}).slice(0,5);
+  var colors=['#00c853','#58a6ff','#ffa726','#bc8cff','#ff4757'];
+  _set('donut-total',total>999?(total/1000).toFixed(1)+'K':total);
+  // Legend
+  var leg=document.getElementById('donut-legend');
+  if(leg)leg.innerHTML=sorted.map(function(c,i){
+    return '<div class="donut-leg-item"><div class="donut-leg-left"><div class="donut-leg-dot" style="background:'+colors[i]+'"></div>'+_esc(c)+'</div><span class="donut-leg-pct">'+Math.round(cats[c]/total*100)+'%</span></div>';
+  }).join('');
+  // SVG
+  var svg=document.getElementById('donut-svg');if(!svg)return;
+  svg.innerHTML='<circle cx="70" cy="70" r="54" fill="none" stroke="var(--dark4)" stroke-width="16"/>';
+  var circ=339,offset=0;
+  sorted.forEach(function(c,i){
+    var pct=cats[c]/total;
+    var el=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    el.setAttribute('cx','70');el.setAttribute('cy','70');el.setAttribute('r','54');
+    el.setAttribute('fill','none');el.setAttribute('stroke',colors[i]);el.setAttribute('stroke-width','16');
+    el.setAttribute('stroke-dasharray',(pct*circ)+' '+(circ-pct*circ));
+    el.setAttribute('stroke-dashoffset',-offset);
+    el.style.transform='rotate(-90deg)';el.style.transformOrigin='center';
+    svg.appendChild(el);
+    offset+=pct*circ;
+  });
+}
+
+// ═══ NEWS ═══
+function loadNews(){
+  _db.collection('news').orderBy('createdAt','desc').get().then(function(snap){
+    _news=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    _set('nb-news',_news.length);
+    renderNewsList();
+  }).catch(function(){});
+}
+function renderNewsList(){
+  var el=document.getElementById('news-list');if(!el)return;
+  if(!_news.length){el.innerHTML='<div style="text-align:center;padding:48px;color:var(--text-muted)"><i class="fa-solid fa-newspaper" style="font-size:32px;margin-bottom:12px;display:block"></i>Новин немає</div>';return;}
+  el.innerHTML=_news.map(function(n){
+    var date=n.createdAt?new Date(n.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
+    return '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;gap:16px;align-items:flex-start">'
+      +(n.img?'<img src="'+n.img+'" style="width:120px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0">':'<div style="width:120px;height:80px;background:var(--dark4);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fa-solid fa-newspaper"></i></div>')
+      +'<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<span class="badge badge-green">'+_esc(n.cat||'Новини')+'</span>'
+      +'<span style="font-size:11px;color:'+(n.published?'var(--brand)':'var(--text-muted)')+'">● '+(n.published?'Опубліковано':'Чернетка')+'</span>'
+      +'<span style="font-size:11px;color:var(--text-muted);margin-left:auto">'+date+'</span></div>'
+      +'<div style="font-weight:700;font-size:15px;margin-bottom:4px">'+_esc(n.title||'—')+'</div>'
+      +'<div style="font-size:13px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(n.excerpt||'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+      +'<button class="action-btn" title="Редагувати" onclick="editNews(\''+n.id+'\')"><i class="fa-solid fa-pen"></i></button>'
+      +'<button class="action-btn danger" title="Видалити" onclick="deleteNews(\''+n.id+'\')"><i class="fa-solid fa-trash"></i></button></div></div>';
+  }).join('');
+}
+function openNewsModal(){
+  document.getElementById('news-edit-id').value='';
+  document.getElementById('news-title').value='';
+  document.getElementById('news-excerpt').value='';
+  document.getElementById('news-cat').value='Новини';
+  document.getElementById('news-published').checked=true;
+  document.getElementById('news-editor').innerHTML='';
+  document.getElementById('news-modal-title').textContent='Написати новину';
   clearNewsImg();
   openModal('news-modal');
 }
-
-function newsFormat(cmd) {
-  var editor = document.getElementById('news-editor');
-  editor.focus();
-  if (cmd === 'h2') {
-    document.execCommand('formatBlock', false, 'h2');
-  } else if (cmd === 'h3') {
-    document.execCommand('formatBlock', false, 'h3');
-  } else if (cmd === 'list') {
-    document.execCommand('insertUnorderedList');
-  } else if (cmd === 'quote') {
-    document.execCommand('formatBlock', false, 'blockquote');
-  } else {
-    document.execCommand(cmd);
-  }
-}
-
-function insertNewsImg(input) {
-  var file = input.files[0];
-  if (!file) return;
-  showToast('📸 Завантаження фото...');
-  var fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', 'ridego_unsigned');
-  fd.append('folder', 'news');
-  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method: 'POST', body: fd })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (data.secure_url) {
-        var editor = document.getElementById('news-editor');
-        editor.focus();
-        var img = '<img src="' + data.secure_url + '" style="max-width:100%;border-radius:8px;margin:12px 0;display:block">';
-        document.execCommand('insertHTML', false, img);
-        showToast('✅ Фото додано!');
-      }
-    }).catch(function(){ showToast('⚠️ Помилка завантаження'); });
-  input.value = '';
-}
-
-function toggleNewsPreview() {
-  var panel = document.getElementById('news-preview-panel');
-  var editor = document.getElementById('news-editor');
-  if (panel.style.display === 'none') {
-    document.getElementById('news-preview-content').innerHTML = editor.innerHTML;
-    panel.style.display = '';
-  } else {
-    panel.style.display = 'none';
-  }
-}
-
-function uploadNewsImg(input) {
-  var file = input.files[0];
-  if (!file) return;
-  var btnLabel = document.getElementById('news-img-btn-label');
-  if (btnLabel) btnLabel.textContent = 'Завантаження...';
-  // Показати превью одразу
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var prev = document.getElementById('news-img-preview');
-    var prevEl = document.getElementById('news-img-preview-el');
-    if (prev && prevEl) { prevEl.src = e.target.result; prev.style.display = ''; }
-  };
-  reader.readAsDataURL(file);
-  // Завантажити в Cloudinary
-  var fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', 'ridego_unsigned');
-  fd.append('folder', 'news');
-  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method: 'POST', body: fd })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (data.secure_url) {
-        document.getElementById('news-img').value = data.secure_url;
-        var btn = document.getElementById('news-img-clear');
-        if (btn) btn.style.display = '';
-        if (btnLabel) btnLabel.textContent = 'Змінити фото';
-        showToast('Фото завантажено!', 'success');
-      } else {
-        showToast('Помилка завантаження фото', 'error');
-        if (btnLabel) btnLabel.textContent = 'Завантажити фото';
-      }
-    }).catch(function() {
-      showToast('Помилка завантаження фото', 'error');
-      if (btnLabel) btnLabel.textContent = 'Завантажити фото';
-    });
-}
-
-function clearNewsImg() {
-  document.getElementById('news-img').value = '';
-  document.getElementById('news-img-file').value = '';
-  var prev = document.getElementById('news-img-preview');
-  if (prev) prev.style.display = 'none';
-  var btn = document.getElementById('news-img-clear');
-  if (btn) btn.style.display = 'none';
-  var btnLabel = document.getElementById('news-img-btn-label');
-  if (btnLabel) btnLabel.textContent = 'Завантажити фото';
-}
-
-function editNews(id) {
-  _db.collection('news').doc(id).get().then(function(snap) {
-    if (!snap.exists) return;
-    var n = snap.data();
-    document.getElementById('news-edit-id').value = id;
-    document.getElementById('news-title').value = n.title || '';
-    document.getElementById('news-excerpt').value = n.excerpt || '';
-    document.getElementById('news-body').value = n.body || '';
-    document.getElementById('news-img').value = n.img || '';
-    document.getElementById('news-editor').innerHTML = n.body || '';
-    document.getElementById('news-preview-panel').style.display = 'none';
-    if (n.img) {
-      var prev = document.getElementById('news-img-preview');
-      var prevEl = document.getElementById('news-img-preview-el');
-      if (prev && prevEl) { prevEl.src = n.img; prev.style.display = ''; }
-      var btn = document.getElementById('news-img-clear');
-      if (btn) btn.style.display = '';
-      var btnLabel = document.getElementById('news-img-btn-label');
-      if (btnLabel) btnLabel.textContent = 'Змінити фото';
-    } else { clearNewsImg(); }
-    document.getElementById('news-cat').value = n.cat || 'Новини';
-    document.getElementById('news-published').checked = !!n.published;
-    document.getElementById('news-modal-title').textContent = 'Редагувати новину';
+function editNews(id){
+  _db.collection('news').doc(id).get().then(function(snap){
+    if(!snap.exists)return;
+    var n=snap.data();
+    document.getElementById('news-edit-id').value=id;
+    document.getElementById('news-title').value=n.title||'';
+    document.getElementById('news-excerpt').value=n.excerpt||'';
+    document.getElementById('news-editor').innerHTML=n.body||'';
+    document.getElementById('news-cat').value=n.cat||'Новини';
+    document.getElementById('news-published').checked=!!n.published;
+    if(n.img){
+      document.getElementById('news-img').value=n.img;
+      document.getElementById('news-img-preview').style.display='';
+      document.getElementById('news-img-preview-el').src=n.img;
+      document.getElementById('news-img-clear-btn').style.display='';
+      document.getElementById('news-img-btn-label').textContent='Змінити';
+    }else clearNewsImg();
+    document.getElementById('news-modal-title').textContent='Редагувати';
     openModal('news-modal');
   });
 }
-
-function saveNews() {
-  var title = document.getElementById('news-title').value.trim();
-  var excerpt = document.getElementById('news-excerpt').value.trim();
-  var body = document.getElementById('news-editor').innerHTML.trim();
-  if (!title) { showToast('Введіть заголовок','error'); return; }
-  if (!excerpt) { showToast('Введіть короткий опис','error'); return; }
-  if (!body || body === '<br>') { showToast('Введіть текст новини','error'); return; }
-
-  var data = {
-    title: title,
-    excerpt: excerpt,
-    body: body,
-    img: document.getElementById('news-img').value.trim(),
-    cat: document.getElementById('news-cat').value,
-    published: document.getElementById('news-published').checked,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-
-  var editId = document.getElementById('news-edit-id').value;
-  var promise;
-  if (editId) {
-    promise = _db.collection('news').doc(editId).update(data);
-  } else {
-    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    promise = _db.collection('news').add(data);
-  }
-
-  promise.then(function() {
-    closeModal('news-modal');
-    showToast('Новину збережено!', 'success');
-    loadNews();
-  }).catch(function(e) { showToast('Помилка: '+e.message,'error'); });
+function saveNews(){
+  var title=document.getElementById('news-title').value.trim();
+  var excerpt=document.getElementById('news-excerpt').value.trim();
+  var body=document.getElementById('news-editor').innerHTML.trim();
+  if(!title){showToast('Введіть заголовок','error');return;}
+  if(!body||body==='<br>'){showToast('Введіть текст','error');return;}
+  var data={title:title,excerpt:excerpt,body:body,img:document.getElementById('news-img').value.trim(),cat:document.getElementById('news-cat').value,published:document.getElementById('news-published').checked,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  var editId=document.getElementById('news-edit-id').value;
+  var p=editId?_db.collection('news').doc(editId).update(data):(_db.collection('news').add(Object.assign(data,{createdAt:firebase.firestore.FieldValue.serverTimestamp()})));
+  p.then(function(){closeModal('news-modal');showToast('Збережено','success');logAction(editId?'edit_news':'create_news',title);loadNews();})
+   .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
-
-function deleteNews(id) {
-  if (!confirm('Видалити цю новину?')) return;
+function deleteNews(id){
+  if(!confirm('Видалити новину?'))return;
   _db.collection('news').doc(id).delete()
-    .then(function(){ showToast('Новину видалено','success'); loadNews(); })
-    .catch(function(e){ showToast('Помилка: '+e.message,'error'); });
+    .then(function(){showToast('Видалено','success');logAction('delete_news',id);loadNews();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+function newsCmd(cmd,val){var e=document.getElementById('news-editor');e.focus();document.execCommand(cmd,false,val||null);}
+function uploadNewsImg(input){
+  var file=input.files[0];if(!file)return;
+  document.getElementById('news-img-btn-label').textContent='Завантаження...';
+  var reader=new FileReader();reader.onload=function(e){document.getElementById('news-img-preview-el').src=e.target.result;document.getElementById('news-img-preview').style.display='';};reader.readAsDataURL(file);
+  var fd=new FormData();fd.append('file',file);fd.append('upload_preset','ridego_unsigned');fd.append('folder','news');
+  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload',{method:'POST',body:fd})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.secure_url){document.getElementById('news-img').value=d.secure_url;document.getElementById('news-img-clear-btn').style.display='';document.getElementById('news-img-btn-label').textContent='Змінити';showToast('Фото завантажено','success');}
+    }).catch(function(){showToast('Помилка завантаження','error');document.getElementById('news-img-btn-label').textContent='Завантажити';});
+}
+function insertNewsInlineImg(input){
+  var file=input.files[0];if(!file)return;
+  showToast('Завантаження...','info');
+  var fd=new FormData();fd.append('file',file);fd.append('upload_preset','ridego_unsigned');fd.append('folder','news');
+  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload',{method:'POST',body:fd})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.secure_url){document.getElementById('news-editor').focus();document.execCommand('insertHTML',false,'<img src="'+d.secure_url+'" style="max-width:100%;border-radius:8px;margin:12px 0;display:block">');showToast('Додано','success');}
+    }).catch(function(){showToast('Помилка','error');});
+  input.value='';
+}
+function clearNewsImg(){
+  document.getElementById('news-img').value='';
+  document.getElementById('news-img-file').value='';
+  document.getElementById('news-img-preview').style.display='none';
+  document.getElementById('news-img-clear-btn').style.display='none';
+  document.getElementById('news-img-btn-label').textContent='Завантажити фото';
 }
 
-// ============================================================
-// BALANCE MANAGEMENT
-// ============================================================
-var _balanceUid = '';
-var _balanceUserName = '';
-var _balanceData = {};
+// ═══ LOGS (from Firebase) ═══
+function loadLogs(){
+  _db.collection('adminLogs').orderBy('createdAt','desc').limit(100).get().then(function(snap){
+    var logs=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    renderLogsTable(logs);
+  }).catch(function(){renderLogsTable([]);});
+}
+function renderLogsTable(logs){
+  var tbody=document.getElementById('logs-tbody');if(!tbody)return;
+  if(!logs.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">Логів немає</td></tr>';return;}
+  tbody.innerHTML=logs.map(function(l){
+    var time=l.createdAt?new Date(l.createdAt.seconds*1000).toLocaleString('uk-UA'):'—';
+    return '<tr>'
+      +'<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text-muted)">'+time+'</td>'
+      +'<td><span class="badge badge-blue">'+_esc(l.adminEmail||'admin')+'</span></td>'
+      +'<td style="font-size:13px">'+_esc(l.type||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+_esc(l.details||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+}
+function logAction(type,details){
+  var email=_auth.currentUser?_auth.currentUser.email:'admin';
+  _db.collection('adminLogs').add({type:type,details:details||'',adminEmail:email,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+}
 
-function openBalanceModal(uid, name) {
-  _balanceUid = uid;
-  _balanceUserName = name;
-  _balanceData = {};
-
-  document.getElementById('balance-modal-title').textContent = 'Баланс: ' + name;
-  document.getElementById('balance-uid').textContent = uid;
-  document.getElementById('balance-current').innerHTML = '<span style="color:var(--text-muted)">Завантаження...</span>';
-  document.getElementById('balance-slots-input').value = '';
-  document.getElementById('balance-promo-type').value = 'top';
-  document.getElementById('balance-promo-days').value = '7';
-  document.getElementById('balance-comment').value = '';
-  document.getElementById('balance-action').value = 'add';
-
-  // Завантажити поточний баланс
-  _db.collection('users').doc(uid).get().then(function(snap) {
-    if (!snap.exists) { document.getElementById('balance-current').textContent = 'Юзер не знайдений'; return; }
-    _balanceData = snap.data();
-    renderBalanceCurrent();
-  }).catch(function(e) {
-    document.getElementById('balance-current').textContent = 'Помилка: ' + e.message;
-  });
-
+// ═══ BALANCE ═══
+var _balUid='',_balData={};
+function openBalanceModal(uid,name){
+  _balUid=uid;
+  _set('balance-modal-title','Баланс: '+name);
+  _set('balance-uid',uid);
+  document.getElementById('balance-amount').value='';
+  document.getElementById('balance-comment').value='';
+  document.getElementById('balance-current').innerHTML='<span style="color:var(--text-muted)">Завантаження...</span>';
+  _db.collection('users').doc(uid).get().then(function(snap){
+    if(!snap.exists)return;_balData=snap.data();
+    var s=_balData.slots||0,w=_balData.slotsWelcome||0;
+    var exp=_balData.slotsWelcomeExpiry?new Date(_balData.slotsWelcomeExpiry.seconds*1000).toLocaleDateString('uk-UA'):'—';
+    document.getElementById('balance-current').innerHTML=
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +_balCard('Куплені слоти',s,'#00c853')+_balCard('Стартові',w+' (до '+exp+')','#ffa726')
+      +'</div>';
+  }).catch(function(){});
   openModal('balance-modal');
 }
-
-function renderBalanceCurrent() {
-  var d = _balanceData;
-  var slots = (d.slots || 0);
-  var welcome = (d.slotsWelcome || 0);
-  var expiry = d.slotsWelcomeExpiry
-    ? new Date(d.slotsWelcomeExpiry.seconds * 1000).toLocaleDateString('uk-UA')
-    : '—';
-  var promoBalance = d.promoBalance || {};
-
-  document.getElementById('balance-current').innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + _balCard('Слоти (куплені)', slots, '#00c853')
-    + _balCard('Стартові слоти', welcome + (welcome > 0 ? ' <span style="font-size:10px;opacity:.7">(до '+expiry+')</span>' : ''), '#ffa726')
-    + _balCard('TOP оголошень', promoBalance.top || 0, '#bc8cff')
-    + _balCard('Підсвічувань', promoBalance.highlight || 0, '#58a6ff')
-    + _balCard('Термінових', promoBalance.urgent || 0, '#ff4757')
-    + _balCard('Банерів', promoBalance.banner || 0, '#ffd166')
-    + '</div>';
-}
-
-function _balCard(label, val, color) {
-  return '<div style="background:var(--dark4);border:1px solid var(--border);border-radius:10px;padding:12px 14px">'
-    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">' + label + '</div>'
-    + '<div style="font-size:20px;font-weight:800;color:' + color + '">' + val + '</div>'
-    + '</div>';
-}
-
-function applyBalance() {
-  if (!_balanceUid) return;
-  var action   = document.getElementById('balance-action').value;
-  var tab      = document.getElementById('balance-tab-active').dataset.tab;
-  var comment  = document.getElementById('balance-comment').value.trim() || 'Ручне нарахування';
-
-  if (tab === 'slots') {
-    var amount = parseInt(document.getElementById('balance-slots-input').value);
-    if (!amount || amount < 1) { showToast('Введіть кількість слотів', 'error'); return; }
-
-    var update = {};
-    if (action === 'add') {
-      update.slots = firebase.firestore.FieldValue.increment(amount);
-    } else {
-      var current = _balanceData.slots || 0;
-      if (amount > current) { showToast('Недостатньо слотів (є ' + current + ')', 'error'); return; }
-      update.slots = firebase.firestore.FieldValue.increment(-amount);
-    }
-
-    _db.collection('users').doc(_balanceUid).update(update).then(function() {
-      _logAdminAction('balance_slots', {
-        uid: _balanceUid, name: _balanceUserName,
-        action: action, amount: amount, comment: comment
-      });
-      showToast((action === 'add' ? '+' : '-') + amount + ' слотів → ' + _balanceUserName, 'success');
-      closeModal('balance-modal');
-    }).catch(function(e) { showToast('Помилка: ' + e.message, 'error'); });
-
-  } else {
-    // Промо баланс
-    var promoType = document.getElementById('balance-promo-type').value;
-    var promoDays = parseInt(document.getElementById('balance-promo-days').value) || 7;
-    var promoAmt  = parseInt(document.getElementById('balance-slots-input').value);
-    if (!promoAmt || promoAmt < 1) { showToast('Введіть кількість', 'error'); return; }
-
-    var promoKey = 'promoBalance.' + promoType;
-    var promoUpdate = {};
-    if (action === 'add') {
-      promoUpdate[promoKey] = firebase.firestore.FieldValue.increment(promoAmt);
-    } else {
-      var cur = (_balanceData.promoBalance || {})[promoType] || 0;
-      if (promoAmt > cur) { showToast('Недостатньо (є ' + cur + ')', 'error'); return; }
-      promoUpdate[promoKey] = firebase.firestore.FieldValue.increment(-promoAmt);
-    }
-
-    _db.collection('users').doc(_balanceUid).update(promoUpdate).then(function() {
-      _logAdminAction('balance_promo', {
-        uid: _balanceUid, name: _balanceUserName,
-        action: action, promoType: promoType, amount: promoAmt,
-        days: promoDays, comment: comment
-      });
-      var promoNames = { top: 'TOP', highlight: 'Підсвічування', urgent: 'Термінових', banner: 'Банерів' };
-      showToast((action === 'add' ? '+' : '-') + promoAmt + ' ' + promoNames[promoType] + ' → ' + _balanceUserName, 'success');
-      closeModal('balance-modal');
-    }).catch(function(e) { showToast('Помилка: ' + e.message, 'error'); });
+function _balCard(l,v,c){return '<div style="background:var(--dark4);border:1px solid var(--border);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">'+l+'</div><div style="font-size:20px;font-weight:800;color:'+c+'">'+v+'</div></div>';}
+function applyBalance(){
+  if(!_balUid)return;
+  var action=document.getElementById('balance-action').value;
+  var amount=parseInt(document.getElementById('balance-amount').value);
+  var comment=document.getElementById('balance-comment').value||'Ручне';
+  if(!amount||amount<1){showToast('Введіть кількість','error');return;}
+  var update={};
+  if(action==='add'){update.slots=firebase.firestore.FieldValue.increment(amount);}
+  else{
+    if(amount>(_balData.slots||0)){showToast('Недостатньо (є '+(_balData.slots||0)+')','error');return;}
+    update.slots=firebase.firestore.FieldValue.increment(-amount);
   }
+  _db.collection('users').doc(_balUid).update(update)
+    .then(function(){showToast((action==='add'?'+':'-')+amount+' слотів','success');logAction('balance',_balUid+' '+(action==='add'?'+':'-')+amount+' | '+comment);closeModal('balance-modal');})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
 
-function switchBalanceTab(tab, el) {
-  document.querySelectorAll('.balance-tab').forEach(function(b){ b.classList.remove('active'); });
-  el.classList.add('active');
-  el.dataset.tab = tab;
-  document.getElementById('balance-tab-active').dataset.tab = tab;
-  document.getElementById('balance-slots-row').style.display = tab === 'slots' ? '' : 'none';
-  document.getElementById('balance-promo-row').style.display = tab === 'promo' ? '' : 'none';
-  var label = document.getElementById('balance-amount-label');
-  if (label) label.textContent = tab === 'slots' ? 'Кількість слотів' : 'Кількість промо';
+// ═══ SETTINGS ═══
+function saveSettings(){
+  var data={
+    platformName:document.getElementById('set-platform-name').value,
+    supportEmail:document.getElementById('set-support-email').value,
+    maxPhotos:parseInt(document.getElementById('set-max-photos').value)||10,
+    moderation:document.getElementById('set-moderation').value,
+    priceTop7:parseInt(document.getElementById('set-price-top-7').value)||150,
+    priceTop14:parseInt(document.getElementById('set-price-top-14').value)||250,
+    priceHl7:parseInt(document.getElementById('set-price-hl-7').value)||80,
+    priceUrg7:parseInt(document.getElementById('set-price-urg-7').value)||100,
+    priceSlot:parseInt(document.getElementById('set-price-slot').value)||15,
+    welcomeSlots:parseInt(document.getElementById('set-welcome-slots').value)||10,
+    welcomeDays:parseInt(document.getElementById('set-welcome-days').value)||30,
+    monthlyFree:parseInt(document.getElementById('set-monthly-free').value)||1,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  _db.collection('settings').doc('platform').set(data,{merge:true})
+    .then(function(){showToast('Налаштування збережено','success');logAction('save_settings','');})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+function changeAdminPass(){
+  var p1=document.getElementById('set-new-pass').value;
+  var p2=document.getElementById('set-new-pass2').value;
+  if(!p1||p1.length<6){showToast('Мінімум 6 символів','error');return;}
+  if(p1!==p2){showToast('Паролі не співпадають','error');return;}
+  _auth.currentUser.updatePassword(p1)
+    .then(function(){showToast('Пароль змінено','success');document.getElementById('set-new-pass').value='';document.getElementById('set-new-pass2').value='';logAction('change_password','');})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
 
-function _logAdminAction(type, data) {
-  _db.collection('adminLogs').add(Object.assign({
-    type: type,
-    adminEmail: _auth.currentUser ? _auth.currentUser.email : 'unknown',
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, data)).catch(function(){});
+// ═══ ANALYTICS PAGE ═══
+function setAnalyticsPeriod(days,btn){
+  document.querySelectorAll('#page-analytics .period-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  loadAnalytics(days);
+}
+function loadAnalytics(days){
+  days=days||30;
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);var ts=cutoff.getTime()/1000;
+  // New users
+  var newU=_users.filter(function(u){return u.createdAt&&u.createdAt.seconds>=ts;}).length;
+  _set('an-new-users',newU);
+  // Revenue estimate (from transactions collection or calculate from slots)
+  _db.collection('transactions').where('createdAt','>',new Date(cutoff)).limit(500).get().then(function(snap){
+    var total=0,slotsSold=0,promos=0;
+    snap.docs.forEach(function(d){
+      var t=d.data();total+=(t.amount||0);
+      if(t.type==='slots')slotsSold+=(t.qty||0);
+      if(t.type==='promo')promos++;
+    });
+    _set('an-revenue',total?total.toLocaleString()+' грн':'0');
+    _set('an-slots-sold',slotsSold);_set('an-promos',promos);
+    _set('stat-revenue',total>999?(total/1000).toFixed(1)+'K':total);
+    // Render transactions table
+    var tbody=document.getElementById('transactions-tbody');if(!tbody)return;
+    if(!snap.size){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Транзакцій немає</td></tr>';return;}
+    tbody.innerHTML=snap.docs.map(function(d){
+      var t=Object.assign({id:d.id},d.data());
+      var date=t.createdAt?new Date(t.createdAt.seconds*1000).toLocaleString('uk-UA'):'—';
+      return '<tr><td style="font-size:12px;color:var(--text-muted)">'+date+'</td><td>'+_esc(t.userName||t.uid||'—')+'</td><td><span class="badge badge-green">'+_esc(t.type||'—')+'</span></td><td style="font-family:\'JetBrains Mono\',monospace;color:var(--brand)">'+(t.amount||0)+' грн</td><td style="font-size:12px;color:var(--text-muted)">'+_esc(t.details||'')+'</td></tr>';
+    }).join('');
+  }).catch(function(){_set('an-revenue','N/A');_set('an-slots-sold','N/A');_set('an-promos','N/A');
+    var tbody=document.getElementById('transactions-tbody');if(tbody)tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Колекція transactions не існує</td></tr>';
+  });
 }
 
+// ═══ MODALS ═══
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ═══ TOAST ═══
+function showToast(msg,type){
+  type=type||'info';
+  var icons={success:'✅',error:'❌',info:'ℹ️'};
+  var tc=document.getElementById('toast-container');
+  var t=document.createElement('div');t.className='toast '+type;
+  t.innerHTML='<span class="toast-icon">'+icons[type]+'</span>'+_esc(msg);
+  tc.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(20px)';t.style.transition='all .3s';setTimeout(function(){t.remove();},300);},3000);
+}
+
+// ═══ UTILS ═══
+function _set(id,html){var el=document.getElementById(id);if(el)el.innerHTML=html;}
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _timeAgo(sec){var d=Math.floor(Date.now()/1000)-sec;if(d<60)return d+'с';if(d<3600)return Math.floor(d/60)+'хв';if(d<86400)return Math.floor(d/3600)+'год';return Math.floor(d/86400)+'дн';}
+function _downloadCSV(csv,name){var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);a.download=name+'-'+Date.now()+'.csv';a.click();}
+function globalSearch(q){
+  if(!q||q.length<2)return;q=q.toLowerCase();
+  var uR=_users.filter(function(u){return(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q);});
+  if(uR.length){showAdminPage('users');renderUsersTable();document.getElementById('users-search').value=q;applyUsersFilter();return;}
+  var lR=_listings.filter(function(l){return(l.title||'').toLowerCase().includes(q)||(l.city||'').toLowerCase().includes(q);});
+  if(lR.length){showAdminPage('listings');document.getElementById('listings-search').value=q;applyListingsFilter();return;}
+  showToast('Нічого не знайдено','info');
+}
+function refreshData(){
+  var btn=event.currentTarget;if(btn)btn.querySelector('i').style.animation='spin 1s linear infinite';
+  loadAllData();
+  setTimeout(function(){if(btn)btn.querySelector('i').style.animation='';showToast('Оновлено','success');},1000);
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
 </script>
-
-<!-- MODAL: BALANCE MANAGEMENT -->
-<div id="balance-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('balance-modal')">
-<div class="modal" style="max-width:560px">
-  <div class="modal-header">
-    <div class="modal-title" id="balance-modal-title">Баланс юзера</div>
-    <button class="modal-close" onclick="closeModal('balance-modal')">×</button>
-  </div>
-  <div class="modal-body">
-
-    <!-- UID -->
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;font-family:'JetBrains Mono',monospace">
-      UID: <span id="balance-uid"></span>
-    </div>
-
-    <!-- Поточний баланс -->
-    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Поточний баланс</div>
-    <div id="balance-current" style="margin-bottom:20px"></div>
-
-    <!-- Таби: слоти / промо -->
-    <div style="display:flex;gap:8px;margin-bottom:16px" id="balance-tab-active" data-tab="slots">
-      <button class="balance-tab active" onclick="switchBalanceTab('slots',this)" data-tab="slots"
-        style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border-brand);background:var(--brand-dim);color:var(--brand);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px">
-        <i class="fa-solid fa-ticket" style="margin-right:6px"></i>Слоти
-      </button>
-      <button class="balance-tab" onclick="switchBalanceTab('promo',this)" data-tab="promo"
-        style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--dark4);color:var(--text-muted);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px">
-        <i class="fa-solid fa-rocket" style="margin-right:6px"></i>Промо
-      </button>
-    </div>
-
-    <!-- Дія: додати / забрати -->
-    <div style="margin-bottom:14px">
-      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Дія</label>
-      <select id="balance-action" style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
-        <option value="add">➕ Нарахувати</option>
-        <option value="remove">➖ Забрати</option>
-      </select>
-    </div>
-
-    <!-- Кількість -->
-    <div style="margin-bottom:14px">
-      <label id="balance-amount-label" style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Кількість слотів</label>
-      <input type="number" id="balance-slots-input" min="1" max="9999" placeholder="Наприклад: 10"
-        style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
-    </div>
-
-    <!-- Тип промо (видно тільки при tab=promo) -->
-    <div id="balance-promo-row" style="display:none;margin-bottom:14px">
-      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Тип промо</label>
-      <select id="balance-promo-type" style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
-        <option value="top">⬆️ TOP оголошення</option>
-        <option value="highlight">⭐ Підсвічування</option>
-        <option value="urgent">🔥 Термінова продажа</option>
-        <option value="banner">📣 Банер магазину</option>
-      </select>
-      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin:10px 0 6px">Тривалість (днів)</label>
-      <select id="balance-promo-days" style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
-        <option value="7">7 днів</option>
-        <option value="14">14 днів</option>
-        <option value="30">30 днів</option>
-      </select>
-    </div>
-    <div id="balance-slots-row" style="margin-bottom:14px">
-      <!-- placeholder to keep symmetry, empty for slots tab -->
-    </div>
-
-    <!-- Коментар -->
-    <div style="margin-bottom:20px">
-      <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Коментар (логується)</label>
-      <input type="text" id="balance-comment" placeholder="Наприклад: бонус за баг-репорт"
-        style="width:100%;padding:10px 12px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif">
-    </div>
-
-    <div style="display:flex;gap:10px">
-      <button onclick="closeModal('balance-modal')"
-        style="flex:1;padding:12px;border-radius:10px;background:var(--dark4);border:1px solid var(--border);color:var(--text-muted);font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">
-        Скасувати
-      </button>
-      <button onclick="applyBalance()"
-        style="flex:2;padding:12px;border-radius:10px;background:var(--brand);border:none;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
-        <i class="fa-solid fa-check" style="margin-right:6px"></i>Застосувати
-      </button>
-    </div>
-
-  </div>
-</div>
-</div>
-
-<style>
-.balance-tab.active {
-  background: var(--brand-dim) !important;
-  color: var(--brand) !important;
-  border-color: var(--border-brand) !important;
-}
-</style>
 
 </body>
 </html>
