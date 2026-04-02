@@ -222,10 +222,16 @@ function renderDetailMap(city, fullLocation) {
   const mapEl = document.getElementById('detail-map');
   if (!mapEl) return;
 
+  // Повністю очищаємо попередню карту + внутрішній Leaflet стан DOM
   if (detailMapInstance) {
-    detailMapInstance.remove();
+    try { detailMapInstance.remove(); } catch(e) {}
     detailMapInstance = null;
     detailMapMarker   = null;
+  }
+  // Leaflet зберігає _leaflet_id на DOM елементі — очищаємо
+  if (mapEl._leaflet_id) {
+    mapEl._leaflet_id = null;
+    mapEl.innerHTML = '';
   }
 
   _loadLeaflet(function() {

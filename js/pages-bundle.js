@@ -1193,6 +1193,7 @@ function showDetail(id, _skipPush) {
     return;
   }
   currentDetailId = id;
+  window.currentDetailId = id;
 
   var _revBtn = document.getElementById('reveal-phone-btn');
   var _revDiv = document.getElementById('phone-revealed');

@@ -2898,6 +2898,82 @@ function _downloadImportTemplate() {
 // BULK IMPORT END
 // ══════════════════════════════════════════════════════════════
 
+// ── QR-код для оголошення ───────────────────────────────────
+function showListingQR() {
+  var id = window.currentDetailId || '';
+  if (!id) { if (typeof showToast === 'function') showToast('Оголошення не знайдено'); return; }
+  var url = 'https://ridego.com.ua/listing/' + id;
+
+  // Overlay
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+  var card = document.createElement('div');
+  card.style.cssText = 'background:var(--card-bg,#fff);border-radius:20px;padding:28px;max-width:360px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.25)';
+
+  // Close button
+  var closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '&times;';
+  closeBtn.style.cssText = 'position:absolute;top:12px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted,#888)';
+  closeBtn.onclick = function() { overlay.remove(); };
+
+  card.style.position = 'relative';
+  card.appendChild(closeBtn);
+
+  // Title
+  var title = document.createElement('div');
+  title.textContent = 'QR-код оголошення';
+  title.style.cssText = 'font-size:16px;font-weight:700;margin-bottom:16px';
+  card.appendChild(title);
+
+  // QR container
+  var qrWrap = document.createElement('div');
+  qrWrap.id = 'listing-qr-container';
+  qrWrap.style.cssText = 'display:inline-block;padding:16px;background:#fff;border-radius:12px;margin-bottom:16px';
+  card.appendChild(qrWrap);
+
+  // URL display
+  var urlEl = document.createElement('div');
+  urlEl.textContent = url;
+  urlEl.style.cssText = 'font-size:11px;color:var(--text-muted,#888);word-break:break-all;margin-bottom:16px;line-height:1.4';
+  card.appendChild(urlEl);
+
+  // Copy button
+  var copyBtn = document.createElement('button');
+  copyBtn.innerHTML = '<i class="fa-solid fa-copy" style="margin-right:6px"></i>Копіювати посилання';
+  copyBtn.className = 'btn-outline';
+  copyBtn.style.cssText = 'width:100%;padding:11px;font-size:13px';
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(url).then(function() {
+      if (typeof showToast === 'function') showToast('✅ Посилання скопійовано!');
+    }).catch(function() {});
+  };
+  card.appendChild(copyBtn);
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  // Generate QR using QRCode library (loaded via CDN in index.html)
+  if (typeof QRCode !== 'undefined') {
+    new QRCode(qrWrap, {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    // Fallback: use API
+    var img = document.createElement('img');
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+    img.alt = 'QR-код';
+    img.style.cssText = 'width:200px;height:200px';
+    qrWrap.appendChild(img);
+  }
+}
+
 
 // ── Ініціалізація (після завантаження всіх бандлів) ──────────
 loadSavedProfile();
