@@ -1,4 +1,3 @@
-// ── ADD_BRANDS, ADD_MODELS, spec fields для додавання ──
 let nextId = 100;
 let addCurrentStep = 1;
 let addSelectedCat = null;

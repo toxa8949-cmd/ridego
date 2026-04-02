@@ -1,5 +1,3 @@
-// ── Логін, реєстрація, Google OAuth, logout ──
-
 function doLogin() {
   var email = document.getElementById('login-email').value.trim();
   var pass  = document.getElementById('login-pass').value;
@@ -116,5 +114,4 @@ function doRegister() {
       });
   }
 }
-
 

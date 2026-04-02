@@ -1,4 +1,3 @@
-// ── BRANDS, CAT_SPECIFIC, фільтри, ADD_BRANDS, ADD_MODELS, spec fields ──
 const BRANDS = {
   'Електросамокати': [
     'Acer',
@@ -322,8 +321,6 @@ const CAT_SPECIFIC = {
   ),
 };
 
-
-// ── Каталог UI: фільтри, пошук, пагінація, layout ──
 let selectedCat = null;
 let currentSort = 'new';
 let currentLayout = 'grid';
@@ -779,5 +776,4 @@ function createShopBanner(s) {
     <span class="shop-banner-label">Реклама</span>
   </div>`;
 }
-
 

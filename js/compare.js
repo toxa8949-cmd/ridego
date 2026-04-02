@@ -1,4 +1,3 @@
-// ── Слайдер цін, шерінг, порівняння ──
 var PRICE_MAX = 500000;
 
 function onPriceRangeInput() {
@@ -289,6 +288,5 @@ function openCompareModal() {
 
 
 // (duplicate shareListing/copySellerLink/toggleCompare/openCompareModal block removed)
-
 
 

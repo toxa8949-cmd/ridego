@@ -1,4 +1,3 @@
-// ── Статистика переглядів, графіки ──
 function loadViewsStats(days) {
   if (!isLoggedIn || !currentUser || !currentUser.uid || !window._db) return;
 
@@ -89,8 +88,6 @@ function _statBox(icon, value, label, color) {
     + '</div>';
 }
 
-
-// ── Верифікація телефону через SMS ──
 var _phoneConfirmResult = null;
 var _recaptchaVerifier  = null;
 
@@ -204,5 +201,4 @@ function _checkPhoneVerified(d) {
   var btn = document.getElementById('phone-verify-btn');
   if (btn) btn.style.display = 'none';
 }
-
 

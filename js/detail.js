@@ -1,4 +1,12 @@
-// ── Деталі оголошення, галерея, специфікації, обране ──
+const SPEC_SECTION_META = {
+  general:     { label: 'Загальне',          icon: 'fa-info-circle' },
+  motor:       { label: 'Двигун',            icon: 'fa-bolt' },
+  battery:     { label: 'Акумулятор',        icon: 'fa-battery-full' },
+  performance: { label: 'Характеристики',    icon: 'fa-gauge-high' },
+  physical:    { label: 'Розміри та маса',   icon: 'fa-ruler-combined' },
+  extras:      { label: 'Додатково',         icon: 'fa-star' },
+};
+
 let currentDetailId = null;
 let galleryImgs = [];
 let galleryIdx = 0;
@@ -381,5 +389,4 @@ function toggleFavById(id) {
   const idx = favorites.indexOf(id);
   if(idx>-1) favorites.splice(idx,1); else favorites.push(id);
 }
-
 

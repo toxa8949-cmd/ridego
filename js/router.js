@@ -1,4 +1,4 @@
-// ── SPA роутер, parsePath, renderRoute, showPage, навігація ──
+function getSellerById(name) {
   const map = {
     'Олег К.': 'oleg-k', 'Марія В.': 'maria-v', 'Auto-Market': 'auto-market',
     'Велосипед Шоп': 'veloshop', 'Parts Store': 'parts-store', 'Moto Parts': 'parts-store',
@@ -499,5 +499,4 @@ function showSkeletons() {
   if (catalogEl && !catalogEl.children.length) catalogEl.innerHTML = _skeletonCards(4);
   if (svcEl     && !svcEl.children.length)     svcEl.innerHTML     = _skeletonCards(3);
 }
-
 

@@ -1,4 +1,3 @@
-// ── Тема, ініціалізація роутера, theme toggle ──
 function toggleTheme() {
   const isLight = document.body.classList.toggle('light');
   const knob = document.getElementById('themeKnob');

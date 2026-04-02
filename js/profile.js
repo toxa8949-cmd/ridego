@@ -1,4 +1,3 @@
-// ── Профіль, налаштування, аватар, збереження ──
 let profileType = 'personal';
 let profilePhotoUrl = null;
 
@@ -481,4 +480,8 @@ function renderFavs() {
   const grid  = document.getElementById('favs-grid');
   const empty = document.getElementById('favs-empty');
   const favData = _allListings().filter(l => favorites.includes(l.id));
+  if (!favData.length) { grid.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = favData.map(l => createCard(l,'profile')).join('');
+}
 

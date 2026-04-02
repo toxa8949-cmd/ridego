@@ -1,4 +1,3 @@
-// ── Firebase data loading, chats loading, home rendering ──
 const SERVICES = [];
 let myServices=[],currentServiceFilter="",currentServiceId=null,_svcRowId=0;
 
@@ -375,5 +374,4 @@ function createHomeSvcCard(s) {
     +(rating ? rating : "")
     +"</div>";
 }
-
 

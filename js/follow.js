@@ -1,4 +1,3 @@
-// ── Підписка на продавця, schema.org ──
 var _currentSellerUid = null;
 
 function _initFollowBtn(sellerUid) {
@@ -261,10 +260,7 @@ function _idbGet(key, maxAgeMs, cb) {
   });
 }
 
-
-// ── IndexedDB кеш ──
 // ══════════════════════════════════════════════════════════════
 // BULK IMPORT — CSV / EXCEL
 // ══════════════════════════════════════════════════════════════
-
 

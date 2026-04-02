@@ -1,4 +1,3 @@
-// ── Масовий імпорт CSV/Excel ──
 var _importRows   = [];  // розпарсені рядки
 var _importErrors = [];  // помилки валідації
 

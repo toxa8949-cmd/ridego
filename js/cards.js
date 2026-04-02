@@ -1,4 +1,3 @@
-// ── Cloudinary CDN хелпери, createCard ──
 var _CLOUDINARY_BASE = 'https://res.cloudinary.com/dxgtpo5dq/image/upload';
 
 function _cdnImg(url, opts) {
@@ -182,5 +181,4 @@ function createCard(l, backPage) {
     </div>
   </div>`;
 }
-
 

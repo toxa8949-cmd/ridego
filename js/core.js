@@ -1,6 +1,3 @@
-// ── Утиліти, глобальні змінні, слоти, _esc, _parseDate ──
-
-
 // ── HERO ПОШУК ─────────────────────────────────────────────
 function heroSearch() {
   var q = (document.getElementById('hero-search-input') || {}).value || '';
@@ -262,6 +259,4 @@ let isLoggedIn = false;
 let currentUser = { name:'', email:'', initial:'' };
 
 const chats = [];
-
-function getSellerById(name) {
 
