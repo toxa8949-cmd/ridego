@@ -755,12 +755,13 @@ function _skeletonCards(count) {
 }
 
 function showSkeletons() {
+  // Скелетони вже вбудовані в HTML — ця функція потрібна тільки для SPA-переходів
   var homeEl   = document.getElementById('home-listings');
   var catalogEl = document.getElementById('catalog-listings');
   var svcEl    = document.getElementById('home-services-grid');
-  if (homeEl    && !homeEl.children.length)    homeEl.innerHTML    = _skeletonCards(6);
-  if (catalogEl && !catalogEl.children.length) catalogEl.innerHTML = _skeletonCards(4);
-  if (svcEl     && !svcEl.children.length)     svcEl.innerHTML     = _skeletonCards(3);
+  if (homeEl    && !homeEl.querySelector('.listing-card'))  homeEl.innerHTML    = _skeletonCards(6);
+  if (catalogEl && !catalogEl.querySelector('.listing-card')) catalogEl.innerHTML = _skeletonCards(4);
+  if (svcEl     && !svcEl.querySelector('.home-svc-card'))  svcEl.innerHTML     = _skeletonCards(3);
 }
 
 

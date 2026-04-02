@@ -188,19 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-  if (typeof showSkeletons === 'function') showSkeletons();
-
-
-  var homeNewsEl = document.getElementById('home-news-grid');
-  if (homeNewsEl) homeNewsEl.innerHTML = [1,2,3].map(function() {
-    return '<div class="skel-card"><div class="skeleton skel-img"></div>'
-      + '<div class="skel-body">'
-      + '<div class="skeleton skel-line short"></div>'
-      + '<div class="skeleton skel-line full"></div>'
-      + '<div class="skeleton skel-line full"></div>'
-      + '<div class="skeleton skel-line short"></div>'
-      + '</div></div>';
-  }).join('');
+  // Скелетони вже в HTML — не потрібно вставляти повторно
 
 
   window.addEventListener('offline', function() {
@@ -216,6 +204,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
   setTimeout(loadFirebaseData, 300);
   setTimeout(loadSiteNews, 800);
+
+  // ── Fallback: якщо дані не завантажились за 10с — показати повідомлення ──
+  setTimeout(function() {
+    var sections = [
+      { id: 'home-listings',     label: 'оголошення' },
+      { id: 'home-top-listings', label: 'ТОП оголошення' },
+      { id: 'home-news-grid',    label: 'новини' },
+    ];
+    sections.forEach(function(sec) {
+      var el = document.getElementById(sec.id);
+      if (!el) return;
+      // Якщо ще є скелетони — дані не прийшли
+      var hasSkeletons = el.querySelector('.skel-card') || el.querySelector('.skeleton');
+      var isEmpty = !el.children.length;
+      if (hasSkeletons || isEmpty) {
+        el.innerHTML = '<div style="text-align:center;padding:40px 24px;grid-column:1/-1;color:var(--text-muted)">'
+          + '<div style="font-size:40px;margin-bottom:12px">📡</div>'
+          + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;color:var(--text)">Не вдалося завантажити ' + sec.label + '</div>'
+          + '<p style="font-size:14px;margin-bottom:16px">Перевірте з\'єднання з інтернетом</p>'
+          + '<button class="btn-primary" style="padding:10px 24px;font-size:14px" onclick="location.reload()">'
+          + '<i class="fa-solid fa-rotate-right" style="margin-right:8px"></i>Спробувати знову</button>'
+          + '</div>';
+      }
+    });
+  }, 10000);
 });
 
 var _reviewStar = 0;
