@@ -368,7 +368,7 @@ function submitListing() {
   } else {
     console.warn('No db or uid, saving locally');
     _fbListings.unshift(newL);
-    if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = _allListings().filter(function(l){ return l.uid === (currentUser && currentUser.uid); }).length;
+    if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = _allListings().filter(function(l){ return l.uid === (currentUser && currentUser.uid) && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; }).length;
     if (typeof renderMyListings === 'function') renderMyListings();
     showToast('✅ Оголошення опубліковано!');
     _resetAddWizard();

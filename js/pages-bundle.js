@@ -929,7 +929,7 @@ function _renderSellerByUid(uid) {
     switchSellerTab('listings', document.querySelector('.seller-tab'));
   }
 
-  var cached = _fbListings.filter(function(x){ return x && x.uid === uid; });
+  var cached = _fbListings.filter(function(x){ return x && x.uid === uid && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive'; });
   if (cached.length > 0 || _fbListings.length > 0) {
 
     _doRender(cached);
@@ -991,7 +991,7 @@ function renderSellerPage(id) {
     `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>${s.city || ''}`;
   document.getElementById('seller-page-since').innerHTML =
     `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since || ''}`;
-  const listings = _allListings().filter(l => l && l.seller === s.name);
+  const listings = _allListings().filter(l => l && l.seller === s.name && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive');
   const sellerSvc = _fbServices.concat(myServices).find(function(sv){ return sv.uid === s.uid; }) || null;
   ['sp-stat-ads','sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid) {
     var el = document.getElementById(sid);
@@ -1069,10 +1069,10 @@ function filterSellerCat(cat, el, sellerId) {
   var uid = sellerId && sellerId.startsWith('uid:') ? sellerId.replace('uid:', '') : null;
   var listings;
   if (uid) {
-    listings = _fbListings.filter(function(l){ return l && l.uid === uid; });
+    listings = _fbListings.filter(function(l){ return l && l.uid === uid && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; });
   } else {
     var s = _fbSellers.find(function(x){ return x.id === sellerId; });
-    listings = s ? _fbListings.filter(function(l){ return l && l.seller === s.name; }) : [];
+    listings = s ? _fbListings.filter(function(l){ return l && l.seller === s.name && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; }) : [];
   }
   if (cat !== 'all') listings = listings.filter(function(l){ return l.cat === cat; });
   var grid = document.getElementById('seller-listings-grid');
@@ -1325,7 +1325,7 @@ function showDetail(id, _skipPush) {
 
   var sellerUid = l.uid || null;
   window._currentDetailUid = sellerUid;
-  var sellerListings = _fbListings.filter(function(x){ return x && (sellerUid ? x.uid === sellerUid : x.seller === sellerName); });
+  var sellerListings = _fbListings.filter(function(x){ return x && (sellerUid ? x.uid === sellerUid : x.seller === sellerName) && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive'; });
   if (adsEl) adsEl.textContent = sellerListings.length || 1;
 
   if (window._db && sellerUid) {
@@ -1344,7 +1344,7 @@ function showDetail(id, _skipPush) {
 
   updateFavBtn();
 
-  const similar = _allListings().filter(x => x && x.cat === l.cat && x.id !== id).slice(0, 4);
+  const similar = _allListings().filter(x => x && x.cat === l.cat && x.id !== id && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive').slice(0, 4);
   document.getElementById('similar-listings').innerHTML = similar.length
     ? similar.map(s => createCard(s, 'catalog')).join('')
     : '<p style="color:var(--text-muted);font-size:14px">Схожих оголошень не знайдено</p>';
