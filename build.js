@@ -64,12 +64,34 @@ COPY_FILES.forEach(f => {
 
 // ── Мінімізація JS ───────────────────────────────────────────
 const JS_FILES = [
-  { src: 'js/main.js',       dist: 'js/main.js' },
-  { src: 'js/extra.js',      dist: 'js/extra.js' },
-  { src: 'js/chat.js',       dist: 'js/chat.js' },
-  { src: 'js/gallery-ux.js', dist: 'js/gallery-ux.js' },
-  { src: 'js/data_geo.js',   dist: 'js/data_geo.js' },
-  { src: 'js/data_specs.js', dist: 'js/data_specs.js' },
+  // Модулі (split з main.js)
+  { src: 'js/core.js',        dist: 'js/core.js' },
+  { src: 'js/router.js',      dist: 'js/router.js' },
+  { src: 'js/cards.js',       dist: 'js/cards.js' },
+  { src: 'js/firebase.js',    dist: 'js/firebase.js' },
+  { src: 'js/catalog.js',     dist: 'js/catalog.js' },
+  { src: 'js/seller.js',      dist: 'js/seller.js' },
+  { src: 'js/detail.js',      dist: 'js/detail.js' },
+  { src: 'js/add.js',         dist: 'js/add.js' },
+  { src: 'js/auth.js',        dist: 'js/auth.js' },
+  { src: 'js/profile.js',     dist: 'js/profile.js' },
+  { src: 'js/messages.js',    dist: 'js/messages.js' },
+  { src: 'js/geo.js',         dist: 'js/geo.js' },
+  { src: 'js/init.js',        dist: 'js/init.js' },
+  { src: 'js/promo.js',       dist: 'js/promo.js' },
+  { src: 'js/edit.js',        dist: 'js/edit.js' },
+  { src: 'js/my-listings.js', dist: 'js/my-listings.js' },
+  { src: 'js/services.js',    dist: 'js/services.js' },
+  { src: 'js/stats.js',       dist: 'js/stats.js' },
+  { src: 'js/compare.js',     dist: 'js/compare.js' },
+  { src: 'js/follow.js',      dist: 'js/follow.js' },
+  { src: 'js/import.js',      dist: 'js/import.js' },
+  // Окремі файли
+  { src: 'js/extra.js',       dist: 'js/extra.js' },
+  { src: 'js/chat.js',        dist: 'js/chat.js' },
+  { src: 'js/gallery-ux.js',  dist: 'js/gallery-ux.js' },
+  { src: 'js/data_geo.js',    dist: 'js/data_geo.js' },
+  { src: 'js/data_specs.js',  dist: 'js/data_specs.js' },
 ];
 
 const TERSER_OPTIONS = {
