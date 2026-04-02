@@ -578,7 +578,9 @@ function _parsePath(path) {
 
   var newsMatch = p.match(/^\/news\/(.+)$/);
   if (newsMatch) return { page: 'news-detail', id: newsMatch[1] };
-  return { page: 'home' };
+
+  // Невідомий маршрут — 404
+  return { page: '404' };
 }
 
 function _setHash(hash) {
@@ -602,7 +604,32 @@ function _renderRoute(route) {
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + page);
-  if (el) el.classList.add('active');
+  if (el) {
+    el.classList.add('active');
+  } else if (page === '404') {
+    // Show 404 page
+    var notFoundEl = document.getElementById('page-404');
+    if (!notFoundEl) {
+      notFoundEl = document.createElement('div');
+      notFoundEl.id = 'page-404';
+      notFoundEl.className = 'page';
+      notFoundEl.innerHTML = '<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px">'
+        + '<div style="font-size:80px;margin-bottom:16px">🛴</div>'
+        + '<div style="font-size:clamp(60px,15vw,120px);font-weight:800;line-height:1;background:linear-gradient(135deg,var(--brand),#00e676);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px">404</div>'
+        + '<h1 style="font-size:clamp(20px,3vw,28px);font-weight:800;margin-bottom:12px">Сторінку не знайдено</h1>'
+        + '<p style="color:var(--text-muted);font-size:15px;max-width:400px;margin-bottom:32px;line-height:1.6">Здається, ця сторінка поїхала кататись і не повернулась. Перевірте адресу або поверніться на головну.</p>'
+        + '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">'
+        + '<button class="btn-primary" onclick="showPage(\'home\')" style="padding:13px 28px"><i class="fa-solid fa-house" style="margin-right:8px"></i>На головну</button>'
+        + '<button class="btn-outline" onclick="showPage(\'catalog\')" style="padding:13px 28px"><i class="fa-solid fa-search" style="margin-right:8px"></i>Каталог</button>'
+        + '</div>'
+        + '</div>';
+      // Insert before footer
+      var footer = document.querySelector('.site-footer');
+      if (footer) footer.parentNode.insertBefore(notFoundEl, footer);
+      else document.body.appendChild(notFoundEl);
+    }
+    notFoundEl.classList.add('active');
+  }
 
   document.querySelectorAll('.mnav-item').forEach(b => b.classList.remove('active'));
   const navMap = { home:0, catalog:1, services:2, profile:3 };
@@ -694,6 +721,7 @@ function _pageTitle(page, id) {
     const l = _allListings().find(x => x && x.id === id);
     return l ? base + ' — ' + l.title : base + ' — Оголошення';
   }
+  if (page === '404')      return base + ' — Сторінку не знайдено';
   return base;
 }
 
