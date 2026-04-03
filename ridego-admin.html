@@ -647,6 +647,10 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
       </button>
 
       <div class="nav-section-title">Модерація</div>
+      <button class="nav-item" onclick="showAdminPage('feedback',this)">
+        <i class="fa-solid fa-comment-dots"></i> Звернення
+        <span class="nav-badge" id="nb-feedback">0</span>
+      </button>
       <button class="nav-item" onclick="showAdminPage('reports',this)">
         <i class="fa-solid fa-flag"></i> Скарги
         <span class="nav-badge" id="nb-reports">0</span>
@@ -926,6 +930,27 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           <table><thead><tr><th>Назва</th><th>Місто</th><th>Категорії</th><th>Рейтинг</th><th>Статус</th><th>Дії</th></tr></thead>
           <tbody id="services-tbody"></tbody></table>
         </div>
+      </div>
+
+      <!-- ═══ PAGE: FEEDBACK (Admin) ═══ -->
+      <div id="page-feedback" class="page">
+        <div class="page-header">
+          <div class="page-header-left"><h1>Звернення користувачів</h1><p>Скарги, пропозиції, питання з сайту</p></div>
+          <div style="display:flex;gap:8px">
+            <select class="filter-select" id="feedback-status-filter" onchange="renderFeedbackTable()">
+              <option value="">Всі</option><option value="new">Нові</option><option value="in_progress">В роботі</option><option value="resolved">Вирішені</option>
+            </select>
+            <select class="filter-select" id="feedback-type-filter" onchange="renderFeedbackTable()">
+              <option value="">Всі типи</option><option value="question">Питання</option><option value="suggestion">Пропозиції</option><option value="complaint">Скарги</option><option value="bug">Баги</option>
+            </select>
+          </div>
+        </div>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat-icon">📩</div><div><div class="mini-stat-val" id="fb-stat-total">—</div><div class="mini-stat-lbl">Всього</div></div></div>
+          <div class="mini-stat"><div class="mini-stat-icon">🆕</div><div><div class="mini-stat-val" id="fb-stat-new">—</div><div class="mini-stat-lbl">Нових</div></div></div>
+          <div class="mini-stat"><div class="mini-stat-icon">✅</div><div><div class="mini-stat-val" id="fb-stat-resolved">—</div><div class="mini-stat-lbl">Вирішених</div></div></div>
+        </div>
+        <div id="feedback-cards" style="display:flex;flex-direction:column;gap:14px"></div>
       </div>
 
       <!-- ═══ PAGE: REPORTS ═══ -->
@@ -1336,6 +1361,9 @@ function loadAllData(){
     renderReportsTable();
   }).catch(function(e){_reports=[];renderReportsTable();});
 
+  // Feedback (user submissions)
+  loadFeedback();
+
   // News
   loadNews();
 
@@ -1387,7 +1415,7 @@ function updateListingStats(){
 }
 
 // ═══ NAV ═══
-var _pageTitles={dashboard:'Дашборд',analytics:'Аналітика',users:'Користувачі',listings:'Оголошення',services:'Сервіси',reports:'Скарги',blocked:'Заблоковані',news:'Новини',settings:'Налаштування',logs:'Логи'};
+var _pageTitles={dashboard:'Дашборд',analytics:'Аналітика',users:'Користувачі',listings:'Оголошення',services:'Сервіси',feedback:'Звернення',reports:'Скарги',blocked:'Заблоковані',news:'Новини',settings:'Налаштування',logs:'Логи'};
 function showAdminPage(page,btn){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var el=document.getElementById('page-'+page);if(el)el.classList.add('active');
@@ -1959,6 +1987,94 @@ function loadAnalytics(days){
   }).catch(function(){_set('an-revenue','N/A');_set('an-slots-sold','N/A');_set('an-promos','N/A');
     var tbody=document.getElementById('transactions-tbody');if(tbody)tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Колекція transactions не існує</td></tr>';
   });
+}
+
+// ═══ FEEDBACK (Admin) ═══
+var _feedback=[];
+function loadFeedback(){
+  _db.collection('feedback').orderBy('createdAt','desc').limit(200).get().then(function(snap){
+    _feedback=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var newCount=_feedback.filter(function(f){return f.status==='new';}).length;
+    _set('nb-feedback',newCount||'');
+    _set('fb-stat-total',_feedback.length);
+    _set('fb-stat-new',newCount);
+    _set('fb-stat-resolved',_feedback.filter(function(f){return f.status==='resolved';}).length);
+    renderFeedbackTable();
+  }).catch(function(e){console.error('feedback:',e);});
+}
+function renderFeedbackTable(){
+  var el=document.getElementById('feedback-cards');if(!el)return;
+  var statusF=(document.getElementById('feedback-status-filter')||{}).value||'';
+  var typeF=(document.getElementById('feedback-type-filter')||{}).value||'';
+  var filtered=_feedback.filter(function(f){
+    if(statusF&&f.status!==statusF)return false;
+    if(typeF&&f.type!==typeF)return false;
+    return true;
+  });
+  if(!filtered.length){el.innerHTML='<div style="text-align:center;padding:48px;color:var(--text-muted)"><i class="fa-solid fa-inbox" style="font-size:32px;margin-bottom:12px;display:block"></i>Звернень немає</div>';return;}
+  var typeIcons={question:'❓',suggestion:'💡',complaint:'⚠️',bug:'🐛'};
+  var typeNames={question:'Питання',suggestion:'Пропозиція',complaint:'Скарга',bug:'Баг'};
+  var statusColors={new:'var(--brand)',in_progress:'var(--orange)',resolved:'var(--text-muted)'};
+  var statusNames={new:'Нове',in_progress:'В роботі',resolved:'Вирішено'};
+  el.innerHTML=filtered.map(function(f){
+    var date=f.createdAt?new Date(f.createdAt.seconds*1000).toLocaleString('uk-UA'):'—';
+    var s=f.status||'new';
+    return '<div style="background:var(--dark3);border:1px solid '+(s==='new'?'var(--border-brand)':'var(--border)')+';border-radius:14px;padding:20px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+      +'<span style="font-size:18px">'+(typeIcons[f.type]||'💬')+'</span>'
+      +'<span class="badge '+(s==='new'?'badge-green':s==='in_progress'?'badge-orange':'badge-gray')+'">'+(statusNames[s]||s)+'</span>'
+      +'<span class="badge badge-blue">'+(typeNames[f.type]||f.type)+'</span>'
+      +'<span style="font-size:12px;color:var(--text-muted);margin-left:auto">'+date+'</span>'
+      +'</div>'
+      +'<div style="font-weight:700;font-size:16px;margin-bottom:6px">'+_esc(f.subject||'—')+'</div>'
+      +'<div style="font-size:14px;color:var(--text-muted);line-height:1.7;white-space:pre-line;margin-bottom:14px">'+_esc(f.message||'')+'</div>'
+      +(f.img?'<div style="margin-bottom:14px"><img src="'+_esc(f.img)+'" style="max-width:300px;max-height:200px;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)"></div>':'')
+      +'<div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);flex-wrap:wrap">'
+      +'<span><i class="fa-solid fa-user" style="margin-right:4px"></i>'+_esc(f.name||'Анонім')+'</span>'
+      +(f.email?'<span><i class="fa-solid fa-envelope" style="margin-right:4px"></i>'+_esc(f.email)+'</span>':'')
+      +(f.uid?'<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px">UID: '+f.uid.slice(0,12)+'...</span>':'')
+      +'</div>'
+      // Admin reply section
+      +(f.adminReply?'<div style="margin-top:12px;padding:12px 16px;background:var(--brand-dim);border:1px solid var(--border-brand);border-radius:10px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--brand);margin-bottom:6px"><i class="fa-solid fa-reply"></i> Ваша відповідь:</div>'
+        +'<div style="font-size:13px;line-height:1.6;white-space:pre-line">'+_esc(f.adminReply)+'</div></div>':'')
+      // Actions
+      +'<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'
+      +(s!=='resolved'?'<button class="btn btn-outline" style="font-size:12px;padding:7px 14px" onclick="replyFeedback(\''+f.id+'\')"><i class="fa-solid fa-reply"></i> Відповісти</button>':'')
+      +(s==='new'?'<button class="btn btn-outline" style="font-size:12px;padding:7px 14px" onclick="setFeedbackStatus(\''+f.id+'\',\'in_progress\')"><i class="fa-solid fa-clock"></i> В роботу</button>':'')
+      +(s!=='resolved'?'<button class="btn btn-outline" style="font-size:12px;padding:7px 14px;color:var(--brand)" onclick="setFeedbackStatus(\''+f.id+'\',\'resolved\')"><i class="fa-solid fa-check"></i> Вирішено</button>':'')
+      +'<button class="btn btn-danger" style="font-size:12px;padding:7px 14px;margin-left:auto" onclick="deleteFeedback(\''+f.id+'\')"><i class="fa-solid fa-trash"></i></button>'
+      +'</div></div>';
+  }).join('');
+}
+function setFeedbackStatus(id,status){
+  _db.collection('feedback').doc(id).update({status:status})
+    .then(function(){showToast('Статус змінено','success');logAction('feedback_status',id+' → '+status);loadFeedback();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+function replyFeedback(id){
+  var f=_feedback.find(function(x){return x.id===id;});
+  var existing=f&&f.adminReply?f.adminReply:'';
+  var reply=prompt('Ваша відповідь користувачу:'+(existing?'\n\n(Попередня: '+existing+')':''),existing);
+  if(reply===null)return;
+  if(!reply.trim()){showToast('Введіть текст відповіді','error');return;}
+  _db.collection('feedback').doc(id).update({
+    adminReply:reply.trim(),
+    status:'resolved',
+    repliedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    repliedBy:_auth.currentUser?_auth.currentUser.email:'admin'
+  }).then(function(){
+    showToast('Відповідь надіслано','success');
+    logAction('feedback_reply',id);
+    loadFeedback();
+    // TODO: optionally send email notification to user
+  }).catch(function(e){showToast('Помилка: '+e.message,'error');});
+}
+function deleteFeedback(id){
+  if(!confirm('Видалити це звернення?'))return;
+  _db.collection('feedback').doc(id).delete()
+    .then(function(){showToast('Видалено','success');loadFeedback();})
+    .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
 
 // ═══ MODALS ═══
