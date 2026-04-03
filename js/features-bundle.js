@@ -2974,6 +2974,144 @@ function showListingQR() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// FEEDBACK SYSTEM — Скарги, пропозиції, зворотний зв'язок
+// ══════════════════════════════════════════════════════════════
+
+var _feedbackType = 'question';
+
+function setFeedbackType(type, el) {
+  _feedbackType = type;
+  document.getElementById('feedback-type').value = type;
+  document.querySelectorAll('#feedback-type-pills .pill').forEach(function(p) { p.classList.remove('active'); });
+  if (el) el.classList.add('active');
+}
+
+function uploadFeedbackImg(input) {
+  var file = input.files[0];
+  if (!file) return;
+  document.getElementById('feedback-img-label').textContent = 'Завантаження...';
+  // Preview
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('feedback-img-el').src = e.target.result;
+    document.getElementById('feedback-img-preview').style.display = '';
+  };
+  reader.readAsDataURL(file);
+  // Upload to Cloudinary
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', 'ridego_unsigned');
+  fd.append('folder', 'feedback');
+  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.secure_url) {
+        document.getElementById('feedback-img-url').value = data.secure_url;
+        document.getElementById('feedback-img-label').textContent = 'Файл прикріплено ✓';
+        document.getElementById('feedback-img-clear').style.display = '';
+      }
+    })
+    .catch(function() {
+      document.getElementById('feedback-img-label').textContent = 'Помилка завантаження';
+    });
+}
+
+function clearFeedbackImg() {
+  document.getElementById('feedback-img-url').value = '';
+  document.getElementById('feedback-img-input').value = '';
+  document.getElementById('feedback-img-preview').style.display = 'none';
+  document.getElementById('feedback-img-clear').style.display = 'none';
+  document.getElementById('feedback-img-label').textContent = 'Прикріпити файл';
+}
+
+function submitFeedback() {
+  var subject = (document.getElementById('feedback-subject').value || '').trim();
+  var message = (document.getElementById('feedback-message').value || '').trim();
+  var name    = (document.getElementById('feedback-name').value || '').trim();
+  var email   = (document.getElementById('feedback-email').value || '').trim();
+  var img     = (document.getElementById('feedback-img-url').value || '').trim();
+  var type    = _feedbackType || 'question';
+
+  if (!subject) { showToast('⚠️ Введіть тему звернення'); return; }
+  if (!message) { showToast('⚠️ Опишіть детальніше вашу проблему'); return; }
+  if (!name)    { showToast('⚠️ Вкажіть ваше ім\'я'); return; }
+
+  var btn = document.getElementById('feedback-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Надсилання...'; }
+
+  var feedbackData = {
+    type: type,
+    subject: subject,
+    message: message,
+    name: name,
+    email: email,
+    img: img || null,
+    status: 'new',          // new → in_progress → resolved
+    adminReply: null,
+    uid: (window.currentUser && currentUser.uid) || null,
+    userAgent: navigator.userAgent.slice(0, 200),
+    page: location.pathname,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  window._db.collection('feedback').add(feedbackData)
+    .then(function() {
+      showToast('✅ Дякуємо! Ваше звернення надіслано. Ми відповімо найближчим часом.');
+      // Reset form
+      document.getElementById('feedback-subject').value = '';
+      document.getElementById('feedback-message').value = '';
+      clearFeedbackImg();
+      setFeedbackType('question', document.querySelector('#feedback-type-pills .pill[data-type="question"]'));
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane" style="margin-right:8px"></i>Надіслати'; }
+      // Reload user's feedback
+      if (typeof loadMyFeedback === 'function') loadMyFeedback();
+    })
+    .catch(function(e) {
+      showToast('⚠️ Помилка: ' + e.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane" style="margin-right:8px"></i>Надіслати'; }
+    });
+}
+
+function loadMyFeedback() {
+  var section = document.getElementById('my-feedback-section');
+  var list = document.getElementById('my-feedback-list');
+  if (!section || !list) return;
+  var uid = window.currentUser && currentUser.uid;
+  if (!uid) { section.style.display = 'none'; return; }
+
+  window._db.collection('feedback').where('uid', '==', uid).orderBy('createdAt', 'desc').limit(20).get()
+    .then(function(snap) {
+      if (!snap.size) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      var typeLabels = { question: '❓ Питання', suggestion: '💡 Пропозиція', complaint: '⚠️ Скарга', bug: '🐛 Баг' };
+      var statusLabels = { new: 'Нове', in_progress: 'В роботі', resolved: 'Вирішено' };
+      var statusColors = { new: 'var(--brand)', in_progress: '#ffa726', resolved: '#8b949e' };
+
+      list.innerHTML = snap.docs.map(function(d) {
+        var f = d.data();
+        var date = f.createdAt ? new Date(f.createdAt.seconds * 1000).toLocaleDateString('uk-UA') : '';
+        var status = f.status || 'new';
+        var hasReply = f.adminReply && f.adminReply.trim();
+
+        return '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px">'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+          + '<span style="font-size:12px;background:var(--brand-dim);color:var(--brand);padding:3px 10px;border-radius:50px;font-weight:600">' + (typeLabels[f.type] || f.type) + '</span>'
+          + '<span style="font-size:11px;color:' + (statusColors[status]) + ';font-weight:600">● ' + (statusLabels[status] || status) + '</span>'
+          + '<span style="font-size:11px;color:var(--text-muted);margin-left:auto">' + date + '</span>'
+          + '</div>'
+          + '<div style="font-weight:700;font-size:15px;margin-bottom:6px">' + _esc(f.subject) + '</div>'
+          + '<div style="font-size:13px;color:var(--text-muted);line-height:1.6;white-space:pre-line">' + _esc(f.message.length > 200 ? f.message.slice(0, 200) + '...' : f.message) + '</div>'
+          + (hasReply ? '<div style="margin-top:12px;padding:12px 16px;background:var(--brand-dim);border:1px solid rgba(0,200,83,.15);border-radius:10px">'
+            + '<div style="font-size:11px;font-weight:700;color:var(--brand);margin-bottom:6px"><i class="fa-solid fa-reply" style="margin-right:4px"></i>Відповідь від RideGO:</div>'
+            + '<div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-line">' + _esc(f.adminReply) + '</div>'
+            + '</div>' : '')
+          + '</div>';
+      }).join('');
+    })
+    .catch(function() { section.style.display = 'none'; });
+}
+
 
 // ── Ініціалізація (після завантаження всіх бандлів) ──────────
 loadSavedProfile();

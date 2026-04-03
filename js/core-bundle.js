@@ -563,6 +563,7 @@ function _parsePath(path) {
   if (p === '/faq')       return { page: 'faq' };
   if (p === '/terms')     return { page: 'terms' };
   if (p === '/privacy')   return { page: 'privacy' };
+  if (p === '/feedback')  return { page: 'feedback' };
 
   var listingMatch = p.match(/^\/listing\/(.+)$/);
   if (listingMatch) return { page: 'detail', id: listingMatch[1] };
@@ -586,7 +587,8 @@ function _parsePath(path) {
 function _setHash(hash) {
   var pathMap = {
     '': '/', 'home': '/', 'catalog': '/catalog', 'add': '/add',
-    'services': '/services', 'messages': '/messages', 'profile': '/profile', 'news': '/news'
+    'services': '/services', 'messages': '/messages', 'profile': '/profile', 'news': '/news',
+    'feedback': '/feedback'
   };
   if (pathMap[hash] !== undefined) { _setPath(pathMap[hash]); return; }
   if (hash.startsWith('detail/')) { _setPath('/listing/' + hash.replace('detail/', '')); return; }
@@ -698,6 +700,19 @@ function _renderRoute(route) {
     }
   }
 
+  if (page === 'feedback') {
+    // Auto-fill name/email if logged in
+    if (window.currentUser && currentUser.name) {
+      var fnEl = document.getElementById('feedback-name');
+      if (fnEl && !fnEl.value) fnEl.value = currentUser.name;
+    }
+    if (window.currentUser && currentUser.email) {
+      var feEl = document.getElementById('feedback-email');
+      if (feEl && !feEl.value) feEl.value = currentUser.email;
+    }
+    if (typeof loadMyFeedback === 'function') loadMyFeedback();
+  }
+
   document.title = _pageTitle(page, id);
   _routerLock = false;
 }
@@ -713,6 +728,7 @@ function _pageTitle(page, id) {
   if (page === 'faq')      return base + ' — FAQ';
   if (page === 'terms')    return base + ' — Правила';
   if (page === 'privacy')  return base + ' — Конфіденційність';
+  if (page === 'feedback') return base + ' — Зворотний зв\'язок';
   if (page === 'seller') {
     const s = _fbSellers.find(x => x.id === id);
     return s ? base + ' — ' + s.name : base + ' — Продавець';
@@ -740,6 +756,7 @@ function showPage(page, sellerId) {
     faq:     { title: 'FAQ — Часті запитання', desc: 'Відповіді на найпоширеніші питання про RideGO.' },
     terms:   { title: 'Правила користування', desc: 'Правила використання маркетплейсу RideGO.' },
     privacy: { title: 'Політика конфіденційності', desc: 'Як RideGO зберігає та використовує ваші дані.' },
+    feedback:{ title: 'Зворотний зв\'язок', desc: 'Залиште скаргу, пропозицію або питання команді RideGO.' },
   };
   if (pageSEO[page]) {
     var _pageUrl = 'https://ridego.com.ua' + (page === 'home' ? '/' : '/' + page);
