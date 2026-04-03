@@ -344,14 +344,14 @@
     presenceRef.set({ t: Date.now() });
     presenceRef.onDisconnect().remove();
 
+    console.log('✅ RideGO Firebase async ready!');
+    // Notify waiting code
+    window._firebaseReady = true;
+    window._firebaseCallbacks.forEach(function(cb) { try { cb(); } catch(e) { console.warn('Firebase cb:', e); } });
+    window._firebaseCallbacks = [];
+  } // end _initFirebase
 
-  })();
-  // Firebase ready — notify all waiting code
-  window._firebaseReady = true;
-  window._firebaseCallbacks.forEach(function(cb) { try { cb(); } catch(e) { console.warn('Firebase callback:', e); } });
-  window._firebaseCallbacks = [];
-  }
-  })();
+  })(); // end outer IIFE
   </script>
 </head>
 <body>
