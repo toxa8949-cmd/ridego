@@ -99,21 +99,16 @@
 <!-- Шрифти з font-display=swap — не блокує рендер -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
-<!-- Leaflet CSS — критичний тільки для карт -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"></noscript>
+<!-- Leaflet CSS — завантажується на вимогу через geo.js -->
 <!-- Font Awesome — non-blocking -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
-<!-- Leaflet JS — defer -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
-<!-- QRCode — defer, завантажується лише при потребі -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<!-- Leaflet JS — завантажується на вимогу через geo.js _loadLeaflet() -->
+<!-- QRCode — завантажується на вимогу через showListingQR() -->
 
   <link rel="stylesheet" href="/css/main.css">
   <!-- Preload критичних ресурсів -->
   <link rel="preload" href="/js/core-bundle.js" as="script">
-  <link rel="preload" href="/css/main.css" as="style">
 <!-- Тема: виконується СИНХРОННО до рендеру body — усуває flash темної теми -->
 <script>
 (function(){
@@ -184,13 +179,41 @@
 </script>
 </head>
 
-  <!-- Firebase Compat SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- Firebase SDK — async loading (не блокує рендер) -->
   <script>
+  // Async Firebase loader — завантажується ПІСЛЯ першого рендеру
   (function() {
+    var scripts = [
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
+    ];
+    var loaded = 0;
+    function loadNext() {
+      if (loaded >= scripts.length) { _initFirebase(); return; }
+      var s = document.createElement('script');
+      s.src = scripts[loaded];
+      s.onload = function() { loaded++; loadNext(); };
+      s.onerror = function() { loaded++; loadNext(); };
+      document.head.appendChild(s);
+    }
+    // Почати завантаження після першого рендеру
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadNext);
+    } else {
+      // Відкласти на 1 frame щоб браузер встиг відрендерити HTML
+      requestAnimationFrame(function() { setTimeout(loadNext, 0); });
+    }
+
+    window._firebaseReady = false;
+    window._firebaseCallbacks = [];
+    window._onFirebaseReady = function(cb) {
+      if (window._firebaseReady) cb();
+      else window._firebaseCallbacks.push(cb);
+    };
+
+    function _initFirebase() {
     var cfg = {
       apiKey: "AIzaSyA49XBAsQnx919_85FY3IsP6djCcMX7nIs",
       authDomain: "ridego-6f981.firebaseapp.com",
@@ -323,63 +346,13 @@
 
 
   })();
+  // Firebase ready — notify all waiting code
+  window._firebaseReady = true;
+  window._firebaseCallbacks.forEach(function(cb) { try { cb(); } catch(e) { console.warn('Firebase callback:', e); } });
+  window._firebaseCallbacks = [];
+  }
+  })();
   </script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Як подати оголошення?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Натисніть «+» внизу або «Подати оголошення» на головній. Оберіть категорію, заповніть опис, ціну, додайте фото та вкажіть місто. При реєстрації вам нараховується 10 безкоштовних слотів на перший місяць."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Що таке слоти?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "1 слот = право розмістити 1 оголошення на 30 днів. При реєстрації — 10 слотів безкоштовно (дійсні 30 днів). Після — 1 безкоштовний слот щомісяця."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Як зв'язатися з продавцем?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "На сторінці оголошення натисніть «Написати» — відкриється вбудований чат. Або «Показати номер» щоб зателефонувати. Для повідомлень потрібна реєстрація."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Чи безпечно купувати через RideGO?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "RideGO — майданчик для оголошень. Рекомендуємо зустрічатись особисто, перевіряти товар перед оплатою, не переводити передоплату незнайомим. Перевірені продавці мають значок ✓."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Як видалити оголошення?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Профіль → «Мої оголошення» → кнопка «Видалити» на картці."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Куплені слоти згорають?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Ні. Куплені слоти не мають терміну дії — використовуйте коли зручно. Згорають тільки 10 стартових слотів (якщо не використати за перший місяць) і 1 щомісячний безкоштовний слот."
-      }
-    }
-  ]
-}
-</script>
 </head>
 <body>
 
