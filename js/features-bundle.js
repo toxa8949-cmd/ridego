@@ -3026,6 +3026,13 @@ function clearFeedbackImg() {
 }
 
 function submitFeedback() {
+  // Перевірка авторизації — щоб uid завжди був
+  if (!window.currentUser || !currentUser.uid) {
+    showToast('⚠️ Увійдіть в акаунт щоб надіслати звернення');
+    setTimeout(function() { showPage('profile'); }, 500);
+    return;
+  }
+
   var subject = (document.getElementById('feedback-subject').value || '').trim();
   var message = (document.getElementById('feedback-message').value || '').trim();
   var name    = (document.getElementById('feedback-name').value || '').trim();
@@ -3080,36 +3087,49 @@ function loadMyFeedback() {
   var uid = window.currentUser && currentUser.uid;
   if (!uid) { section.style.display = 'none'; return; }
 
-  window._db.collection('feedback').where('uid', '==', uid).orderBy('createdAt', 'desc').limit(20).get()
+  // Simple query without orderBy to avoid composite index requirement
+  window._db.collection('feedback').where('uid', '==', uid).limit(20).get()
     .then(function(snap) {
       if (!snap.size) { section.style.display = 'none'; return; }
       section.style.display = '';
+
+      // Sort client-side
+      var items = snap.docs.map(function(d) { return Object.assign({id: d.id}, d.data()); });
+      items.sort(function(a, b) {
+        var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+        var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+        return tb - ta;
+      });
+
       var typeLabels = { question: '❓ Питання', suggestion: '💡 Пропозиція', complaint: '⚠️ Скарга', bug: '🐛 Баг' };
       var statusLabels = { new: 'Нове', in_progress: 'В роботі', resolved: 'Вирішено' };
       var statusColors = { new: 'var(--brand)', in_progress: '#ffa726', resolved: '#8b949e' };
 
-      list.innerHTML = snap.docs.map(function(d) {
-        var f = d.data();
+      list.innerHTML = items.map(function(f) {
         var date = f.createdAt ? new Date(f.createdAt.seconds * 1000).toLocaleDateString('uk-UA') : '';
         var status = f.status || 'new';
         var hasReply = f.adminReply && f.adminReply.trim();
 
-        return '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px">'
+        return '<div style="background:var(--dark3);border:1px solid ' + (hasReply ? 'rgba(0,200,83,.25)' : 'var(--border)') + ';border-radius:14px;padding:18px;margin-bottom:12px">'
           + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
           + '<span style="font-size:12px;background:var(--brand-dim);color:var(--brand);padding:3px 10px;border-radius:50px;font-weight:600">' + (typeLabels[f.type] || f.type) + '</span>'
           + '<span style="font-size:11px;color:' + (statusColors[status]) + ';font-weight:600">● ' + (statusLabels[status] || status) + '</span>'
+          + (hasReply ? '<span style="font-size:11px;background:rgba(0,200,83,.12);color:var(--brand);padding:2px 8px;border-radius:50px;font-weight:600">💬 Є відповідь</span>' : '')
           + '<span style="font-size:11px;color:var(--text-muted);margin-left:auto">' + date + '</span>'
           + '</div>'
           + '<div style="font-weight:700;font-size:15px;margin-bottom:6px">' + _esc(f.subject) + '</div>'
           + '<div style="font-size:13px;color:var(--text-muted);line-height:1.6;white-space:pre-line">' + _esc(f.message.length > 200 ? f.message.slice(0, 200) + '...' : f.message) + '</div>'
-          + (hasReply ? '<div style="margin-top:12px;padding:12px 16px;background:var(--brand-dim);border:1px solid rgba(0,200,83,.15);border-radius:10px">'
-            + '<div style="font-size:11px;font-weight:700;color:var(--brand);margin-bottom:6px"><i class="fa-solid fa-reply" style="margin-right:4px"></i>Відповідь від RideGO:</div>'
-            + '<div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-line">' + _esc(f.adminReply) + '</div>'
-            + '</div>' : '')
+          + (hasReply ? '<div style="margin-top:12px;padding:14px 16px;background:var(--brand-dim);border:1px solid rgba(0,200,83,.2);border-radius:12px">'
+            + '<div style="font-size:12px;font-weight:700;color:var(--brand);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-reply"></i> Відповідь від команди RideGO:</div>'
+            + '<div style="font-size:14px;color:var(--text);line-height:1.7;white-space:pre-line">' + _esc(f.adminReply) + '</div>'
+            + '</div>' : '<div style="margin-top:10px;font-size:12px;color:var(--text-muted);font-style:italic">⏳ Очікує відповіді...</div>')
           + '</div>';
       }).join('');
     })
-    .catch(function() { section.style.display = 'none'; });
+    .catch(function(e) {
+      console.warn('loadMyFeedback:', e.message);
+      section.style.display = 'none';
+    });
 }
 
 
