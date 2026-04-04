@@ -168,40 +168,8 @@
       "destination": "/api/home"
     },
     {
-      "source": "/api/listing/:id",
-      "destination": "/api/listing?id=$id"
-    },
-    {
-      "source": "/api/news-item/:id",
-      "destination": "/api/news-item?id=$id"
-    },
-    {
-      "source": "/api/category/:slug",
-      "destination": "/api/category?slug=$slug"
-    },
-    {
-      "source": "/listing/:id",
-      "destination": "/api/listing?id=$id"
-    },
-    {
-      "source": "/category/:slug",
-      "destination": "/api/category?slug=$slug"
-    },
-    {
-      "source": "/news/:id",
-      "destination": "/api/news-item?id=$id"
-    },
-    {
       "source": "/catalog",
       "destination": "/api/catalog"
-    },
-    {
-      "source": "/seller/:uid",
-      "destination": "/api/seller?uid=$uid"
-    },
-    {
-      "source": "/service/:id",
-      "destination": "/api/service?id=$id"
     },
     {
       "source": "/news-detail",
@@ -255,6 +223,28 @@
       ],
       "destination": "https://ridego.com.ua/$1",
       "permanent": true
+    }
+  ],
+  "routes": [
+    {
+      "src": "^/listing/([a-zA-Z0-9_-]+)$",
+      "dest": "/api/listing?id=$1"
+    },
+    {
+      "src": "^/news/([a-zA-Z0-9_-]+)$",
+      "dest": "/api/news-item?id=$1"
+    },
+    {
+      "src": "^/category/([a-zA-Z0-9_-]+)$",
+      "dest": "/api/category?slug=$1"
+    },
+    {
+      "src": "^/seller/([a-zA-Z0-9_-]+)$",
+      "dest": "/api/seller?uid=$1"
+    },
+    {
+      "src": "^/service/([a-zA-Z0-9_-]+)$",
+      "dest": "/api/service?id=$1"
     }
   ]
 }
