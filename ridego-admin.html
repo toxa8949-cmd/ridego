@@ -1469,8 +1469,8 @@ function updateListingStats(){
 // GA4 auto-refresh on analytics page
     var _pageTitles={dashboard:'Дашборд',analytics:'Аналітика',users:'Користувачі',listings:'Оголошення',services:'Сервіси',feedback:'Звернення',reports:'Скарги',blocked:'Заблоковані',news:'Новини',settings:'Налаштування',logs:'Логи'};
 function showAdminPage(page,btn){
-  if (page === 'analytics') { setTimeout(startGA4AutoRefresh, 200); }
-  else { stopGA4AutoRefresh(); }
+  if (page === 'analytics') { setTimeout(function(){ if(typeof startGA4AutoRefresh==='function') startGA4AutoRefresh(); }, 200); }
+  else { if(typeof stopGA4AutoRefresh==='function') stopGA4AutoRefresh(); }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var el=document.getElementById('page-'+page);if(el)el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
