@@ -44,11 +44,15 @@ module.exports = async (req, res) => {
   const isBot = BOTS.test(ua);
 
   // Vercel rewrite: /listing/:id → /api/listing, id приходить через req.query.id
-  // id передається як частина URL: /api/listing/XXXX або через query
-  const rawId = req.url.split('/').filter(Boolean).pop()
-    || (req.query && req.query.id)
-    || '';
-  const id = rawId.split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
+  // Читаємо id з query string вручну (req.query може бути undefined)
+  const _qs = req.url.includes('?') ? req.url.split('?')[1] : '';
+  const _qp = {};
+  _qs.split('&').forEach(function(p) {
+    const kv = p.split('=');
+    if (kv[0]) _qp[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+  });
+  const rawId = _qp.id || (req.query && req.query.id) || '';
+  const id = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
 
   // SSR для всіх — боти і люди отримують однаковий HTML з даними
 

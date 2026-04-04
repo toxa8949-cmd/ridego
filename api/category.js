@@ -55,11 +55,15 @@ async function getListingsByCategory(catName) {
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
-  // slug передається як частина URL: /api/category/elektrosamokaty
-  const rawSlug = req.url.split('/').filter(Boolean).pop()
-    || (req.query && req.query.slug)
-    || '';
-  const slug = rawSlug.split('?')[0].replace(/[^a-zA-Z0-9_-]/g,'');
+  // Читаємо slug з query string вручну
+  const _qs2 = req.url.includes('?') ? req.url.split('?')[1] : '';
+  const _qp2 = {};
+  _qs2.split('&').forEach(function(p) {
+    const kv = p.split('=');
+    if (kv[0]) _qp2[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+  });
+  const rawSlug = _qp2.slug || (req.query && req.query.slug) || '';
+  const slug = rawSlug.replace(/[^a-zA-Z0-9_-]/g,'');
   const catInfo = CATEGORIES[slug];
 
   // SSR для всіх
