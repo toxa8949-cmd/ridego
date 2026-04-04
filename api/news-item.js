@@ -60,11 +60,11 @@ module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
 
-  const rawId = (req.query && req.query.id)
-    || (req.headers['x-matched-path'] || '').split('/').filter(Boolean).pop()
-    || req.url.replace('/api/news-item/','').split('?')[0]
+  // id передається як частина URL: /api/news-item/XXXX
+  const rawId = req.url.split('/').filter(Boolean).pop()
+    || (req.query && req.query.id)
     || '';
-  const id = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const id = rawId.split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
 
   // SSR для всіх
 

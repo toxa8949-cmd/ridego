@@ -44,9 +44,9 @@ module.exports = async (req, res) => {
   const isBot = BOTS.test(ua);
 
   // Vercel rewrite: /listing/:id → /api/listing, id приходить через req.query.id
-  const rawId = (req.query && req.query.id)
-    || (req.headers['x-matched-path'] || '').split('/').filter(Boolean).pop()
-    || req.url.split('/').filter(Boolean).pop()
+  // id передається як частина URL: /api/listing/XXXX або через query
+  const rawId = req.url.split('/').filter(Boolean).pop()
+    || (req.query && req.query.id)
     || '';
   const id = rawId.split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
 
