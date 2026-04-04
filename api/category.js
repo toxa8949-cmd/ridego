@@ -52,21 +52,33 @@ async function getListingsByCategory(catName) {
   } catch(e) { return []; }
 }
 
+function getParam(req, key) {
+  if (req.query && req.query[key]) return req.query[key];
+  try {
+    const qs = (req.url || '').split('?')[1] || '';
+    for (const p of qs.split('&')) {
+      const [k,v] = p.split('=');
+      if (decodeURIComponent(k||'') === key) return decodeURIComponent(v||'');
+    }
+  } catch(e) {}
+  return '';
+}
+
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
-  // Читаємо slug з query string вручну
-  const _qs2 = req.url.includes('?') ? req.url.split('?')[1] : '';
-  const _qp2 = {};
-  _qs2.split('&').forEach(function(p) {
-    const kv = p.split('=');
-    if (kv[0]) _qp2[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
-  });
-  const rawSlug = _qp2.slug || (req.query && req.query.slug) || '';
-  const slug = rawSlug.replace(/[^a-zA-Z0-9_-]/g,'');
+  const slug = getParam(req, 'slug').replace(/[^a-zA-Z0-9_-]/g,'');
   const catInfo = CATEGORIES[slug];
 
-  // SSR для всіх
+  if (!isBot) {
+    const fs = require('fs'); const path = require('path');
+    try {
+      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      return res.status(200).send(html);
+    } catch(e) { res.setHeader('Location', `${BASE}/category/${slug}`); return res.status(302).end(); }
+  }
 
   const catName = catInfo?.name || slug;
   const catDesc = catInfo?.desc || `Купити ${catName} в Україні на маркетплейсі RideGO.`;

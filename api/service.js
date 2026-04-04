@@ -1,7 +1,7 @@
 const BASE = 'https://ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
-const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider/i;
+const BOTS = /googlebot|google-inspectiontool|google-inspection|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|headlesschrome|lighthouse|chrome-lighthouse/i;
 
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -34,15 +34,23 @@ async function getService(id) {
   };
 }
 
+function getParam(req, key) {
+  if (req.query && req.query[key]) return req.query[key];
+  try {
+    const qs = (req.url || '').split('?')[1] || '';
+    for (const p of qs.split('&')) {
+      const [k,v] = p.split('=');
+      if (decodeURIComponent(k||'') === key) return decodeURIComponent(v||'');
+    }
+  } catch(e) {}
+  return '';
+}
+
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
 
-  const rawId = (req.query && req.query.id)
-    || (req.headers['x-matched-path'] || '').split('/').filter(Boolean).pop()
-    || req.url.split('/').filter(Boolean).pop()
-    || '';
-  const id = rawId.split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
+  const id = getParam(req, 'id').replace(/[^a-zA-Z0-9_-]/g, '');
 
   if (!isBot) {
     const fs = require('fs'); const path = require('path');
