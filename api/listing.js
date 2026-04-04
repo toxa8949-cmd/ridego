@@ -39,22 +39,38 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function getId(req) {
+  // 1. Vercel x-now-route-matches header (найнадійніший)
+  try {
+    const matches = req.headers['x-now-route-matches'];
+    if (matches) {
+      const parsed = JSON.parse(matches);
+      if (parsed.id) return parsed.id;
+    }
+  } catch(e) {}
+
+  // 2. Query string
+  try {
+    const qs = req.url.split('?')[1] || '';
+    const params = {};
+    qs.split('&').forEach(p => {
+      const [k,v] = p.split('=');
+      if (k) params[decodeURIComponent(k)] = decodeURIComponent(v||'');
+    });
+    if (params.id) return params.id;
+  } catch(e) {}
+
+  // 3. req.query
+  if (req.query && req.query.id) return req.query.id;
+
+  return '';
+}
+
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
+  const id = getId(req).replace(/[^a-zA-Z0-9_-]/g, '');
 
-  // Vercel rewrite: /listing/:id → /api/listing, id приходить через req.query.id
-  // Читаємо id з query string вручну (req.query може бути undefined)
-  const _qs = req.url.includes('?') ? req.url.split('?')[1] : '';
-  const _qp = {};
-  _qs.split('&').forEach(function(p) {
-    const kv = p.split('=');
-    if (kv[0]) _qp[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
-  });
-  const rawId = _qp.id || (req.query && req.query.id) || '';
-  const id = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
-
-  // Люди отримують SPA, боти отримують SSR
   if (!isBot) {
     const fs = require('fs');
     const path = require('path');
@@ -75,17 +91,13 @@ module.exports = async (req, res) => {
   const priceFormatted = listing.price ? Number(listing.price).toLocaleString('uk') : '';
   const catSlug = CAT_SLUGS[listing.cat] || 'catalog';
 
-  // SEO title: унікальний, до 60 символів
   const titleStr = listing.title
     ? [listing.title, listing.city ? `купити в ${listing.city}` : 'купити', priceFormatted ? `${priceFormatted} грн` : '', 'RideGO'].filter(Boolean).join(' — ')
     : 'RideGO — Маркетплейс електротранспорту';
 
-  // SEO description: інформативний, до 160 символів
   const rawDesc = listing.desc ? listing.desc.replace(/\s+/g,' ').trim() : '';
   const autoParts = [listing.condition, listing.cat, listing.city ? `м.${listing.city}` : '', priceFormatted ? `${priceFormatted}грн` : '', listing.year ? `${listing.year}р.` : ''].filter(Boolean);
-  const descStr = rawDesc
-    ? (rawDesc.length > 155 ? rawDesc.slice(0,152)+'...' : rawDesc)
-    : autoParts.join(' · ') || listing.title;
+  const descStr = rawDesc ? (rawDesc.length > 155 ? rawDesc.slice(0,152)+'...' : rawDesc) : autoParts.join(' · ') || listing.title;
 
   const productSchema = JSON.stringify({
     "@context": "https://schema.org",
@@ -103,8 +115,7 @@ module.exports = async (req, res) => {
       "priceValidUntil": new Date(Date.now()+30*86400000).toISOString().split('T')[0],
       "seller": { "@type": "Person", "name": listing.sellerName || "Продавець" },
       "itemCondition": listing.condition === 'Новий' ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition"
-    },
-    ...(listing.year ? { "productionDate": String(listing.year) } : {})
+    }
   });
 
   const breadcrumbSchema = JSON.stringify({
@@ -129,15 +140,11 @@ module.exports = async (req, res) => {
 <link rel="canonical" href="${BASE}/listing/${id}">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta property="og:type" content="product">
-<meta property="og:title" content="${escHtml(listing.title + (listing.city ? ' у ' + listing.city : '') + ' — RideGO')}">
+<meta property="og:title" content="${escHtml(listing.title + ' — RideGO')}">
 <meta property="og:description" content="${escHtml(descStr)}">
 <meta property="og:image" content="${escHtml(listing.img || BASE+'/og-image.png')}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
 <meta property="og:url" content="${BASE}/listing/${id}">
-<meta property="og:site_name" content="RideGO">
 <meta property="og:locale" content="uk_UA">
-${priceFormatted ? `<meta property="product:price:amount" content="${escHtml(String(listing.price))}"><meta property="product:price:currency" content="UAH">` : ''}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escHtml(listing.title + ' — RideGO')}">
 <meta name="twitter:description" content="${escHtml(descStr)}">
@@ -146,32 +153,29 @@ ${priceFormatted ? `<meta property="product:price:amount" content="${escHtml(Str
 <script type="application/ld+json">${breadcrumbSchema}</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;max-width:820px;margin:0 auto;padding:20px;color:#222;line-height:1.6;background:#fff}
-.bc{font-size:13px;color:#888;margin-bottom:20px}
-.bc a{color:#1db954;text-decoration:none}
-.bc span{margin:0 5px;color:#ccc}
-h1{font-size:clamp(20px,4vw,28px);font-weight:800;margin-bottom:8px;line-height:1.3;color:#111}
+body{font-family:'Segoe UI',Arial,sans-serif;max-width:820px;margin:0 auto;padding:20px;color:#222;background:#fff}
+.bc{font-size:13px;color:#888;margin-bottom:20px}.bc a{color:#1db954;text-decoration:none}.bc span{margin:0 5px;color:#ccc}
+h1{font-size:clamp(20px,4vw,28px);font-weight:800;margin-bottom:8px;color:#111}
 .price{font-size:32px;font-weight:800;color:#1db954;margin-bottom:16px}
 .img-wrap img{width:100%;max-height:480px;object-fit:cover;border-radius:12px;display:block;margin-bottom:20px}
 .specs{border-collapse:collapse;width:100%;margin-bottom:20px;font-size:15px}
 .specs td{padding:10px 12px;border-bottom:1px solid #f0f0f0}
-.specs td:first-child{color:#888;width:130px}
-.specs td:last-child{font-weight:600}
+.specs td:first-child{color:#888;width:130px}.specs td:last-child{font-weight:600}
 .desc{font-size:15px;color:#444;line-height:1.8;margin-bottom:24px;background:#f9f9f9;border-radius:10px;padding:16px}
 .cta{display:inline-block;background:#1db954;color:#fff;padding:15px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px;margin-bottom:32px}
 .related a{display:inline-block;padding:8px 16px;background:#f0fdf4;border-radius:8px;text-decoration:none;color:#166534;font-size:13px;font-weight:600;margin:4px}
 </style>
 </head>
 <body>
-<nav class="bc" aria-label="Breadcrumb">
+<nav class="bc">
   <a href="${BASE}">RideGO</a><span>›</span>
   <a href="${BASE}/catalog">Каталог</a><span>›</span>
   ${listing.cat ? `<a href="${BASE}/category/${catSlug}">${escHtml(listing.cat)}</a><span>›</span>` : ''}
-  <span>${escHtml(listing.title.slice(0,50))}${listing.title.length>50?'...':''}</span>
+  <span>${escHtml(listing.title.slice(0,50))}</span>
 </nav>
 <h1>${escHtml(listing.title)}${listing.city ? ` у ${escHtml(listing.city)}` : ''}</h1>
 <div class="price">${priceFormatted ? priceFormatted+' грн' : 'Ціна договірна'}</div>
-${listing.img ? `<div class="img-wrap"><img src="${escHtml(listing.img)}" alt="${escHtml(listing.title+(listing.city?' у '+listing.city:''))}" width="820" height="480" loading="eager" fetchpriority="high"></div>` : ''}
+${listing.img ? `<div class="img-wrap"><img src="${escHtml(listing.img)}" alt="${escHtml(listing.title)}" width="820" height="480" loading="eager"></div>` : ''}
 <table class="specs">
   ${listing.city ? `<tr><td>Місто</td><td>${escHtml(listing.city)}</td></tr>` : ''}
   ${listing.cat ? `<tr><td>Категорія</td><td><a href="${BASE}/category/${catSlug}" style="color:#1db954;text-decoration:none">${escHtml(listing.cat)}</a></td></tr>` : ''}
@@ -184,7 +188,6 @@ ${listing.desc ? `<div class="desc">${escHtml(listing.desc)}</div>` : ''}
 <div class="related">
   <strong style="display:block;margin-bottom:8px;font-size:15px">Більше оголошень:</strong>
   ${listing.cat ? `<a href="${BASE}/category/${catSlug}">Всі ${escHtml(listing.cat)}</a>` : ''}
-  ${listing.city ? `<a href="${BASE}/catalog?city=${encodeURIComponent(listing.city)}">${escHtml(listing.cat||'Транспорт')} у ${escHtml(listing.city)}</a>` : ''}
   <a href="${BASE}/catalog">Весь каталог</a>
 </div>
 </body>
