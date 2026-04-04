@@ -1,7 +1,7 @@
 const BASE = 'https://ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
-const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider/i;
+const BOTS = /googlebot|google-inspectiontool|google-inspection|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|headlesschrome|lighthouse|chrome-lighthouse/i;
 
 const CATEGORIES = {
   'elektrosamokaty':   { name: 'Електросамокати', icon: '⚡', desc: 'Купити електросамокат в Україні — великий вибір нових та вживаних електросамокатів від приватних продавців і магазинів за вигідними цінами.' },
@@ -63,18 +63,7 @@ module.exports = async (req, res) => {
   const slug = rawSlug.replace(/[^a-zA-Z0-9_-]/g,'');
   const catInfo = CATEGORIES[slug];
 
-  if (!isBot) {
-    const fs = require('fs'); const path = require('path');
-    try {
-      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      return res.status(200).send(html);
-    } catch(e) {
-      res.setHeader('Location', `${BASE}/category/${slug}`);
-      return res.status(302).end();
-    }
-  }
+  // SSR для всіх
 
   const catName = catInfo?.name || slug;
   const catDesc = catInfo?.desc || `Купити ${catName} в Україні на маркетплейсі RideGO.`;
