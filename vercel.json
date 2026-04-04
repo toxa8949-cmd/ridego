@@ -169,27 +169,27 @@
     },
     {
       "source": "/api/listing/:id",
-      "destination": "/api/listing/$id"
+      "destination": "/api/listing?id=$id"
     },
     {
       "source": "/api/news-item/:id",
-      "destination": "/api/news-item/$id"
+      "destination": "/api/news-item?id=$id"
     },
     {
       "source": "/api/category/:slug",
-      "destination": "/api/category/$slug"
+      "destination": "/api/category?slug=$slug"
     },
     {
       "source": "/listing/:id",
-      "destination": "/api/listing/$id"
+      "destination": "/api/listing?id=$id"
     },
     {
       "source": "/category/:slug",
-      "destination": "/api/category/$slug"
+      "destination": "/api/category?slug=$slug"
     },
     {
       "source": "/news/:id",
-      "destination": "/api/news-item/$id"
+      "destination": "/api/news-item?id=$id"
     },
     {
       "source": "/catalog",
@@ -197,11 +197,11 @@
     },
     {
       "source": "/seller/:uid",
-      "destination": "/api/seller/$uid"
+      "destination": "/api/seller?uid=$uid"
     },
     {
       "source": "/service/:id",
-      "destination": "/api/service/$id"
+      "destination": "/api/service?id=$id"
     },
     {
       "source": "/news-detail",
