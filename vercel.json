@@ -197,11 +197,11 @@
     },
     {
       "source": "/seller/:uid",
-      "destination": "/index.html"
+      "destination": "/api/seller?uid=$uid"
     },
     {
       "source": "/service/:id",
-      "destination": "/index.html"
+      "destination": "/api/service?id=$id"
     },
     {
       "source": "/news-detail",
