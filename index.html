@@ -356,6 +356,119 @@
 </head>
 <body>
 
+<!-- ===== SPLASH SCREEN ===== -->
+<div id="app-splash" style="
+  position:fixed;inset:0;z-index:99999;
+  background:#0d1117;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.4s ease, transform 0.4s ease;
+">
+  <style>
+    @keyframes splash-pulse {
+      0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,200,83,0.4); }
+      50% { transform: scale(1.06); box-shadow: 0 0 0 20px rgba(0,200,83,0); }
+    }
+    @keyframes splash-spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes splash-fadein {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes splash-bar {
+      0%   { width: 0%; }
+      30%  { width: 40%; }
+      60%  { width: 70%; }
+      85%  { width: 88%; }
+      100% { width: 100%; }
+    }
+    html.light-preload #app-splash,
+    html[data-theme="light"] #app-splash {
+      background: #f5f5f5;
+    }
+    html.light-preload #splash-tagline,
+    html[data-theme="light"] #splash-tagline {
+      color: #666 !important;
+    }
+  </style>
+
+  <!-- Логотип з пульсацією -->
+  <div style="
+    width:108px;height:108px;border-radius:28px;
+    background:linear-gradient(135deg,#00c853,#00e676);
+    display:flex;align-items:center;justify-content:center;
+    animation:splash-pulse 1.8s ease-in-out infinite;
+    margin-bottom:28px;
+    position:relative;
+  ">
+    <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Блискавка (іконка електро) -->
+      <path d="M32 8L18 30H28L24 48L38 26H28L32 8Z" fill="#0d1117" stroke="#0d1117" stroke-width="1" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- Назва -->
+  <div style="
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:32px;font-weight:800;letter-spacing:-1px;
+    color:#fff;
+    animation:splash-fadein 0.5s ease 0.2s both;
+  ">Ride<span style="color:#00c853">GO</span></div>
+
+  <!-- Підпис -->
+  <div id="splash-tagline" style="
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:13px;color:#8b949e;margin-top:6px;
+    animation:splash-fadein 0.5s ease 0.35s both;
+  ">Маркетплейс електротранспорту</div>
+
+  <!-- Прогрес бар -->
+  <div style="
+    position:absolute;bottom:0;left:0;right:0;height:3px;
+    background:rgba(255,255,255,0.06);
+  ">
+    <div id="splash-progress" style="
+      height:100%;width:0%;
+      background:linear-gradient(90deg,#00c853,#00e676);
+      border-radius:0 2px 2px 0;
+      animation:splash-bar 1.8s cubic-bezier(.4,0,.2,1) forwards;
+    "></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Показуємо splash тільки якщо PWA або перший візит
+  var isPWA = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone;
+  var splash = document.getElementById('app-splash');
+  if (!splash) return;
+
+  // На десктопі в браузері — показуємо дуже коротко (600ms)
+  // В PWA — повний splash (1800ms)
+  var duration = isPWA ? 1900 : 700;
+
+  function hideSplash() {
+    splash.style.opacity = '0';
+    splash.style.transform = 'scale(1.04)';
+    setTimeout(function(){ splash.style.display = 'none'; }, 420);
+  }
+
+  // Ховаємо після duration або після завантаження — що пізніше
+  var timerDone = false, domDone = false;
+  function tryHide() {
+    if (timerDone && domDone) hideSplash();
+  }
+
+  setTimeout(function(){ timerDone = true; tryHide(); }, duration);
+
+  if (document.readyState === 'complete') {
+    domDone = true;
+  } else {
+    window.addEventListener('load', function(){ domDone = true; tryHide(); });
+  }
+})();
+</script>
+
 <!-- ===== HEADER ===== -->
 <header>
   <div class="header-inner">
