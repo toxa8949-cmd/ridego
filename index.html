@@ -400,12 +400,13 @@
     }
   </style>
 
-  <!-- Логотип — спочатку СТАТИЧНИЙ (як системний splash), потім пульсує -->
+  <!-- Логотип — одразу пульсує -->
   <div id="splash-logo-bg" style="
     width:192px;height:192px;border-radius:48px;
-    background:#4caf50;
+    background:linear-gradient(135deg,#00c853,#00e676);
     display:flex;align-items:center;justify-content:center;
     margin-bottom:0;
+    animation:splash-pulse 1.6s ease-in-out infinite;
   ">
     <span style="
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -439,7 +440,6 @@
 <script>
 (function(){
   var splash = document.getElementById('app-splash');
-  var logoBg = document.getElementById('splash-logo-bg');
   var text   = document.getElementById('splash-text');
   var bar    = document.getElementById('splash-bar');
   if (!splash) return;
@@ -462,30 +462,21 @@
     return;
   }
 
-  // PWA: фаза 1 — статичний стан як системний splash (~350ms)
-  // Потім фаза 2 — запускаємо анімацію плавно
+  // PWA: одразу запускаємо анімацію без статичної фази
+  // Показуємо текст
+  text.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+  text.style.transform  = 'translateY(0)';
+  text.style.opacity    = '1';
+
+  // Запускаємо прогрес бар
+  bar.style.display   = 'block';
+  bar.style.animation = 'splash-bar 1.6s cubic-bezier(.4,0,.2,1) forwards';
+
+  // Ховаємо після анімації
   setTimeout(function(){
-    // Запускаємо пульсацію логотипу
-    logoBg.style.transition  = 'background 0.3s ease';
-    logoBg.style.background  = 'linear-gradient(135deg,#00c853,#00e676)';
-    logoBg.style.animation   = 'splash-pulse 1.6s ease-in-out infinite';
-    logoBg.style.borderRadius = '36px';
-
-    // Показуємо текст
-    text.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
-    text.style.transform  = 'translateY(0)';
-    text.style.opacity    = '1';
-
-    // Запускаємо прогрес бар
-    bar.style.display   = 'block';
-    bar.style.animation = 'splash-bar 1.4s cubic-bezier(.4,0,.2,1) forwards';
-
-    // Фаза 3 — ховаємо
-    setTimeout(function(){
-      splash.classList.add('hiding');
-      setTimeout(function(){ splash.style.display='none'; }, 420);
-    }, 1500);
-  }, 350);
+    splash.classList.add('hiding');
+    setTimeout(function(){ splash.style.display='none'; }, 420);
+  }, 1700);
 })();
 </script>
 
