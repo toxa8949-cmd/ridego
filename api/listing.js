@@ -42,7 +42,13 @@ function escHtml(str) {
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
-  const id = req.url.replace('/api/listing/', '').split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
+
+  // Vercel rewrite: /listing/:id → /api/listing, id приходить через req.query.id
+  const rawId = (req.query && req.query.id)
+    || (req.headers['x-matched-path'] || '').split('/').filter(Boolean).pop()
+    || req.url.split('/').filter(Boolean).pop()
+    || '';
+  const id = rawId.split('?')[0].replace(/[^a-zA-Z0-9_-]/g, '');
 
   if (!isBot) {
     const fs = require('fs');

@@ -55,7 +55,12 @@ async function getListingsByCategory(catName) {
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
-  const slug = req.url.replace('/api/category/','').replace('/category/','').split('?')[0].trim().replace(/[^a-zA-Z0-9_-]/g,'');
+  // Vercel rewrite: /category/:slug → /api/category, slug через req.query.slug
+  const rawSlug = (req.query && req.query.slug)
+    || (req.headers['x-matched-path'] || '').split('/').filter(Boolean).pop()
+    || req.url.replace('/api/category/','').replace('/category/','').split('?')[0].trim()
+    || '';
+  const slug = rawSlug.replace(/[^a-zA-Z0-9_-]/g,'');
   const catInfo = CATEGORIES[slug];
 
   if (!isBot) {
