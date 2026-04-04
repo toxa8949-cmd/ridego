@@ -1,6 +1,6 @@
 const PROJECT = 'ridego-6f981';
 const BASE = 'https://ridego.com.ua';
-const BOTS = /googlebot|google-inspectiontool|google-inspection|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|headlesschrome|lighthouse|chrome-lighthouse/i;
+const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool|google-structured-data-testing|storebot|developers\.google/i;
 
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

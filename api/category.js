@@ -1,7 +1,7 @@
 const BASE = 'https://ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
-const BOTS = /googlebot|google-inspectiontool|google-inspection|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|headlesschrome|lighthouse|chrome-lighthouse/i;
+const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool|google-structured-data-testing|storebot|developers\.google/i;
 
 const CATEGORIES = {
   'elektrosamokaty':   { name: 'Електросамокати', icon: '⚡', desc: 'Купити електросамокат в Україні — великий вибір нових та вживаних електросамокатів від приватних продавців і магазинів за вигідними цінами.' },

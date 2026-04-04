@@ -1,7 +1,7 @@
 const PROJECT = 'ridego-6f981';
 const BASE = 'https://ridego.com.ua';
 
-const BOTS = /googlebot|google-inspectiontool|google-inspection|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|headlesschrome|lighthouse|chrome-lighthouse/i;
+const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool|google-structured-data-testing|storebot|developers\.google/i;
 
 const CAT_SLUGS = {
   'Електросамокати':   'elektrosamokaty',
@@ -54,7 +54,20 @@ module.exports = async (req, res) => {
   const rawId = _qp.id || (req.query && req.query.id) || '';
   const id = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
 
-  // SSR для всіх — боти і люди отримують однаковий HTML з даними
+  // Люди отримують SPA, боти отримують SSR
+  if (!isBot) {
+    const fs = require('fs');
+    const path = require('path');
+    try {
+      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      return res.status(200).send(html);
+    } catch(e) {
+      res.setHeader('Location', `${BASE}/listing/${id}`);
+      return res.status(302).end();
+    }
+  }
 
   const listing = await getListingFromFirestore(id);
   if (!listing) return res.status(404).send('<h1>Не знайдено</h1>');
