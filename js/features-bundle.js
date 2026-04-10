@@ -137,6 +137,8 @@ function submitListing() {
   if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
     showToast('⚠️ Невірний формат телефону'); return;
   }
+  var _photos = (typeof uploadedPhotos !== "undefined" && uploadedPhotos.length > 0) ? uploadedPhotos : (window.uploadedPhotos || []);
+  uploadedPhotos = _photos;
   if (!uploadedPhotos || uploadedPhotos.length === 0) {
     showToast('⚠️ Додайте хоча б одне фото'); return;
   }
@@ -360,7 +362,8 @@ function submitListing() {
           localStorage.setItem('ridego_post_rate', JSON.stringify(_rd));
         } catch(e) {}
 
-        var photos = uploadedPhotos.filter(function(p){ return p && p.blob; });
+        var _up = (typeof uploadedPhotos !== "undefined" && uploadedPhotos.length > 0) ? uploadedPhotos : (window.uploadedPhotos || []);
+        var photos = _up.filter(function(p){ return p && p.blob; });
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
 
@@ -412,7 +415,7 @@ function submitListing() {
 }
 
 function _resetAddWizard() {
-  uploadedPhotos = [];
+  uploadedPhotos = []; if (typeof window !== "undefined") window.uploadedPhotos = [];
   addSelectedCat = null;
   addSelectedIcon = '📦';
   if (typeof addMapInstance !== 'undefined' && addMapInstance) { addMapInstance.remove(); addMapInstance = null; addMapMarker = null; }

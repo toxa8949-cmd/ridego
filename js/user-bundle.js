@@ -980,7 +980,7 @@ let nextId = 100;
 let addCurrentStep = 1;
 let addSelectedCat = null;
 let addSelectedIcon = '📦';
-let uploadedPhotos = [];
+var uploadedPhotos = []; window.uploadedPhotos = uploadedPhotos;
 
 const ADD_BRANDS = {
   'Електросамокати': [
@@ -1696,6 +1696,7 @@ function handlePhotoUpload(event) {
     compressImage(file, 1600, 1600, 0.88).then(function(blob) {
       var url = URL.createObjectURL(blob);
       uploadedPhotos.push({ blob: blob, preview: url, uploaded: false, storageUrl: null });
+      window.uploadedPhotos = uploadedPhotos;
       renderPhotoGrid();
     });
   });
@@ -1716,7 +1717,7 @@ function renderPhotoGrid() {
 }
 
 function removePhoto(i) {
-  uploadedPhotos.splice(i, 1);
+  uploadedPhotos.splice(i, 1); window.uploadedPhotos = uploadedPhotos;
   renderPhotoGrid();
 }
 
