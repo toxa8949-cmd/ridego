@@ -48,14 +48,26 @@ const COPY_FILES = [
 
 COPY_FILES.forEach(f => {
   const src = path.join(SRC, f);
-  if (fs.existsSync(src)) {
+  if (!fs.existsSync(src)) return;
+
+  if (f === 'sw.js') {
+    // Auto-bump SW cache version з build hash
+    let swContent = fs.readFileSync(src, 'utf8');
+    const buildHash = hash(Date.now().toString()).slice(0, 6);
+    swContent = swContent
+      .replace(/ridego-v\d+/g, 'ridego-v' + buildHash)
+      .replace(/ridego-static-v\d+/g, 'ridego-static-v' + buildHash)
+      .replace(/BUILD_TIMESTAMP:.+/, 'BUILD_TIMESTAMP: ' + new Date().toISOString().split('T')[0]);
+    fs.writeFileSync(path.join(DIST, f), swContent);
+    console.log(`  sw.js: cache version → ridego-v${buildHash}`);
+  } else {
     fs.copyFileSync(src, path.join(DIST, f));
     console.log(`  copied: ${f}`);
   }
 });
 
 // API файли
-['listing.js', 'news-item.js', 'sitemap.js', 'category.js', 'send-email.js', 'config.js', 'home.js', 'catalog.js'].forEach(f => {
+['listing.js', 'news-item.js', 'sitemap.js', 'category.js', 'send-email.js', 'config.js', 'home.js', 'catalog.js', 'seller.js', 'service.js'].forEach(f => {
   const src = path.join(SRC, 'api', f);
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, path.join(DIST, 'api', f));

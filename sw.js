@@ -1,13 +1,17 @@
 // RideGO Service Worker
-const CACHE_NAME = 'ridego-v6';
-const CACHE_STATIC = 'ridego-static-v6';
+// BUILD_TIMESTAMP: 2026-04-10
+const CACHE_NAME = 'ridego-v7';
+const CACHE_STATIC = 'ridego-static-v7';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/favicon.svg',
   '/favicon.ico',
-  '/manifest.json'
+  '/manifest.json',
+  '/js/core-bundle.js',
+  '/js/pages-bundle.js',
+  '/css/main.css'
 ];
 
 self.addEventListener('install', function(e) {
