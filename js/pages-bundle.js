@@ -608,37 +608,93 @@ function _appendCatalogPage() {
 
   const shown = _catalogPage * PAGE_SIZE;
   _catalogAllShown = shown >= _catalogData.length;
+
+  // Prefetch: якщо залишилось менше 2 сторінок локальних даних — довантажити з сервера у фоні
+  var remaining = _catalogData.length - shown;
+  if (remaining < PAGE_SIZE * 2 && typeof loadMoreListings === 'function' && !_allListingsLoaded && !_loadingMore) {
+    loadMoreListings(function(hasMore) {
+      if (hasMore) {
+        // Тихо оновлюємо дані — юзер побачить нові при наступному скролі
+        var data = getFilteredData();
+        _cleanExpiredPromos(data);
+        var regularData = data.filter(function(l){ return !(l.promo === 'top' && _isPromoActive(l)); });
+        _catalogData = _sortWithPromo(regularData, currentSort);
+        _catalogAllShown = false;
+        var numEl = document.getElementById('results-num');
+        if (numEl) numEl.textContent = data.length;
+        // Оновлюємо UI кнопки
+        var remEl = document.getElementById('catalog-remaining-count');
+        if (remEl) {
+          var newRemaining = _catalogData.length - shown;
+          remEl.textContent = newRemaining > 0 ? '(' + newRemaining + (!_allListingsLoaded ? '+' : '') + ' ще)' : '';
+        }
+      }
+    });
+  }
+
   _updatePaginationUI();
 }
 
 function _updatePaginationUI() {
   var existing = document.getElementById('catalog-load-more-wrap');
-  if (_catalogAllShown) {
+  var shown = _catalogPage * PAGE_SIZE;
+  var localExhausted = shown >= _catalogData.length;
+
+  // Якщо локальні дані закінчились, але на сервері є ще — довантажити
+  if (localExhausted && typeof loadMoreListings === 'function' && !_allListingsLoaded) {
+    if (!existing) _createLoadMoreBtn();
+    var btn = document.getElementById('catalog-load-more-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Завантаження...'; }
+    loadMoreListings(function(hasMore) {
+      if (hasMore) {
+        // Перезапустити пошук з новими даними
+        var data = getFilteredData();
+        _cleanExpiredPromos(data);
+        var regularData = data.filter(function(l){ return !(l.promo === 'top' && _isPromoActive(l)); });
+        regularData = _sortWithPromo(regularData, currentSort);
+        _catalogData = regularData;
+        _catalogAllShown = false;
+        document.getElementById('results-num').textContent = data.length;
+        _appendCatalogPage();
+      } else {
+        _catalogAllShown = true;
+        if (existing) existing.remove();
+        _detachInfiniteScroll();
+      }
+    });
+    return;
+  }
+
+  if (localExhausted) {
+    _catalogAllShown = true;
     if (existing) existing.remove();
     _detachInfiniteScroll();
     return;
   }
-  if (!existing) {
-    var div = document.createElement('div');
-    div.id = 'catalog-load-more-wrap';
-    div.style.cssText = 'display:flex;justify-content:center;padding:28px 0 8px;grid-column:1/-1';
-    div.innerHTML = `<button id="catalog-load-more-btn" onclick="_appendCatalogPage()"
-      style="padding:13px 36px;border-radius:50px;border:1px solid var(--brand);color:var(--brand);
-             background:transparent;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit"
-      onmouseover="this.style.background='var(--brand-dim)'" onmouseout="this.style.background='transparent'">
-      <i class="fa-solid fa-chevron-down" style="margin-right:8px"></i>
-      Завантажити ще
-      <span style="opacity:.6;font-weight:400;margin-left:6px" id="catalog-remaining-count"></span>
-    </button>`;
-    document.getElementById('catalog-listings').after(div);
-    _attachInfiniteScroll();
-  }
+  if (!existing) _createLoadMoreBtn();
 
   var remEl = document.getElementById('catalog-remaining-count');
   if (remEl) {
-    var remaining = _catalogData.length - _catalogPage * PAGE_SIZE;
-    remEl.textContent = remaining > 0 ? '(' + remaining + ' ще)' : '';
+    var remaining = _catalogData.length - shown;
+    var serverMore = (typeof _allListingsLoaded !== 'undefined' && !_allListingsLoaded) ? '+' : '';
+    remEl.textContent = remaining > 0 ? '(' + remaining + serverMore + ' ще)' : '';
   }
+}
+
+function _createLoadMoreBtn() {
+  var div = document.createElement('div');
+  div.id = 'catalog-load-more-wrap';
+  div.style.cssText = 'display:flex;justify-content:center;padding:28px 0 8px;grid-column:1/-1';
+  div.innerHTML = '<button id="catalog-load-more-btn" onclick="_appendCatalogPage()"'
+    + ' style="padding:13px 36px;border-radius:50px;border:1px solid var(--brand);color:var(--brand);'
+    + 'background:transparent;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit"'
+    + ' onmouseover="this.style.background=\'var(--brand-dim)\'" onmouseout="this.style.background=\'transparent\'">'
+    + '<i class="fa-solid fa-chevron-down" style="margin-right:8px"></i>'
+    + 'Завантажити ще'
+    + '<span style="opacity:.6;font-weight:400;margin-left:6px" id="catalog-remaining-count"></span>'
+    + '</button>';
+  document.getElementById('catalog-listings').after(div);
+  _attachInfiniteScroll();
 }
 
 function _removePaginationUI() {
@@ -648,13 +704,17 @@ function _removePaginationUI() {
 }
 
 var _infiniteScrollObserver = null;
+var _infiniteScrollLoading = false;
 function _attachInfiniteScroll() {
   if (_infiniteScrollObserver || typeof IntersectionObserver === 'undefined') return;
   var sentinel = document.getElementById('catalog-load-more-wrap');
   if (!sentinel) return;
   _infiniteScrollObserver = new IntersectionObserver(function(entries) {
-    if (entries[0].isIntersecting && !_catalogAllShown) {
+    if (entries[0].isIntersecting && !_catalogAllShown && !_infiniteScrollLoading) {
+      _infiniteScrollLoading = true;
       _appendCatalogPage();
+      // Розблокувати через невеликий таймаут (щоб loadMore встиг почати)
+      setTimeout(function() { _infiniteScrollLoading = false; }, 500);
     }
   }, { rootMargin: '200px' });
   _infiniteScrollObserver.observe(sentinel);

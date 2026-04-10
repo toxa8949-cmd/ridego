@@ -1025,6 +1025,47 @@ function _loadUserServices(uid) {
 
 var _fbDataLoadedAt = 0;
 var _FB_CACHE_TTL   = 10 * 60 * 1000;
+var _lastListingDoc = null;
+var _allListingsLoaded = false;
+var _loadingMore = false;
+
+function loadMoreListings(callback) {
+  if (_allListingsLoaded || _loadingMore || !window._db || !_lastListingDoc) {
+    if (callback) callback(false);
+    return;
+  }
+  _loadingMore = true;
+  window._db.collection('listings')
+    .where('status','==','active')
+    .orderBy('createdAt','desc')
+    .startAfter(_lastListingDoc)
+    .limit(50).get()
+    .then(function(snap) {
+      _loadingMore = false;
+      if (!snap.docs.length) {
+        _allListingsLoaded = true;
+        if (callback) callback(false);
+        return;
+      }
+      _lastListingDoc = snap.docs[snap.docs.length - 1];
+      if (snap.docs.length < 50) _allListingsLoaded = true;
+
+      var existingIds = {};
+      _fbListings.forEach(function(l){ if (l.id) existingIds[l.id] = true; });
+
+      snap.docs.forEach(function(d) {
+        if (!existingIds[d.id]) {
+          _fbListings.push(Object.assign({id: d.id}, d.data()));
+        }
+      });
+      _idbSet('listings', _fbListings);
+      if (callback) callback(true);
+    }).catch(function(e) {
+      _loadingMore = false;
+      console.log('loadMore:', e.message);
+      if (callback) callback(false);
+    });
+}
 
 function loadFirebaseData(force) {
   if (!window._db) return;
@@ -1070,10 +1111,15 @@ function _loadFirebaseFromNetwork(force) {
     return;
   }
 
-  window._db.collection('listings').orderBy('createdAt','desc').limit(50).get()
+  // Спочатку завантажуємо 50 для домашньої сторінки (швидкий перший render)
+  window._db.collection('listings')
+    .where('status','==','active')
+    .orderBy('createdAt','desc').limit(50).get()
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
+      _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+      _allListingsLoaded = snap.docs.length < 50;
 
       _idbSet('listings', _fbListings);
 
@@ -1083,7 +1129,6 @@ function _loadFirebaseFromNetwork(force) {
 
       renderHomeListings();
       renderCatalog();
-      // Оновити лічильник активних оголошень в профілі
       if (typeof _updateActiveCount === 'function') _updateActiveCount();
 
       setTimeout(function() {
