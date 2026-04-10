@@ -1622,7 +1622,18 @@ function onOblastChange() {
   var _cityOblasts2 = {'Місто Київ': 'Київ', 'Місто Севастополь': 'Севастополь'};
   if (_cityOblasts2[oblast] && cityInp) {
     cityInp.value = _cityOblasts2[oblast];
-    raionSel.disabled = true;
+    var geoData = UA_GEO[oblast];
+    if (geoData && geoData.raions) {
+      Object.entries(geoData.raions).sort((a,b)=>a[0].localeCompare(b[0],"uk")).forEach(([name,data])=>{
+        const o=document.createElement("option");
+        o.value=name; o.textContent=name;
+        o.dataset.lat=data.lat; o.dataset.lng=data.lng;
+        raionSel.appendChild(o);
+      });
+      raionSel.disabled = false;
+    } else {
+      raionSel.disabled = true;
+    }
     setTimeout(onCityChange, 50);
     return;
   }
