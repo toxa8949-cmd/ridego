@@ -640,11 +640,34 @@ function renderMyListings() {
 function _updateActiveCount() {
   var uid = currentUser && currentUser.uid;
   if (!uid) return;
-  var count = _allListings().filter(function(l){
-    return l && l.uid === uid && l.status !== 'deleted' && l.status !== 'sold';
-  }).length;
-  var el = document.getElementById('pstat-active');
-  if (el) el.textContent = count;
+  // Рахуємо з Firestore щоб мати актуальні дані
+  if (window._db) {
+    window._db.collection('listings')
+      .where('uid', '==', uid)
+      .where('status', '==', 'active')
+      .get()
+      .then(function(snap) {
+        var el = document.getElementById('pstat-active');
+        if (el) el.textContent = snap.size;
+        // Оновлюємо також myListings
+        var fresh = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+        if (typeof myListings !== 'undefined') myListings = fresh;
+        window.myListings = fresh;
+      }).catch(function() {
+        // Fallback — рахуємо з кешу
+        var count = _allListings().filter(function(l){
+          return l && l.uid === uid && l.status === 'active';
+        }).length;
+        var el = document.getElementById('pstat-active');
+        if (el) el.textContent = count;
+      });
+  } else {
+    var count = _allListings().filter(function(l){
+      return l && l.uid === uid && l.status === 'active';
+    }).length;
+    var el = document.getElementById('pstat-active');
+    if (el) el.textContent = count;
+  }
 }
 
 function deleteListing(id) {
