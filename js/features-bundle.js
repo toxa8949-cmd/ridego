@@ -360,15 +360,17 @@ function submitListing() {
           localStorage.setItem('ridego_post_rate', JSON.stringify(_rd));
         } catch(e) {}
 
-        var photos = (uploadedPhotos || []).filter(function(p){ return p && p.blob; });
+        var photos = (uploadedPhotos || []).slice().filter(function(p){ return p && p.blob; });
+        // Клонуємо blob-посилання щоб GC не забрав їх після очищення
+        var photoBlobs = photos.map(function(p) { return { blob: p.blob, idx: 0 }; });
         uploadedPhotos = []; window.uploadedPhotos = []; // очищаємо після збереження
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
 
-        if (photos.length > 0) {
-          var urls = new Array(photos.length).fill(null);
-          var uploaded = 0;
-          photos.forEach(function(p, idx) {
+        if (photoBlobs.length > 0) {
+          var urls = new Array(photoBlobs.length).fill(null);
+          var completed = 0;
+          photoBlobs.forEach(function(p, idx) {
             var fd = new FormData();
             fd.append('file', p.blob, 'photo.jpg');
             fd.append('upload_preset', 'ridego_unsigned');
@@ -378,9 +380,10 @@ function submitListing() {
             }).then(function(r){ return r.json(); })
             .then(function(data) {
               urls[idx] = data.secure_url;
-              uploaded++;
-              if (uploaded === photos.length) {
+              completed++;
+              if (completed === photoBlobs.length) {
                 var finalUrls = urls.filter(Boolean);
+                if (!finalUrls.length) { showToast('⚠️ Фото не вдалося завантажити'); return; }
                 window._db.collection('listings').doc(docRef.id).update({
                   img: finalUrls[0] || '',
                   imgs: finalUrls
@@ -392,7 +395,20 @@ function submitListing() {
                   showToast('🖼 Фото завантажено!');
                 });
               }
-            }).catch(function(e){ console.error('Cloudinary upload error:', e); });
+            }).catch(function(e){
+              console.error('Cloudinary upload error:', e);
+              completed++; // щоб не зависало на помилці
+              if (completed === photoBlobs.length) {
+                var finalUrls = urls.filter(Boolean);
+                if (finalUrls.length) {
+                  window._db.collection('listings').doc(docRef.id).update({
+                    img: finalUrls[0] || '',
+                    imgs: finalUrls
+                  }).catch(function(){});
+                }
+                showToast('⚠️ Деякі фото не завантажились');
+              }
+            });
           });
         }
       })
@@ -423,13 +439,34 @@ function _resetAddWizard() {
   var lh = document.getElementById('add-location-hint');
   if (lh) lh.style.display = 'none';
   document.querySelectorAll('#add-step-1 .transport-btn').forEach(function(b){ b.classList.remove('selected'); });
-  ['new-title','new-price','new-desc','new-phone','new-mileage','new-district','new-model'].forEach(function(id) {
+  // Очищуємо ВСІ текстові поля
+  ['new-title','new-price','new-desc','new-phone','new-mileage','new-district','new-model','new-city'].forEach(function(id) {
     var el = document.getElementById(id); if(el) el.value = '';
   });
+  // Очищуємо select-поля
+  var oblastEl = document.getElementById('new-oblast');
+  if (oblastEl) oblastEl.value = '';
+  var raionEl = document.getElementById('new-raion');
+  if (raionEl) { raionEl.innerHTML = '<option value="">Оберіть район...</option>'; raionEl.disabled = true; }
+  var yearEl = document.getElementById('new-year');
+  if (yearEl) yearEl.selectedIndex = 0;
+  var condEl = document.getElementById('new-condition');
+  if (condEl) condEl.value = 'Хороший';
+  var bargEl = document.getElementById('new-bargain');
+  if (bargEl) bargEl.selectedIndex = 0;
+  // Очищуємо бренд/модель
   var bc = document.getElementById('new-brand-custom');
   if (bc) { bc.value=''; bc.style.display='none'; }
   var ms = document.getElementById('new-model-select');
   if (ms) { ms.innerHTML='<option value="">— спочатку оберіть бренд —</option>'; ms.disabled=true; }
+  // Очищуємо фото-сітку
+  var pg = document.getElementById('photo-grid');
+  if (pg) pg.innerHTML = '';
+  var ut = document.getElementById('upload-trigger');
+  if (ut) ut.style.display = '';
+  // Очищуємо spec-поля
+  var specForm = document.getElementById('add-specs-form');
+  if (specForm) specForm.innerHTML = '';
   if (typeof addGoStep === 'function') addGoStep(1);
 }
 
@@ -732,7 +769,7 @@ function saveEditListing() {
       // ── Якщо є нові фото — завантажити їх на Cloudinary ──
       if (newPhotos.length > 0) {
         var urls = new Array(newPhotos.length).fill(null);
-        var uploaded = 0;
+        var completed = 0;
         newPhotos.forEach(function(p, idx) {
           var fd = new FormData();
           fd.append('file', p.blob, 'photo.jpg');
@@ -743,8 +780,8 @@ function saveEditListing() {
           }).then(function(r){ return r.json(); })
           .then(function(data) {
             urls[idx] = data.secure_url;
-            uploaded++;
-            if (uploaded === newPhotos.length) {
+            completed++;
+            if (completed === newPhotos.length) {
               var newUrls = urls.filter(Boolean);
               var allUrls = existingUrls.concat(newUrls);
               window._db.collection('listings').doc(editId).update({
@@ -758,7 +795,20 @@ function saveEditListing() {
                 showToast('🖼 Фото оновлено!');
               });
             }
-          }).catch(function(e){ console.error('Cloudinary upload error:', e); uploaded++; });
+          }).catch(function(e){
+            console.error('Cloudinary upload error:', e);
+            completed++;
+            if (completed === newPhotos.length) {
+              var newUrls = urls.filter(Boolean);
+              var allUrls = existingUrls.concat(newUrls);
+              if (allUrls.length) {
+                window._db.collection('listings').doc(editId).update({
+                  img: allUrls[0] || '', imgs: allUrls
+                }).catch(function(){});
+              }
+              showToast('⚠️ Деякі фото не завантажились');
+            }
+          });
         });
       }
 
