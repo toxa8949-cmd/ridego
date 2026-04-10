@@ -81,17 +81,15 @@ function onOblastChange() {
   var _cityOblasts2 = {'Місто Київ': 'Київ', 'Місто Севастополь': 'Севастополь'};
   if (_cityOblasts2[oblast] && cityInp) {
     cityInp.value = _cityOblasts2[oblast];
-    // Якщо є райони в UA_GEO — показуємо їх
     var geoData = UA_GEO[oblast];
     if (geoData && geoData.raions && Object.keys(geoData.raions).length > 0) {
-      Object.entries(geoData.raions).sort(function(a,b){ return a[0].localeCompare(b[0],'uk'); }).forEach(function(entry) {
-        var o = document.createElement('option');
-        o.value = entry[0]; o.textContent = entry[0];
-        o.dataset.lat = entry[1].lat; o.dataset.lng = entry[1].lng;
+      Object.entries(geoData.raions).sort((a,b) => a[0].localeCompare(b[0],"uk")).forEach(([name, data]) => {
+        const o = document.createElement("option");
+        o.value = name; o.textContent = name;
+        o.dataset.lat = data.lat; o.dataset.lng = data.lng;
         raionSel.appendChild(o);
       });
       raionSel.disabled = false;
-      if (geoData) showAddMap(geoData.lat, geoData.lng, _cityOblasts2[oblast], 11);
     } else {
       raionSel.disabled = true;
     }
