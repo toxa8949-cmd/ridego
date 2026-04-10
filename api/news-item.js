@@ -1,5 +1,5 @@
 const PROJECT = 'ridego-6f981';
-const BASE = 'https://ridego.com.ua';
+const BASE = 'https://www.ridego.com.ua';
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool|google-structured-data-testing|storebot|developers\.google/i;
 
 function escHtml(str) {

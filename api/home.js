@@ -1,5 +1,5 @@
 // api/home.js — SSR для головної сторінки (боти отримують повний контент)
-const BASE = 'https://ridego.com.ua';
+const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider/i;

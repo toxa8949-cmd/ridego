@@ -1,4 +1,4 @@
-const BASE = 'https://ridego.com.ua';
+const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
 const BOTS = /googlebot|google-inspectiontool|google-inspection|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|headlesschrome|lighthouse|chrome-lighthouse/i;
