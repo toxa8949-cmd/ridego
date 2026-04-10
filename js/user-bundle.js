@@ -1706,15 +1706,18 @@ function handlePhotoUpload(event) {
 
 function renderPhotoGrid() {
   const grid = document.getElementById('photo-grid');
+  if (!grid) return;
   grid.innerHTML = uploadedPhotos.map(function(item, i) {
-    var src = typeof item === 'string' ? item : item.preview;
+    var src = typeof item === 'string' ? item : (item.preview || item.storageUrl || '');
+    if (!src) return '';
     return '<div class="photo-thumb-wrap">' +
       '<img src="' + src + '" alt="Фото ' + (i+1) + '" loading="lazy" decoding="async">' +
       (i===0 ? '<div class="photo-main-badge">Головне</div>' : '') +
       '<button class="remove-photo" onclick="removePhoto(' + i + ')">×</button>' +
       '</div>';
   }).join('');
-  document.getElementById('upload-trigger').style.display = uploadedPhotos.length >= 10 ? 'none' : '';
+  var trigger = document.getElementById('upload-trigger');
+  if (trigger) trigger.style.display = uploadedPhotos.length >= 10 ? 'none' : '';
 }
 
 function removePhoto(i) {

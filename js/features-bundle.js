@@ -137,7 +137,7 @@ function submitListing() {
   if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
     showToast('⚠️ Невірний формат телефону'); return;
   }
-  if (!(window._pendingPhotos && window._pendingPhotos.length > 0) && (!uploadedPhotos || uploadedPhotos.length === 0)) {
+  if (!uploadedPhotos || uploadedPhotos.length === 0) {
     showToast('⚠️ Додайте хоча б одне фото'); return;
   }
 
@@ -256,8 +256,8 @@ function submitListing() {
     desc: desc || 'Опис не вказано.',
     seller: currentUser.name || currentUser.email || '',
     time: 'Щойно',
-    img:  (window._pendingPhotos && window._pendingPhotos[0] && window._pendingPhotos[0].preview) || '',
-    imgs: uploadedPhotos.length ? [...uploadedPhotos] : [],
+    img:  (uploadedPhotos.length && uploadedPhotos[0] && (uploadedPhotos[0].preview || (typeof uploadedPhotos[0] === 'string' ? uploadedPhotos[0] : ''))) || '',
+    imgs: uploadedPhotos.length ? uploadedPhotos.map(function(p){ return typeof p === 'string' ? p : (p.preview || ''); }) : [],
     specs: specsForCard,
   };
 
@@ -360,8 +360,8 @@ function submitListing() {
           localStorage.setItem('ridego_post_rate', JSON.stringify(_rd));
         } catch(e) {}
 
-        var photos = (window._pendingPhotos || []).filter(function(p){ return p && p.blob; });
-        window._pendingPhotos = []; // очищаємо після збереження
+        var photos = (uploadedPhotos || []).filter(function(p){ return p && p.blob; });
+        uploadedPhotos = []; window.uploadedPhotos = []; // очищаємо після збереження
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
 
@@ -467,12 +467,14 @@ function _fillEditForm(l) {
 
   addGoStep(2);
 
+  // Невелика затримка щоб DOM крок-2 встиг відрендеритись
   setTimeout(function() {
     var set = function(id, val) {
       var el = document.getElementById(id);
-      if (el && val !== undefined && val !== null) el.value = val;
+      if (el && val !== undefined && val !== null) el.value = String(val);
     };
 
+    // ── Основні поля (крок 2) ──
     set('new-title',    l.title || '');
     set('new-price',    l.price || '');
     set('new-desc',     l.desc  || '');
@@ -483,45 +485,109 @@ function _fillEditForm(l) {
     set('new-condition', l.condition || 'Хороший');
     set('new-bargain',  l.bargain || '');
 
+    // ── Бренд ──
     var brandEl = document.getElementById('new-brand');
     if (brandEl && l.brand) {
-
       var found = false;
       Array.from(brandEl.options).forEach(function(opt) {
         if (opt.value === l.brand) { brandEl.value = l.brand; found = true; }
       });
       if (!found) {
-
         brandEl.value = 'Інший бренд';
         var customEl = document.getElementById('new-brand-custom');
         if (customEl) { customEl.value = l.brand; customEl.style.display = ''; }
       }
+      // Тригерити зміну бренду щоб завантажити моделі
+      if (typeof onBrandChange === 'function') onBrandChange();
+      else if (brandEl.onchange) brandEl.onchange();
+
+      // ── Модель (після завантаження списку моделей) ──
+      if (l.model) {
+        setTimeout(function() {
+          var modelSelEl = document.getElementById('new-model-select');
+          if (modelSelEl) {
+            var modelFound = false;
+            Array.from(modelSelEl.options).forEach(function(opt) {
+              if (opt.value === l.model) { modelSelEl.value = l.model; modelFound = true; }
+            });
+            if (!modelFound) {
+              modelSelEl.value = '__other__';
+              if (typeof onModelChange === 'function') onModelChange();
+              else if (modelSelEl.onchange) modelSelEl.onchange();
+            }
+          }
+          // Завжди встановити текст моделі
+          set('new-model', l.model);
+        }, 150);
+      }
     }
 
-    set('new-city', l.city || '');
-
+    // ── Локація ──
     var oblastEl = document.getElementById('new-oblast');
     if (oblastEl && l.oblast) {
       oblastEl.value = l.oblast;
-      onOblastChange();
+      if (typeof onOblastChange === 'function') onOblastChange();
       setTimeout(function() {
         var raionEl = document.getElementById('new-raion');
         if (raionEl && l.raion) {
           raionEl.value = l.raion;
-          onRaionChange();
+          if (typeof onRaionChange === 'function') onRaionChange();
         }
-        set('new-city', l.city || '');
-      }, 100);
+        // Місто після того як район завантажився
+        setTimeout(function() {
+          set('new-city', l.city || '');
+          if (typeof onCityChange === 'function') onCityChange();
+        }, 100);
+      }, 150);
+    } else {
+      set('new-city', l.city || '');
     }
 
-    set('sp-battery-ah', l.battAh || '');
-    set('sp-speed',      l.speedVal || '');
-    set('sp-range',      l.rangeVal || '');
-    set('sp-weight',     l.weightVal || '');
-    set('sp-wheel',      l.wheelVal || '');
-    set('sp-motor-w',    l.motorW || '');
-    set('sp-voltage',    l.voltage || '');
+    // ── Фото ──
+    var existingImgs = (l.imgs && l.imgs.length) ? l.imgs : (l.img ? [l.img] : []);
+    if (existingImgs.length > 0) {
+      uploadedPhotos = existingImgs.map(function(url) {
+        return { blob: null, preview: url, uploaded: true, storageUrl: url };
+      });
+      window.uploadedPhotos = uploadedPhotos;
+      if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+    }
 
+    // ── Spec поля (крок 3) — рендеримо їх і заповнюємо ──
+    if (typeof renderSpecFields === 'function') renderSpecFields();
+    setTimeout(function() {
+      set('sp-battery-ah', l.battAh || '');
+      set('sp-speed',      l.speedVal || '');
+      set('sp-range',      l.rangeVal || '');
+      set('sp-weight',     l.weightVal || '');
+      set('sp-wheel',      l.wheelVal || '');
+      set('sp-motor-w',    l.motorW || '');
+      set('sp-voltage',    l.voltage || '');
+
+      // Заповнити розширені spec поля з l.specs (якщо є)
+      if (l.specs && typeof l.specs === 'object') {
+        Object.keys(l.specs).forEach(function(sectionKey) {
+          var sectionData = l.specs[sectionKey];
+          if (sectionData && typeof sectionData === 'object' && !Array.isArray(sectionData)) {
+            Object.keys(sectionData).forEach(function(label) {
+              // Шукаємо елемент по label через усі spec інпути
+              var allInputs = document.querySelectorAll('#add-specs-form .form-input');
+              allInputs.forEach(function(inp) {
+                var lbl = inp.closest('.form-group');
+                if (lbl) {
+                  var lblEl = lbl.querySelector('label');
+                  if (lblEl && lblEl.textContent.replace(' *','').trim() === label) {
+                    inp.value = sectionData[label];
+                  }
+                }
+              });
+            });
+          }
+        });
+      }
+    }, 100);
+
+    // ── UI для режиму редагування ──
     var h2 = document.querySelector('#add-step-2 h2');
     if (h2) h2.textContent = 'Редагування оголошення';
     var submitBtn = document.getElementById('add-submit-btn');
@@ -531,7 +597,7 @@ function _fillEditForm(l) {
     }
 
     showToast('✏️ Режим редагування');
-  }, 300);
+  }, 350);
 
 }
 
@@ -564,13 +630,59 @@ function saveEditListing() {
 
   var fullLoc = [city, raion, oblast].filter(Boolean).join(', ');
 
+  // Зібрати розширені характеристики
+  var rawSpecs = (typeof collectSpecs === 'function') ? collectSpecs() : {};
+  var SECTION_KEY_MAP = {
+    'Електросистема':'motor','Двигун':'motor',
+    'Акумулятор':'battery',
+    'Їзда':'performance','Динаміка':'performance','Характеристики руху':'performance',
+    'Характеристики':'performance','Ходові':'performance',
+    'Рама і колеса':'physical','Рама':'physical','Трансмісія':'physical',
+    'Колеса і ходова':'physical','Колеса':'physical','Шасі':'physical',
+    'Гальма і підвіска':'physical','Гальма':'physical','Підвіска':'physical',
+    'Конструкція':'physical','Посадка і кузов':'physical',
+    'Розміри та вага':'physical','Розміри':'physical','Габарити':'physical',
+    'Оснащення':'extras','Електроніка':'extras','Додатково':'extras',
+    'Стан і кількість':'extras','Сертифікати':'extras','Безпека':'extras','Документи':'extras',
+    'Деталь':'general','Аксесуар':'general','Загальне':'general',
+  };
+  var specsForCard = {};
+  Object.keys(rawSpecs).forEach(function(sectionName) {
+    var clean = sectionName.replace(/^[^\u0400-\u04FFa-zA-Z]+/, '').trim();
+    var key = SECTION_KEY_MAP[clean] || null;
+    if (!key) {
+      Object.keys(SECTION_KEY_MAP).forEach(function(k) {
+        if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
+      });
+    }
+    if (!key) key = 'extras';
+    if (!specsForCard[key]) specsForCard[key] = [];
+    specsForCard[key] = specsForCard[key].concat(rawSpecs[sectionName]);
+  });
+  // Конвертувати масиви в об'єкти для Firestore
+  var safeSpecs = {};
+  Object.keys(specsForCard).forEach(function(key) {
+    if (Array.isArray(specsForCard[key])) {
+      var obj = {};
+      specsForCard[key].forEach(function(row) {
+        if (Array.isArray(row) && row.length >= 2) obj[row[0]] = row[1];
+      });
+      safeSpecs[key] = obj;
+    } else {
+      safeSpecs[key] = specsForCard[key];
+    }
+  });
+
   var updateData = {
     title, price, desc, phone, mileage, district, year,
     condition, bargain, city, oblast, raion,
     brand, model,
+    cat: addSelectedCat || '',
+    fullLoc: fullLoc,
     seller: currentUser.name || currentUser.email || '',
     sellerName: currentUser.name || currentUser.email || '',
     fullLocation: fullLoc,
+    specs: safeSpecs,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -593,14 +705,66 @@ function saveEditListing() {
 
   if (!window._db) return;
 
+  // ── Розділити фото: існуючі URL та нові blob'и ──
+  var existingUrls = [];
+  var newPhotos = [];
+  (uploadedPhotos || []).forEach(function(p) {
+    if (p && p.uploaded && p.storageUrl) {
+      existingUrls.push(p.storageUrl);
+    } else if (p && p.blob) {
+      newPhotos.push(p);
+    } else if (typeof p === 'string') {
+      existingUrls.push(p);
+    }
+  });
+
+  // Зберігаємо існуючі фото одразу в updateData
+  updateData.img = existingUrls[0] || '';
+  updateData.imgs = existingUrls.slice();
+
   var btn = document.getElementById('add-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Збереження...'; }
 
-  window._db.collection('listings').doc(_editListingId).update(updateData)
+  var editId = _editListingId;
+
+  window._db.collection('listings').doc(editId).update(updateData)
     .then(function() {
+      // ── Якщо є нові фото — завантажити їх на Cloudinary ──
+      if (newPhotos.length > 0) {
+        var urls = new Array(newPhotos.length).fill(null);
+        var uploaded = 0;
+        newPhotos.forEach(function(p, idx) {
+          var fd = new FormData();
+          fd.append('file', p.blob, 'photo.jpg');
+          fd.append('upload_preset', 'ridego_unsigned');
+          fd.append('folder', 'listings/' + editId);
+          fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
+            method: 'POST', body: fd
+          }).then(function(r){ return r.json(); })
+          .then(function(data) {
+            urls[idx] = data.secure_url;
+            uploaded++;
+            if (uploaded === newPhotos.length) {
+              var newUrls = urls.filter(Boolean);
+              var allUrls = existingUrls.concat(newUrls);
+              window._db.collection('listings').doc(editId).update({
+                img: allUrls[0] || '',
+                imgs: allUrls
+              }).then(function() {
+                var cached = _allListings().find(function(x){ return x && x.id === editId; });
+                if (cached) { cached.img = allUrls[0] || ''; cached.imgs = allUrls; }
+                if (typeof renderMyListings === 'function') renderMyListings();
+                renderHomeListings();
+                showToast('🖼 Фото оновлено!');
+              });
+            }
+          }).catch(function(e){ console.error('Cloudinary upload error:', e); uploaded++; });
+        });
+      }
+
       showToast('✅ Оголошення оновлено!');
 
-      var cached = _allListings().find(function(x){ return x && x.id === _editListingId; });
+      var cached = _allListings().find(function(x){ return x && x.id === editId; });
       if (cached) Object.assign(cached, updateData);
       _editListingId = null;
       _resetAddWizard();
