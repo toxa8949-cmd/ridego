@@ -139,8 +139,8 @@ function submitListing() {
   }
 
   // Перевірка фото
-  if (!uploadedPhotos || uploadedPhotos.length === 0 || !uploadedPhotos.some(function(p){ return p && (p.blob || p.preview || typeof p === 'string'); })) {
-    showToast('⚠️ Додайте хоча б одне фото оголошення'); return;
+  if (!uploadedPhotos || uploadedPhotos.length === 0) {
+    showToast('⚠️ Додайте хоча б одне фото'); return;
   }
 
   if (/https?:\/\/|www\.|\.com|\.ua|\.org/i.test(title)) {
@@ -258,7 +258,7 @@ function submitListing() {
     desc: desc || 'Опис не вказано.',
     seller: currentUser.name || currentUser.email || '',
     time: 'Щойно',
-    img:  (uploadedPhotos[0] && (uploadedPhotos[0].storageUrl || uploadedPhotos[0].preview || uploadedPhotos[0])) || '',
+    img:  uploadedPhotos[0] || '',
     imgs: uploadedPhotos.length ? [...uploadedPhotos] : [],
     specs: specsForCard,
   };
@@ -310,44 +310,29 @@ function submitListing() {
     };
     // Перевірка дублів
     window._db.collection('listings')
-      .where('uid', '==', currentUser.uid)
-      .where('status', '==', 'active')
-      .where('title', '==', fbListing.title)
-      .get()
-      .then(function(snap) {
+      .where('uid','==',currentUser.uid)
+      .where('status','==','active')
+      .where('title','==',fbListing.title)
+      .get().then(function(snap) {
         if (!snap.empty) {
-          // Показуємо попередження з вибором
           var dupModal = document.createElement('div');
           dupModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
-          dupModal.innerHTML = '<div style="background:var(--card-bg,#fff);border-radius:20px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+          dupModal.innerHTML = '<div style="background:var(--card-bg,#fff);border-radius:20px;padding:28px;max-width:420px;width:100%">' +
             '<div style="font-size:32px;text-align:center;margin-bottom:12px">⚠️</div>' +
             '<div style="font-size:18px;font-weight:700;text-align:center;margin-bottom:8px">Схоже оголошення вже є</div>' +
-            '<div style="font-size:14px;color:#666;text-align:center;margin-bottom:20px;line-height:1.6">У вас вже є активне оголошення з назвою:<br><b style="color:#00c853">"' + fbListing.title + '"</b><br><br>Публікація дублів знижує довіру до вашого профілю.</div>' +
+            '<div style="font-size:14px;color:#666;text-align:center;margin-bottom:20px;line-height:1.6">У вас вже є активне оголошення<br><b style="color:#00c853">"' + fbListing.title + '"</b></div>' +
             '<div style="display:flex;flex-direction:column;gap:10px">' +
             '<button id="dup-cancel" style="padding:13px;border-radius:12px;border:2px solid #00c853;background:transparent;color:#00c853;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">← Повернутись і змінити назву</button>' +
             '<button id="dup-publish" style="padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#888;font-size:14px;cursor:pointer;font-family:inherit">Все одно опублікувати</button>' +
             '</div></div>';
           document.body.appendChild(dupModal);
-          var btn = document.getElementById('add-submit-btn');
-          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bolt" style="margin-right:8px"></i>Опублікувати'; }
+          var submitBtn = document.getElementById('add-submit-btn');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-bolt" style="margin-right:8px"></i>Опублікувати'; }
           document.getElementById('dup-cancel').onclick = function() { document.body.removeChild(dupModal); };
           document.getElementById('dup-publish').onclick = function() {
             document.body.removeChild(dupModal);
-            var submitBtn = document.getElementById('add-submit-btn');
-            if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Публікується...'; }
-            window._db.collection('listings').add(fbListing).then(function(docRef) {
-              showToast('✅ Оголошення опубліковано!');
-              if (typeof _resetAddWizard === 'function') _resetAddWizard();
-              if (typeof renderMyListings === 'function') renderMyListings();
-              if (typeof showPage === 'function') showPage('profile');
-            }).catch(function(e) {
-              showToast('❌ Помилка: ' + e.message);
-              if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-bolt" style="margin-right:8px"></i>Опублікувати'; }
-            });
-          };
-          return;
-        }
-        window._db.collection('listings').add(fbListing).then(function(docRef) {
+            window._db.collection('listings').add(fbListing)
+      .then(function(docRef) {
 
         _consumeSlot().then(function(ok) {
           if (!ok) console.warn('consumeSlot failed after listing publish');
@@ -408,8 +393,10 @@ function submitListing() {
         console.error('Firestore save error:', e);
         showToast('⚠️ Помилка збереження: ' + e.message);
       });
-      }).catch(function(dupErr) {
-        console.warn('Duplicate check failed, skipping');
+          };
+        }
+      }).catch(function() {
+        window._db.collection('listings').add(fbListing).then(function(){}).catch(function(){});
       });
   } else {
     console.warn('No db or uid, saving locally');
@@ -640,34 +627,11 @@ function renderMyListings() {
 function _updateActiveCount() {
   var uid = currentUser && currentUser.uid;
   if (!uid) return;
-  // Рахуємо з Firestore щоб мати актуальні дані
-  if (window._db) {
-    window._db.collection('listings')
-      .where('uid', '==', uid)
-      .where('status', '==', 'active')
-      .get()
-      .then(function(snap) {
-        var el = document.getElementById('pstat-active');
-        if (el) el.textContent = snap.size;
-        // Оновлюємо також myListings
-        var fresh = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-        if (typeof myListings !== 'undefined') myListings = fresh;
-        window.myListings = fresh;
-      }).catch(function() {
-        // Fallback — рахуємо з кешу
-        var count = _allListings().filter(function(l){
-          return l && l.uid === uid && l.status === 'active';
-        }).length;
-        var el = document.getElementById('pstat-active');
-        if (el) el.textContent = count;
-      });
-  } else {
-    var count = _allListings().filter(function(l){
-      return l && l.uid === uid && l.status === 'active';
-    }).length;
-    var el = document.getElementById('pstat-active');
-    if (el) el.textContent = count;
-  }
+  var count = _allListings().filter(function(l){
+    return l && l.uid === uid && l.status !== 'deleted' && l.status !== 'sold';
+  }).length;
+  var el = document.getElementById('pstat-active');
+  if (el) el.textContent = count;
 }
 
 function deleteListing(id) {
