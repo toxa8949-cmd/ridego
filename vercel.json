@@ -226,7 +226,18 @@
           "value": "ridego-sigma.vercel.app"
         }
       ],
-      "destination": "https://ridego.com.ua/$1",
+      "destination": "https://www.ridego.com.ua/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "ridego.com.ua"
+        }
+      ],
+      "destination": "https://www.ridego.com.ua/$1",
       "permanent": true
     }
   ],

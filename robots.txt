@@ -5,4 +5,4 @@ Allow: /
 Disallow: /ridego-admin.html
 Disallow: /api/
 
-Sitemap: https://ridego.com.ua/sitemap.xml
+Sitemap: https://www.ridego.com.ua/sitemap.xml
