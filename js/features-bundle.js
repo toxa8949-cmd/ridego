@@ -139,7 +139,7 @@ function submitListing() {
   }
 
   // Перевірка фото
-  if (!uploadedPhotos || uploadedPhotos.length === 0) {
+  if (!uploadedPhotos || uploadedPhotos.length === 0 || !uploadedPhotos.some(function(p){ return p && (p.blob || p.preview || typeof p === 'string'); })) {
     showToast('⚠️ Додайте хоча б одне фото оголошення'); return;
   }
 
@@ -258,7 +258,7 @@ function submitListing() {
     desc: desc || 'Опис не вказано.',
     seller: currentUser.name || currentUser.email || '',
     time: 'Щойно',
-    img:  uploadedPhotos[0] || '',
+    img:  (uploadedPhotos[0] && (uploadedPhotos[0].storageUrl || uploadedPhotos[0].preview || uploadedPhotos[0])) || '',
     imgs: uploadedPhotos.length ? [...uploadedPhotos] : [],
     specs: specsForCard,
   };
