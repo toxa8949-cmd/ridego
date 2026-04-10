@@ -137,8 +137,6 @@ function submitListing() {
   if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
     showToast('⚠️ Невірний формат телефону'); return;
   }
-
-  // Перевірка фото
   if (!uploadedPhotos || uploadedPhotos.length === 0) {
     showToast('⚠️ Додайте хоча б одне фото'); return;
   }
@@ -308,30 +306,38 @@ function submitListing() {
       expiresAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
       status: 'active'
     };
-    // Перевірка дублів
+    // Перевірка дублів перед публікацією
     window._db.collection('listings')
       .where('uid','==',currentUser.uid)
       .where('status','==','active')
       .where('title','==',fbListing.title)
-      .get().then(function(snap) {
-        if (!snap.empty) {
-          var dupModal = document.createElement('div');
-          dupModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
-          dupModal.innerHTML = '<div style="background:var(--card-bg,#fff);border-radius:20px;padding:28px;max-width:420px;width:100%">' +
+      .get().then(function(dupSnap) {
+        if (!dupSnap.empty) {
+          var dm = document.createElement('div');
+          dm.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+          dm.innerHTML = '<div style="background:var(--card-bg,#fff);border-radius:20px;padding:28px;max-width:420px;width:100%">' +
             '<div style="font-size:32px;text-align:center;margin-bottom:12px">⚠️</div>' +
             '<div style="font-size:18px;font-weight:700;text-align:center;margin-bottom:8px">Схоже оголошення вже є</div>' +
             '<div style="font-size:14px;color:#666;text-align:center;margin-bottom:20px;line-height:1.6">У вас вже є активне оголошення<br><b style="color:#00c853">"' + fbListing.title + '"</b></div>' +
             '<div style="display:flex;flex-direction:column;gap:10px">' +
-            '<button id="dup-cancel" style="padding:13px;border-radius:12px;border:2px solid #00c853;background:transparent;color:#00c853;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">← Повернутись і змінити назву</button>' +
-            '<button id="dup-publish" style="padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#888;font-size:14px;cursor:pointer;font-family:inherit">Все одно опублікувати</button>' +
+            '<button id="dup-back" style="padding:13px;border-radius:12px;border:2px solid #00c853;background:transparent;color:#00c853;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">← Повернутись і змінити назву</button>' +
+            '<button id="dup-ok" style="padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#888;font-size:14px;cursor:pointer;font-family:inherit">Все одно опублікувати</button>' +
             '</div></div>';
-          document.body.appendChild(dupModal);
-          var submitBtn = document.getElementById('add-submit-btn');
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-bolt" style="margin-right:8px"></i>Опублікувати'; }
-          document.getElementById('dup-cancel').onclick = function() { document.body.removeChild(dupModal); };
-          document.getElementById('dup-publish').onclick = function() {
-            document.body.removeChild(dupModal);
-            window._db.collection('listings').add(fbListing)
+          document.body.appendChild(dm);
+          var sb = document.getElementById('add-submit-btn');
+          if (sb) { sb.disabled=false; sb.innerHTML='<i class="fa-solid fa-bolt" style="margin-right:8px"></i>Опублікувати'; }
+          document.getElementById('dup-back').onclick = function(){ document.body.removeChild(dm); };
+          document.getElementById('dup-ok').onclick = function(){
+            document.body.removeChild(dm);
+            _doPublish();
+          };
+          return;
+        }
+        _doPublish();
+      }).catch(function(){ _doPublish(); });
+
+    function _doPublish() {
+    window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
 
         _consumeSlot().then(function(ok) {
@@ -393,11 +399,7 @@ function submitListing() {
         console.error('Firestore save error:', e);
         showToast('⚠️ Помилка збереження: ' + e.message);
       });
-          };
-        }
-      }).catch(function() {
-        window._db.collection('listings').add(fbListing).then(function(){}).catch(function(){});
-      });
+    } // end _doPublish
   } else {
     console.warn('No db or uid, saving locally');
     _fbListings.unshift(newL);
