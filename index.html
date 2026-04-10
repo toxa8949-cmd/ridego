@@ -11,12 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RideGO">
-<!-- Прибираємо iOS статичний splash — використовуємо власну HTML анімацію -->
-<style>
-  /* Приховуємо білий flash при старті PWA */
-  html { background: #0d1117; }
-  html.light-preload { background: #f5f5f5; }
-</style>
 <meta name="mobile-web-app-capable" content="yes">
 <title>RideGO — Маркетплейс електротранспорту України</title>
 <meta name="description" content="RideGO — найбільший маркетплейс електротранспорту в Україні. Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.">
@@ -182,14 +176,6 @@
     }
   ]
 }
-</script>
-<!-- Google Analytics GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FP5PC69R4W"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-FP5PC69R4W');
 </script>
 </head>
 
@@ -369,124 +355,6 @@
   </script>
 </head>
 <body>
-
-<!-- ===== SPLASH SCREEN ===== -->
-<div id="app-splash" style="
-  position:fixed;inset:0;z-index:99999;
-  background:#0d1117;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-">
-  <style>
-    @keyframes splash-pulse {
-      0%,100% { transform:scale(1); box-shadow:0 0 0 0 rgba(0,200,83,0.5); }
-      50%      { transform:scale(1.07); box-shadow:0 0 0 22px rgba(0,200,83,0); }
-    }
-    @keyframes splash-fadein {
-      from { opacity:0; transform:translateY(12px); }
-      to   { opacity:1; transform:translateY(0); }
-    }
-    @keyframes splash-bar {
-      0%   { width:0%; }
-      30%  { width:40%; }
-      65%  { width:72%; }
-      88%  { width:90%; }
-      100% { width:100%; }
-    }
-    @keyframes splash-hide {
-      to { opacity:0; transform:scale(1.04); }
-    }
-    #app-splash.hiding {
-      animation: splash-hide 0.4s ease forwards;
-    }
-    html.light-preload #app-splash,
-    html[data-theme="light"] #app-splash {
-      background:#f0f0f0;
-    }
-    html.light-preload #splash-logo-bg,
-    html[data-theme="light"] #splash-logo-bg {
-      background:linear-gradient(135deg,#00c853,#00e676);
-    }
-  </style>
-
-  <!-- Логотип — одразу пульсує -->
-  <div id="splash-logo-bg" style="
-    width:192px;height:192px;border-radius:48px;
-    background:linear-gradient(135deg,#00c853,#00e676);
-    display:flex;align-items:center;justify-content:center;
-    margin-bottom:0;
-    animation:splash-pulse 1.6s ease-in-out infinite;
-  ">
-    <span style="
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-      font-size:68px;font-weight:900;color:#111;letter-spacing:-3px;
-    ">RG</span>
-  </div>
-
-  <!-- Назва + підпис — появляються після затримки -->
-  <div id="splash-text" style="opacity:0;text-align:center;margin-top:28px;">
-    <div style="
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-      font-size:30px;font-weight:800;letter-spacing:-0.5px;color:#fff;
-    ">Ride<span style="color:#00c853">GO</span></div>
-    <div style="
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-      font-size:13px;color:#8b949e;margin-top:5px;
-    ">Маркетплейс електротранспорту</div>
-  </div>
-
-  <!-- Прогрес бар — внизу -->
-  <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.06);">
-    <div id="splash-bar" style="
-      height:100%;width:0%;
-      background:linear-gradient(90deg,#00c853,#00e676);
-      border-radius:0 2px 2px 0;
-      display:none;
-    "></div>
-  </div>
-</div>
-
-<script>
-(function(){
-  var splash = document.getElementById('app-splash');
-  var text   = document.getElementById('splash-text');
-  var bar    = document.getElementById('splash-bar');
-  if (!splash) return;
-
-  var isPWA    = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone === true;
-  var isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-
-  // ПК в браузері — одразу ховаємо
-  if (!isMobile && !isPWA) {
-    splash.style.display = 'none';
-    return;
-  }
-
-  // Телефон в браузері — коротко без анімації
-  if (!isPWA) {
-    setTimeout(function(){
-      splash.classList.add('hiding');
-      setTimeout(function(){ splash.style.display='none'; }, 420);
-    }, 500);
-    return;
-  }
-
-  // PWA: одразу запускаємо анімацію без статичної фази
-  // Показуємо текст
-  text.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
-  text.style.transform  = 'translateY(0)';
-  text.style.opacity    = '1';
-
-  // Запускаємо прогрес бар
-  bar.style.display   = 'block';
-  bar.style.animation = 'splash-bar 1.6s cubic-bezier(.4,0,.2,1) forwards';
-
-  // Ховаємо після анімації
-  setTimeout(function(){
-    splash.classList.add('hiding');
-    setTimeout(function(){ splash.style.display='none'; }, 420);
-  }, 1700);
-})();
-</script>
 
 <!-- ===== HEADER ===== -->
 <header>
@@ -1497,7 +1365,7 @@
           <label>Рік випуску</label>
           <select class="form-input" id="new-year">
             <option value="">Не вказано</option>
-            <option>2025</option><option>2024</option><option>2023</option><option>2022</option>
+            <option>2026</option><option>2025</option><option>2024</option><option>2023</option><option>2022</option>
             <option>2021</option><option>2020</option><option>2019</option><option>2018</option>
           </select>
         </div>
@@ -2419,7 +2287,7 @@
       <h2>4. Правила оголошень</h2><p>Забороняється: розміщувати дублікати, вказувати неправдиву інформацію, публікувати заборонені законом товари, використовувати чужі фото без дозволу.</p>
       <h2>5. Безпека угод</h2><p>RideGO не є стороною угод між користувачами і не несе відповідальності за якість товарів. Рекомендуємо зустрічатись особисто та перевіряти товар перед оплатою.</p>
       <h2>6. Платні послуги</h2><p>Куплені слоти активуються після оплати і не підлягають поверненню. Промо-опції (TOP, підсвічування) не повертаються після активації.</p>
-      <h2>7. Контакти</h2><p>Питання: <a href="mailto:support@ridego.com.ua">support@ridego.com.ua</a></p>
+      <h2>7. Контакти</h2><p>Питання: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4d25282121220d3f2429282a2263382c">[email&#160;protected]</a></p>
     </div>
   </div>
 </div>
@@ -2435,8 +2303,8 @@
       <h2>2. Як ми використовуємо дані</h2><ul><li>Для роботи сервісу: авторизація, публікація оголошень, чат</li><li>Для покращення сервісу: аналітика</li><li>Для зв'язку: відповіді на запити до підтримки</li></ul>
       <h2>3. Зберігання даних</h2><p>Дані зберігаються на Firebase (Google Cloud, Європа). Фото — на Cloudinary з шифруванням.</p>
       <h2>4. Передача третім особам</h2><p>Ми не продаємо та не передаємо ваші дані третім особам, крім випадків передбачених законодавством України.</p>
-      <h2>5. Ваші права</h2><p>Ви можете переглядати, редагувати або видаляти свої дані. Для видалення акаунту: <a href="mailto:support@ridego.com.ua">support@ridego.com.ua</a></p>
-      <h2>6. Контакти</h2><p><a href="mailto:support@ridego.com.ua">support@ridego.com.ua</a></p>
+      <h2>5. Ваші права</h2><p>Ви можете переглядати, редагувати або видаляти свої дані. Для видалення акаунту: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f59d9099999ab5879c9190929adb8094">[email&#160;protected]</a></p>
+      <h2>6. Контакти</h2><p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="adc5c8c1c1c2eddfc4c9c8cac283d8cc">[email&#160;protected]</a></p>
     </div>
   </div>
 </div>
@@ -2480,12 +2348,12 @@
       <a href="https://ridego.com.ua/faq" onclick="event.preventDefault();showPage('faq')">FAQ</a>
       <a href="https://ridego.com.ua/terms" onclick="event.preventDefault();showPage('terms')">Правила користування</a>
       <a href="https://ridego.com.ua/privacy" onclick="event.preventDefault();showPage('privacy')">Конфіденційність</a>
-      <a href="mailto:support@ridego.com.ua">support@ridego.com.ua</a>
+      <a href="/cdn-cgi/l/email-protection#b7dfd2dbdbd8f7c5ded3d2d0d899c2d6"><span class="__cf_email__" data-cfemail="167e737a7a7956647f72737179386377">[email&#160;protected]</span></a>
       <a href="https://t.me/ridego_support" target="_blank">Зв'язок з нами</a>
     </div>
   </div>
   <div class="footer-bottom">
-    <span>&#169; 2024&#8211;2026 RideGO. Всі права захищено.</span>
+    <span>&#169; 2024&#8211;2025 RideGO. Всі права захищено.</span>
     <span class="footer-bottom-links">
       <a href="https://ridego.com.ua/terms" onclick="event.preventDefault();showPage('terms')">Правила</a>
       <a href="https://ridego.com.ua/privacy" onclick="event.preventDefault();showPage('privacy')">Конфіденційність</a>
