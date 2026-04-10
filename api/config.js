@@ -1,4 +1,6 @@
 const ALLOWED_ORIGINS = [
+  'https://ridego.com.ua',
+  'https://www.ridego.com.ua',
   'https://ridego-sigma.vercel.app',
   'https://ridego-6f981.firebaseapp.com',
   'https://ridego-6f981.web.app',

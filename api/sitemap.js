@@ -1,4 +1,4 @@
-const BASE = 'https://ridego.com.ua';
+const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
 const STATIC_PAGES = [
