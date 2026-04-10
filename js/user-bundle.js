@@ -1644,7 +1644,8 @@ function buildPreviewSummary() {
   const modelSel = document.getElementById('new-model-select')?.value || '';
   const modelInp = document.getElementById('new-model')?.value.trim() || '';
   const model  = (modelSel && modelSel !== '__other__') ? modelSel : modelInp;
-  const photos = uploadedPhotos.length;
+  var _up = (typeof uploadedPhotos !== "undefined" && uploadedPhotos.length > 0) ? uploadedPhotos : (window.uploadedPhotos || []);
+  const photos = _up.length;
 
   document.getElementById('add-preview-summary').innerHTML = [
     ['Тип', addSelectedIcon + ' ' + (addSelectedCat||'—')],
