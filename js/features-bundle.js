@@ -137,9 +137,7 @@ function submitListing() {
   if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
     showToast('⚠️ Невірний формат телефону'); return;
   }
-  var _photos = (typeof uploadedPhotos !== "undefined" && uploadedPhotos.length > 0) ? uploadedPhotos : (window.uploadedPhotos || []);
-  uploadedPhotos = _photos;
-  if (!uploadedPhotos || uploadedPhotos.length === 0) {
+  if (!(window._pendingPhotos && window._pendingPhotos.length > 0) && (!uploadedPhotos || uploadedPhotos.length === 0)) {
     showToast('⚠️ Додайте хоча б одне фото'); return;
   }
 
@@ -258,7 +256,7 @@ function submitListing() {
     desc: desc || 'Опис не вказано.',
     seller: currentUser.name || currentUser.email || '',
     time: 'Щойно',
-    img:  uploadedPhotos[0] || '',
+    img:  (window._pendingPhotos && window._pendingPhotos[0] && window._pendingPhotos[0].preview) || '',
     imgs: uploadedPhotos.length ? [...uploadedPhotos] : [],
     specs: specsForCard,
   };
@@ -362,8 +360,8 @@ function submitListing() {
           localStorage.setItem('ridego_post_rate', JSON.stringify(_rd));
         } catch(e) {}
 
-        var _up = (typeof uploadedPhotos !== "undefined" && uploadedPhotos.length > 0) ? uploadedPhotos : (window.uploadedPhotos || []);
-        var photos = _up.filter(function(p){ return p && p.blob; });
+        var photos = (window._pendingPhotos || []).filter(function(p){ return p && p.blob; });
+        window._pendingPhotos = []; // очищаємо після збереження
         _resetAddWizard();
         setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
 
