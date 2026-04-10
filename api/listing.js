@@ -30,8 +30,14 @@ async function getListingFromFirestore(id) {
     cat:        f.cat?.stringValue || '',
     condition:  f.condition?.stringValue || '',
     img,
+    imgs:       f.imgs?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || (img ? [img] : []),
     sellerName: f.sellerName?.stringValue || f.seller?.stringValue || '',
     year:       f.year?.stringValue || f.year?.integerValue || '',
+    brand:      f.brand?.stringValue || '',
+    model:      f.model?.stringValue || '',
+    battery:    f.battery?.stringValue || '',
+    speed:      f.speed?.stringValue || '',
+    range:      f.range?.stringValue || '',
   };
 }
 
@@ -104,8 +110,9 @@ module.exports = async (req, res) => {
     "@type": "Product",
     "name": listing.title,
     "description": descStr,
-    "image": listing.img ? [listing.img] : [],
-    "brand": { "@type": "Brand", "name": listing.cat || "RideGO" },
+    "image": listing.imgs.length ? listing.imgs : (listing.img ? [listing.img] : []),
+    "brand": { "@type": "Brand", "name": listing.brand || listing.cat || "RideGO" },
+    ...(listing.model ? { "model": listing.model } : {}),
     "offers": {
       "@type": "Offer",
       "price": String(listing.price || 0),
@@ -143,6 +150,7 @@ module.exports = async (req, res) => {
 <meta property="og:title" content="${escHtml(listing.title + ' — RideGO')}">
 <meta property="og:description" content="${escHtml(descStr)}">
 <meta property="og:image" content="${escHtml(listing.img || BASE+'/og-image.png')}">
+${listing.imgs.slice(1).map(u => `<meta property="og:image" content="${escHtml(u)}">`).join('\n')}
 <meta property="og:url" content="${BASE}/listing/${id}">
 <meta property="og:locale" content="uk_UA">
 <meta name="twitter:card" content="summary_large_image">
@@ -176,11 +184,17 @@ h1{font-size:clamp(20px,4vw,28px);font-weight:800;margin-bottom:8px;color:#111}
 <h1>${escHtml(listing.title)}${listing.city ? ` у ${escHtml(listing.city)}` : ''}</h1>
 <div class="price">${priceFormatted ? priceFormatted+' грн' : 'Ціна договірна'}</div>
 ${listing.img ? `<div class="img-wrap"><img src="${escHtml(listing.img)}" alt="${escHtml(listing.title)}" width="820" height="480" loading="eager"></div>` : ''}
+${listing.imgs.length > 1 ? `<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;padding-bottom:4px">${listing.imgs.map((u,i) => `<img src="${escHtml(u)}" alt="${escHtml(listing.title)} фото ${i+1}" width="120" height="90" loading="lazy" style="width:120px;height:90px;object-fit:cover;border-radius:8px;flex-shrink:0">`).join('')}</div>` : ''}
 <table class="specs">
   ${listing.city ? `<tr><td>Місто</td><td>${escHtml(listing.city)}</td></tr>` : ''}
   ${listing.cat ? `<tr><td>Категорія</td><td><a href="${BASE}/category/${catSlug}" style="color:#1db954;text-decoration:none">${escHtml(listing.cat)}</a></td></tr>` : ''}
+  ${listing.brand ? `<tr><td>Бренд</td><td>${escHtml(listing.brand)}</td></tr>` : ''}
+  ${listing.model ? `<tr><td>Модель</td><td>${escHtml(listing.model)}</td></tr>` : ''}
   ${listing.condition ? `<tr><td>Стан</td><td>${escHtml(listing.condition)}</td></tr>` : ''}
   ${listing.year ? `<tr><td>Рік</td><td>${escHtml(String(listing.year))}</td></tr>` : ''}
+  ${listing.battery ? `<tr><td>Акумулятор</td><td>${escHtml(listing.battery)}</td></tr>` : ''}
+  ${listing.speed ? `<tr><td>Швидкість</td><td>${escHtml(listing.speed)}</td></tr>` : ''}
+  ${listing.range ? `<tr><td>Запас ходу</td><td>${escHtml(listing.range)}</td></tr>` : ''}
   ${listing.sellerName ? `<tr><td>Продавець</td><td>${escHtml(listing.sellerName)}</td></tr>` : ''}
 </table>
 ${listing.desc ? `<div class="desc">${escHtml(listing.desc)}</div>` : ''}
