@@ -214,6 +214,11 @@
   ],
   "redirects": [
     {
+      "source": "/home",
+      "destination": "/",
+      "permanent": true
+    },
+    {
       "source": "/(.*)",
       "has": [
         {
