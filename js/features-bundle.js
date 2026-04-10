@@ -436,9 +436,23 @@ function _resetAddWizard() {
 var _editListingId = null;
 
 function openEditListing(id) {
+  _editListingId = id;
+  showPage('add');
+  // Завжди беремо свіжі дані з Firestore
+  if (window._db) {
+    window._db.collection('listings').doc(id).get().then(function(snap) {
+      if (!snap.exists) { showToast('⚠️ Оголошення не знайдено'); return; }
+      var l = Object.assign({ id: snap.id }, snap.data());
+      _fillEditForm(l);
+    });
+    return;
+  }
   var l = _allListings().find(function(x){ return x && x.id === id; });
   if (!l) { showToast('⚠️ Оголошення не знайдено'); return; }
-  _editListingId = id;
+  _fillEditForm(l);
+}
+
+function _fillEditForm(l) {
 
   _resetAddWizard();
 
@@ -518,7 +532,6 @@ function openEditListing(id) {
     showToast('✏️ Режим редагування');
   }, 300);
 
-  showPage('add');
 }
 
 function saveEditListing() {
