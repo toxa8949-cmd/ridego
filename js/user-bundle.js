@@ -128,6 +128,70 @@ function doRegister() {
 let profileType = 'personal';
 let profilePhotoUrl = null;
 
+// Кеш профілю в sessionStorage
+var _profileCacheTTL = 15 * 60 * 1000;
+
+function _getProfileCache() {
+  try {
+    if (!currentUser || !currentUser.uid) return null;
+    var key = '_pc_' + currentUser.uid;
+    var at  = parseInt(sessionStorage.getItem(key + '_at') || '0');
+    if (Date.now() - at > _profileCacheTTL) return null;
+    return JSON.parse(sessionStorage.getItem(key) || 'null');
+  } catch(e) { return null; }
+}
+
+function _setProfileCache(d) {
+  try {
+    if (!currentUser || !currentUser.uid) return;
+    var key = '_pc_' + currentUser.uid;
+    sessionStorage.setItem(key, JSON.stringify(d));
+    sessionStorage.setItem(key + '_at', String(Date.now()));
+  } catch(e) {}
+}
+
+function _applyProfileData(d) {
+  var year = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : new Date().getFullYear();
+  var metaEl = document.getElementById('profile-meta-text');
+
+  // Відгуки — з reviewsCache якщо є
+  var revCache = typeof _reviewsCache !== 'undefined' && _reviewsCache[currentUser.uid];
+  if (revCache && (Date.now() - revCache.loadedAt) < 5 * 60 * 1000) {
+    var revs = revCache.data;
+    var avg = revs.length ? (revs.reduce(function(s,r){ return s+r.rating; },0) / revs.length).toFixed(1) : null;
+    if (metaEl) metaEl.innerHTML = (avg ? '<i class="fa-solid fa-star" style="color:#ffa726;margin-right:3px"></i>' + avg + ' · ' : '') + 'На сайті з ' + year;
+  } else if (window._db && metaEl) {
+    window._db.collection('reviews').where('sellerUid','==',currentUser.uid).get()
+      .then(function(revSnap) {
+        var revs = revSnap.docs.map(function(r){ return r.data(); });
+        if (typeof _reviewsCache !== 'undefined') _reviewsCache[currentUser.uid] = { data: revs, loadedAt: Date.now() };
+        var avg = revs.length ? (revs.reduce(function(s,r){ return s+r.rating; },0) / revs.length).toFixed(1) : null;
+        metaEl.innerHTML = (avg ? '<i class="fa-solid fa-star" style="color:#ffa726;margin-right:3px"></i>' + avg + ' · ' : '') + 'На сайті з ' + year;
+      }).catch(function() { if (metaEl) metaEl.innerHTML = 'На сайті з ' + year; });
+  } else if (metaEl) {
+    metaEl.innerHTML = 'На сайті з ' + year;
+  }
+
+  var fill = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+  fill('set-name', d.name); fill('set-phone', d.phone);
+  fill('set-telegram', d.telegram); fill('set-instagram', d.instagram);
+  fill('set-youtube', d.youtube); fill('set-tiktok', d.tiktok);
+  fill('set-website', d.website); fill('set-company', d.company);
+  fill('set-address', d.address); fill('set-hours', d.hours);
+  fill('set-about', d.about || d.desc);
+  if (typeof _checkPhoneVerified === 'function') _checkPhoneVerified(d);
+  if (d.cats && d.cats.length && typeof _fillProfileCats === 'function') _fillProfileCats(d.cats);
+  if (d.photoUrl && !profilePhotoUrl) {
+    profilePhotoUrl = d.photoUrl;
+    ['profile-pic-el', 'settings-avatar-preview'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    });
+    var lEl = document.getElementById('profile-pic-letter');
+    if (lEl) lEl.style.display = 'none';
+  }
+}
+
 function renderProfile() {
   const authLoading = document.getElementById('auth-loading');
   const authWall    = document.getElementById('auth-wall');
@@ -143,68 +207,29 @@ function renderProfile() {
   profileWall.style.display = '';
 
   const displayName = currentUser.name || currentUser.email || 'Користувач';
-  const displayInitial = displayName[0].toUpperCase();
   document.getElementById('profile-name-text').textContent = displayName;
   const letterEl = document.getElementById('profile-pic-letter');
-  if (letterEl) letterEl.textContent = displayInitial;
+  if (letterEl) letterEl.textContent = displayName[0].toUpperCase();
   const settingsLetterEl = document.getElementById('settings-avatar-letter');
   if (settingsLetterEl) settingsLetterEl.textContent = currentUser.initial;
 
   document.getElementById('pstat-active').textContent = myListings.filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; }).length;
-  document.getElementById('pstat-sold').textContent   = 0;
-  document.getElementById('pstat-favs').textContent   = favorites.length;
+  document.getElementById('pstat-sold').textContent = 0;
+  document.getElementById('pstat-favs').textContent = favorites.length;
 
-  var metaEl = document.getElementById('profile-meta-text');
-  if (metaEl && window._db && currentUser && currentUser.uid) {
-    window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
-      if (!snap.exists) return;
-      var d = snap.data();
-      var year = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : new Date().getFullYear();
-
-      window._db.collection('reviews').where('sellerUid','==',currentUser.uid).get()
-        .then(function(revSnap) {
-          var revs = revSnap.docs.map(function(r){ return r.data(); });
-          var avg = revs.length ? (revs.reduce(function(s,r){ return s+r.rating; },0) / revs.length).toFixed(1) : null;
-          var ratingHtml = avg
-            ? '<i class="fa-solid fa-star" style="color:#ffa726;margin-right:3px"></i>' + avg + ' · '
-            : '';
-          metaEl.innerHTML = ratingHtml + 'На сайті з ' + year;
-        }).catch(function() {
-          metaEl.innerHTML = 'На сайті з ' + year;
-        });
-
-      var fill = function(id, val) {
-        var el = document.getElementById(id);
-        if (el && val) el.value = val;
-      };
-      fill('set-name',      d.name);
-      fill('set-phone',     d.phone);
-      fill('set-telegram',  d.telegram);
-      fill('set-instagram', d.instagram);
-      fill('set-youtube',   d.youtube);
-      fill('set-tiktok',    d.tiktok);
-      fill('set-website',   d.website);
-      fill('set-company',   d.company);
-      fill('set-address',   d.address);
-      fill('set-hours',     d.hours);
-      fill('set-about',     d.about || d.desc);
-
-      if (typeof _checkPhoneVerified === 'function') _checkPhoneVerified(d);
-
-      if (d.cats && d.cats.length && typeof _fillProfileCats === 'function') {
-        _fillProfileCats(d.cats);
-      }
-
-      if (d.photoUrl && !profilePhotoUrl) {
-        profilePhotoUrl = d.photoUrl;
-        ['profile-pic-el', 'settings-avatar-preview'].forEach(function(id) {
-          var el = document.getElementById(id);
-          if (el) el.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
-        });
-        var letterEl = document.getElementById('profile-pic-letter');
-        if (letterEl) letterEl.style.display = 'none';
-      }
-    }).catch(function(){});
+  // Беремо профіль з кешу або Firestore
+  if (window._db && currentUser && currentUser.uid) {
+    var cached = _getProfileCache();
+    if (cached) {
+      _applyProfileData(cached);
+    } else {
+      window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
+        if (!snap.exists) return;
+        var d = snap.data();
+        _setProfileCache(d);
+        _applyProfileData(d);
+      }).catch(function(){});
+    }
   }
 
   const nameEl  = document.getElementById('set-name');
@@ -213,7 +238,6 @@ function renderProfile() {
   if (emailEl && !emailEl.value) emailEl.value = currentUser.email || '';
 
   initSettingsOblast();
-
   renderMyListings();
   renderFavs();
 }
