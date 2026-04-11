@@ -1454,7 +1454,7 @@ function renderGalleryImage(l) {
   if (l && l.img) {
     var fallbackIcon = l.icon || '📦';
     var detailSrc = _cdnDetail(galleryImgs[galleryIdx]) || galleryImgs[galleryIdx];
-    wrap.innerHTML = `<img src="${detailSrc}" alt="${_esc(l.title || '')}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${_esc(l.icon || '📦')}</div>`;
+    wrap.innerHTML = `<img src="${detailSrc}" alt="${_esc(l.title || '')}" loading="lazy" decoding="async" class="detail-main-img" style="width:100%;height:100%;object-fit:contain;object-position:center;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${_esc(l.icon || '📦')}</div>`;
   } else {
     const icon = l ? (l.icon || '📦') : '📦';
     wrap.innerHTML = `<div style="font-size:100px;color:var(--brand);opacity:.5">${icon}</div>`;
@@ -1497,14 +1497,21 @@ function buildSpecTable(l) {
   var specsEl = document.getElementById('detail-specs-full');
   if (!specsEl) return;
 
-  // Базові характеристики з окремих полів (battery, speed, range, weight)
+  // Базові характеристики — спочатку з human-readable, потім fallback на raw значення
+  var battery = l.battery || (l.battAh ? l.battAh + ' Ah' : '');
+  var speed = l.speed || (l.speedVal ? l.speedVal + ' км/год' : '');
+  var range = l.range || (l.rangeVal ? l.rangeVal + ' км' : '');
+  var weight = l.weight || (l.weightVal ? l.weightVal + ' кг' : '');
+  var motorW = l.motorW ? l.motorW + ' Вт' : '';
+
   var basicRows = '';
-  if (l.battery && l.battery !== '—') basicRows += '<tr><td>АКБ</td><td class="spec-val-green">' + l.battery + '</td></tr>';
-  if (l.speed   && l.speed   !== '—') basicRows += '<tr><td>Макс. швидкість</td><td class="spec-val-green">' + l.speed + '</td></tr>';
-  if (l.range   && l.range   !== '—') basicRows += '<tr><td>Запас ходу</td><td class="spec-val-green">' + l.range + '</td></tr>';
-  if (l.weight  && l.weight  !== '—') basicRows += '<tr><td>Вага</td><td>' + l.weight + '</td></tr>';
-  if (l.year    && l.year    !== '—') basicRows += '<tr><td>Рік випуску</td><td>' + l.year + '</td></tr>';
-  if (l.condition) basicRows += '<tr><td>Стан</td><td>' + l.condition + '</td></tr>';
+  if (battery && battery !== '—') basicRows += '<tr><td>АКБ</td><td class="spec-val-green">' + _esc(battery) + '</td></tr>';
+  if (speed && speed !== '—')     basicRows += '<tr><td>Макс. швидкість</td><td class="spec-val-green">' + _esc(speed) + '</td></tr>';
+  if (range && range !== '—')     basicRows += '<tr><td>Запас ходу</td><td class="spec-val-green">' + _esc(range) + '</td></tr>';
+  if (motorW)                     basicRows += '<tr><td>Потужність</td><td class="spec-val-green">' + _esc(motorW) + '</td></tr>';
+  if (weight && weight !== '—')   basicRows += '<tr><td>Вага</td><td>' + _esc(weight) + '</td></tr>';
+  if (l.year && l.year !== '—')   basicRows += '<tr><td>Рік випуску</td><td>' + _esc(l.year) + '</td></tr>';
+  if (l.condition)                basicRows += '<tr><td>Стан</td><td>' + formatSpecVal('Стан', l.condition) + '</td></tr>';
 
   // Якщо немає specs — показуємо тільки базові
   if (!l.specs || !Object.keys(l.specs).length) {
@@ -1522,20 +1529,26 @@ function buildSpecTable(l) {
   Object.keys(specs).forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
   let html = '<div class="spec-section">';
 
-  // Додаємо базові поля якщо вони є і ще не в specs
   if (basicRows) {
     html += '<div class="spec-section-title"><i class="fa-solid fa-bolt"></i>Основні</div><table class="spec-table">' + basicRows + '</table>';
   }
 
   order.forEach(key => {
     if (!specs[key] || !specs[key].length) return;
+    // Фільтруємо пусті значення
+    var filtered = specs[key].filter(function(row) {
+      if (!Array.isArray(row) || row.length < 2) return false;
+      var v = String(row[1] || '').trim();
+      return v && v !== '' && v !== 'Не вказано' && v !== '—' && v !== 'undefined';
+    });
+    if (!filtered.length) return;
     const meta = SPEC_SECTION_META[key] || { label: key, icon: 'fa-circle' };
     html += `
       <div class="spec-section-title"><i class="fa-solid ${meta.icon}"></i>${meta.label}</div>
       <table class="spec-table">
-        ${specs[key].map(([k,v]) => `
+        ${filtered.map(([k,v]) => `
           <tr>
-            <td>${k}</td>
+            <td>${_esc(k)}</td>
             <td class="${isHighlight(k,v) ? 'spec-val-green' : ''}">${formatSpecVal(k,v)}</td>
           </tr>`).join('')}
       </table>`;
