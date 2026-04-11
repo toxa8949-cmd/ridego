@@ -66,8 +66,14 @@ function doSocialLogin(provider) {
 }
 function doLogout() {
   if (window._auth) {
-    if (typeof _chatsUnsubscribe === 'function') { _chatsUnsubscribe(); window._chatsUnsubscribe = null; }
+    if (typeof _chatsUnsubscribe === 'function') {
+      _chatsUnsubscribe();
+      _chatsUnsubscribe = null;
+      window._chatsUnsubscribe = null;
+      window.__chatListenersCount = 0;
+    }
     if (typeof _chatUnsubscribe  === 'function') { _chatUnsubscribe();  _chatUnsubscribe = null; }
+    if (typeof _chatsSubscribedUid !== 'undefined') _chatsSubscribedUid = null;
     window._auth.signOut().then(function() {
       isLoggedIn  = false;
       myListings  = [];
@@ -76,6 +82,8 @@ function doLogout() {
       // Очищаємо кеш підписок і відгуків
       if (typeof _followingCache !== 'undefined') { _followingCache = null; _followingCacheUid = null; }
       if (typeof _reviewsCache   !== 'undefined') { _reviewsCache = {}; }
+      if (window._sellersCache)    window._sellersCache = {};
+      if (window._reviewedSellers) window._reviewedSellers = new Set();
       if (typeof renderProfile    === 'function') renderProfile();
       if (typeof renderChats      === 'function') renderChats();
       if (typeof _updateChatBadge === 'function') _updateChatBadge();
