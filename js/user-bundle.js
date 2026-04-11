@@ -5,7 +5,11 @@ function doLogin() {
   if (!pass)  { showToast('⚠️ Введіть пароль'); return; }
   if (window._auth) {
     window._auth.signInWithEmailAndPassword(email, pass)
-      .then(function() { showToast('✅ Вхід успішний!'); showPage('profile'); })
+      .then(function() {
+        showToast('✅ Вхід успішний!');
+        showPage('profile');
+        if (typeof _preloadFollowing === 'function') _preloadFollowing();
+      })
       .catch(function(e) {
         if (e.code === 'auth/too-many-requests') showToast('⚠️ Забагато спроб. Зачекайте');
         else showToast('⚠️ Невірний email або пароль');
@@ -42,8 +46,10 @@ function doSocialLogin(provider) {
           }
           showToast('✅ Вхід через Google!');
           showPage('profile');
+          if (typeof _preloadFollowing === 'function') _preloadFollowing();
         }).catch(function() {
           showToast('✅ Вхід через Google!');
+          if (typeof _preloadFollowing === 'function') _preloadFollowing();
           showPage('profile');
         });
       })
@@ -67,6 +73,9 @@ function doLogout() {
       myListings  = [];
       _fbChats    = [];
       currentUser = { name:'', email:'', initial:'' };
+      // Очищаємо кеш підписок і відгуків
+      if (typeof _followingCache !== 'undefined') { _followingCache = null; _followingCacheUid = null; }
+      if (typeof _reviewsCache   !== 'undefined') { _reviewsCache = {}; }
       if (typeof renderProfile    === 'function') renderProfile();
       if (typeof renderChats      === 'function') renderChats();
       if (typeof _updateChatBadge === 'function') _updateChatBadge();

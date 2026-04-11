@@ -320,11 +320,28 @@ function submitReview() {
 
 function _loadSellerReviews(sellerUid) {
   if (!window._db) return;
+
+  // Перевіряємо кеш
+  var cache = typeof _reviewsCache !== 'undefined' && _reviewsCache[sellerUid];
+  if (cache && (Date.now() - cache.loadedAt) < (typeof _REVIEWS_TTL !== 'undefined' ? _REVIEWS_TTL : 5 * 60 * 1000)) {
+    _renderSellerReviewsUI(cache.data);
+    return;
+  }
+
   window._db.collection('reviews')
     .where('sellerUid', '==', sellerUid)
     .limit(50)
     .get().then(function(snap) {
       var revs = snap.docs.map(function(d){ return d.data(); });
+      // Зберігаємо в кеш
+      if (typeof _reviewsCache !== 'undefined') {
+        _reviewsCache[sellerUid] = { data: revs, loadedAt: Date.now() };
+      }
+      _renderSellerReviewsUI(revs);
+    }).catch(function(e){ console.error('reviews load:', e); });
+}
+
+function _renderSellerReviewsUI(revs) {
 
       revs.sort(function(a, b) {
         var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
@@ -368,7 +385,6 @@ function _loadSellerReviews(sellerUid) {
           '</div></div></div>';
       }).join('') :
         '<div class="empty-state"><i class="fa-regular fa-star"></i><h3>Поки немає відгуків</h3><p>Будьте першим хто залишить відгук</p></div>';
-    }).catch(function(e){ console.error('reviews load:', e); });
 }
 
 // deleteListing визначена в main.js

@@ -1,3 +1,10 @@
+// ── Кеш оптимізації ──────────────────────────────────────────
+var _followingCache = null; // Set з uid продавців на яких підписані (null = ще не завантажено)
+var _followingCacheUid = null; // uid юзера для якого завантажено кеш
+var _reviewsCache = {}; // { [sellerUid]: { data: [], loadedAt: timestamp } }
+var _REVIEWS_TTL = 5 * 60 * 1000; // 5 хвилин
+// ─────────────────────────────────────────────────────────────
+
 const PROMO_PRICES = {
   top:       { 7: 150, 14: 250, 30: 400 },
   highlight: { 7:  80, 14: 130, 30: 200 },
@@ -2083,14 +2090,8 @@ function loadViewsStats(days) {
   var uid = currentUser.uid;
   var numDays = parseInt(days) || 7;
 
-  window._db.collection('listings')
-    .where('uid', '==', uid)
-    .get()
-    .then(function(snap) {
-      var listings = snap.docs.map(function(d) {
-        return Object.assign({ id: d.id }, d.data());
-      }).filter(function(l) { return l.status !== 'deleted'; });
-
+  // Використовуємо кеш замість Firestore запиту
+  function _runStats(listings) {
       if (!listings.length) {
         content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Немає оголошень для статистики</div>';
         return;
@@ -2140,10 +2141,45 @@ function loadViewsStats(days) {
       }
 
       content.innerHTML = html;
-    })
-    .catch(function(e) {
-      content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">\u041f\u043e\u043c\u0438\u043b\u043a\u0430 \u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f: ' + e.message + '</div>';
-    });
+  }
+
+  // Спочатку беремо з кешу myListings
+  var cached = typeof myListings !== 'undefined'
+    ? myListings.filter(function(l) { return l && l.uid === uid && l.status !== 'deleted'; })
+    : [];
+
+  if (cached.length > 0) {
+    _runStats(cached);
+  } else if (typeof _fbListings !== 'undefined' && _fbListings.length) {
+    // Fallback — фільтруємо з загального кешу
+    var fromFb = _fbListings.filter(function(l) { return l && l.uid === uid && l.status !== 'deleted'; });
+    if (fromFb.length > 0) {
+      _runStats(fromFb);
+    } else {
+      // Крайній випадок — читаємо з Firestore
+      window._db.collection('listings').where('uid', '==', uid).get()
+        .then(function(snap) {
+          var listings = snap.docs.map(function(d) {
+            return Object.assign({ id: d.id }, d.data());
+          }).filter(function(l) { return l.status !== 'deleted'; });
+          _runStats(listings);
+        })
+        .catch(function(e) {
+          content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">\u041f\u043e\u043c\u0438\u043b\u043a\u0430 \u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f: ' + e.message + '</div>';
+        });
+    }
+  } else {
+    window._db.collection('listings').where('uid', '==', uid).get()
+      .then(function(snap) {
+        var listings = snap.docs.map(function(d) {
+          return Object.assign({ id: d.id }, d.data());
+        }).filter(function(l) { return l.status !== 'deleted'; });
+        _runStats(listings);
+      })
+      .catch(function(e) {
+        content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">\u041f\u043e\u043c\u0438\u043b\u043a\u0430 \u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f: ' + e.message + '</div>';
+      });
+  }
 }
 
 function _statBox(icon, value, label, color) {
@@ -2580,13 +2616,36 @@ function _initFollowBtn(sellerUid) {
   });
 }
 
-function _isFollowing(sellerUid, cb) {
-  if (!window._db || !currentUser || !currentUser.uid) return cb(false);
+// Preload всіх підписок одним запитом при логіні
+function _preloadFollowing() {
+  if (!window._db || !currentUser || !currentUser.uid) return;
+  if (_followingCache !== null && _followingCacheUid === currentUser.uid) return;
   window._db.collection('follows')
     .where('followerUid', '==', currentUser.uid)
-    .where('sellerUid', '==', sellerUid)
-    .limit(1).get()
-    .then(function(snap) { cb(!snap.empty); })
+    .get()
+    .then(function(snap) {
+      _followingCache = new Set(snap.docs.map(function(d) { return d.data().sellerUid; }));
+      _followingCacheUid = currentUser.uid;
+    })
+    .catch(function() { _followingCache = new Set(); });
+}
+
+function _isFollowing(sellerUid, cb) {
+  if (!currentUser || !currentUser.uid) return cb(false);
+  // Використовуємо кеш якщо він є
+  if (_followingCache !== null && _followingCacheUid === currentUser.uid) {
+    return cb(_followingCache.has(sellerUid));
+  }
+  // Кеш ще не готовий — завантажуємо і чекаємо
+  if (!window._db) return cb(false);
+  window._db.collection('follows')
+    .where('followerUid', '==', currentUser.uid)
+    .get()
+    .then(function(snap) {
+      _followingCache = new Set(snap.docs.map(function(d) { return d.data().sellerUid; }));
+      _followingCacheUid = currentUser.uid;
+      cb(_followingCache.has(sellerUid));
+    })
     .catch(function() { cb(false); });
 }
 
@@ -2617,52 +2676,62 @@ function toggleFollowSeller() {
   var sellerUid = _currentSellerUid;
   _isFollowing(sellerUid, function(following) {
     if (following) {
-
       window._db.collection('follows')
         .where('followerUid', '==', currentUser.uid)
         .where('sellerUid', '==', sellerUid)
         .get().then(function(snap) {
           snap.docs.forEach(function(d) { d.ref.delete(); });
+          // Оновлюємо кеш
+          if (_followingCache) _followingCache.delete(sellerUid);
           _renderFollowBtn(false);
           showToast('\u0412\u0456\u0434\u043f\u0438\u0441\u0430\u043d\u043e');
-
           window._db.collection('users').doc(sellerUid).update({
             followers: firebase.firestore.FieldValue.increment(-1)
           }).catch(function(){});
         });
     } else {
-
       window._db.collection('follows').add({
         followerUid: currentUser.uid,
         followerName: currentUser.name || currentUser.email || '',
         sellerUid: sellerUid,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(function() {
+        // Оновлюємо кеш
+        if (_followingCache) _followingCache.add(sellerUid);
         _renderFollowBtn(true);
         showToast('\u2705 \u041f\u0456\u0434\u043f\u0438\u0441\u0430\u043b\u0438\u0441\u044c! \u0411\u0443\u0434\u0435\u043c\u043e \u0441\u0441\u043f\u043e\u0432\u0456\u0449\u0430\u0442\u0438 \u043f\u0440\u043e \u043d\u043e\u0432\u0456 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f');
-
         window._db.collection('users').doc(sellerUid).update({
           followers: firebase.firestore.FieldValue.increment(1)
         }).catch(function(){});
-
       });
     }
   });
 }
 
 function _renderFollowersCount(sellerUid) {
+  // Спочатку беремо з вже завантажених даних — без Firestore запиту
+  var cached = _fbListings && _fbListings.find(function(l) { return l && l.uid === sellerUid; });
+  var el = document.getElementById('sp-stat-response');
+  if (!el) return;
+
+  if (cached && typeof cached.followers !== 'undefined') {
+    el.textContent = cached.followers || 0;
+    var lbl = el.nextElementSibling;
+    if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
+    return;
+  }
+
+  // Якщо немає в кеші — читаємо з Firestore (fallback)
   if (!window._db) return;
   window._db.collection('users').doc(sellerUid).get().then(function(snap) {
     if (!snap.exists) return;
     var followers = snap.data().followers || 0;
-    var el = document.getElementById('sp-stat-response');
-    if (el) {
-      el.textContent = followers;
-      var lbl = el.nextElementSibling;
-      if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
-    }
+    el.textContent = followers;
+    var lbl = el.nextElementSibling;
+    if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
   }).catch(function(){});
 }
+
 
 function _setListingSchema(l) {
   var existing = document.getElementById('schema-listing');

@@ -1070,7 +1070,11 @@ function _loadUserServices(uid) {
 }
 
 var _fbDataLoadedAt = 0;
-var _FB_CACHE_TTL   = 10 * 60 * 1000;
+var _FB_CACHE_TTL   = 30 * 60 * 1000; // 30 хв замість 10 хв
+
+function _shouldRefresh() {
+  return Date.now() - _fbDataLoadedAt > _FB_CACHE_TTL;
+}
 var _lastListingDoc = null;
 var _allListingsLoaded = false;
 var _loadingMore = false;
@@ -1124,12 +1128,11 @@ function loadFirebaseData(force) {
   }
 
   if (!force) {
-    _idbGet('listings', 10 * 60 * 1000, function(cached) {
+    _idbGet('listings', 30 * 60 * 1000, function(cached) {
       if (cached && cached.length) {
-        // Фільтруємо видалені з кешу
         _fbListings = cached.filter(function(l){ return l && l.status !== 'deleted'; });
         _fbDataLoadedAt = Date.now();
-        _idbGet('services', 15 * 60 * 1000, function(svcs) {
+        _idbGet('services', 30 * 60 * 1000, function(svcs) {
           if (svcs) _fbServices = svcs;
           renderHomeListings();
           renderCatalog();
@@ -1138,8 +1141,12 @@ function loadFirebaseData(force) {
             if (typeof renderServices === 'function') renderServices();
           }
         });
-        // Завжди оновлюємо з Firestore у фоні через 2 сек
-        setTimeout(function() { loadFirebaseData(true); }, 2000);
+        // Фоновий refresh тільки якщо кеш протух
+        setTimeout(function() {
+          if (_shouldRefresh()) {
+            loadFirebaseData(true);
+          }
+        }, 5000);
         return;
       }
       _loadFirebaseFromNetwork(force);
@@ -1157,15 +1164,15 @@ function _loadFirebaseFromNetwork(force) {
     return;
   }
 
-  // Спочатку завантажуємо 50 для домашньої сторінки (швидкий перший render)
+  // Завантажуємо 24 для першого рендеру (менше reads, достатньо для UX)
   window._db.collection('listings')
     .where('status','==','active')
-    .orderBy('createdAt','desc').limit(50).get()
+    .orderBy('createdAt','desc').limit(24).get()
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
       _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
-      _allListingsLoaded = snap.docs.length < 50;
+      _allListingsLoaded = snap.docs.length < 24;
 
       _idbSet('listings', _fbListings);
 
@@ -1502,3 +1509,10 @@ try {
 // loadSavedProfile() та _initRouter() викликаються в кінці features-bundle.js
 // (після завантаження всіх залежностей)
 
+
+// Розумне оновлення при поверненні на вкладку
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && _shouldRefresh()) {
+    loadFirebaseData(true);
+  }
+});
