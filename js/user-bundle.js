@@ -1812,14 +1812,54 @@ function renderPhotoGrid() {
   grid.innerHTML = uploadedPhotos.map(function(item, i) {
     var src = typeof item === 'string' ? item : (item.preview || item.storageUrl || '');
     if (!src) return '';
-    return '<div class="photo-thumb-wrap">' +
-      '<img src="' + src + '" alt="Фото ' + (i+1) + '" loading="lazy" decoding="async">' +
+    return '<div class="photo-thumb-wrap" draggable="true" data-idx="' + i + '"' +
+      ' ondragstart="_photoDragStart(event,' + i + ')"' +
+      ' ondragover="_photoDragOver(event)"' +
+      ' ondrop="_photoDrop(event,' + i + ')"' +
+      ' ondragend="_photoDragEnd(event)"' +
+      ' style="cursor:grab;position:relative">' +
+      '<img src="' + src + '" alt="Фото ' + (i+1) + '" loading="lazy" decoding="async" style="pointer-events:none">' +
       (i===0 ? '<div class="photo-main-badge">Головне</div>' : '') +
-      '<button class="remove-photo" onclick="removePhoto(' + i + ')">×</button>' +
+      '<button class="remove-photo" onclick="event.stopPropagation();removePhoto(' + i + ')">×</button>' +
+      '<div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.5);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;pointer-events:none">' + (i+1) + '</div>' +
       '</div>';
   }).join('');
   var trigger = document.getElementById('upload-trigger');
   if (trigger) trigger.style.display = uploadedPhotos.length >= 10 ? 'none' : '';
+}
+
+var _photoDragIdx = -1;
+
+function _photoDragStart(e, idx) {
+  _photoDragIdx = idx;
+  e.target.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function _photoDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  var wrap = e.target.closest('.photo-thumb-wrap');
+  if (wrap) wrap.style.outline = '2px solid var(--brand, #00c853)';
+}
+
+function _photoDragEnd(e) {
+  e.target.style.opacity = '1';
+  document.querySelectorAll('.photo-thumb-wrap').forEach(function(el) { el.style.outline = ''; });
+}
+
+function _photoDrop(e, targetIdx) {
+  e.preventDefault();
+  var wrap = e.target.closest('.photo-thumb-wrap');
+  if (wrap) wrap.style.outline = '';
+  if (_photoDragIdx < 0 || _photoDragIdx === targetIdx) return;
+  // Поміняти місцями
+  var moved = uploadedPhotos.splice(_photoDragIdx, 1)[0];
+  uploadedPhotos.splice(targetIdx, 0, moved);
+  window.uploadedPhotos = uploadedPhotos;
+  _photoDragIdx = -1;
+  renderPhotoGrid();
+  showToast('📸 Порядок фото змінено');
 }
 
 function removePhoto(i) {

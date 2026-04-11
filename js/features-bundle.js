@@ -621,8 +621,19 @@ function _fillEditForm(l) {
       if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
     }
 
-    // ── Spec поля (крок 3) — рендеримо їх і заповнюємо ──
+    // ── Телефон (крок 4) — підтягуємо з оголошення або профілю ──
+    var phoneEl = document.getElementById('new-phone');
+    if (phoneEl) {
+      phoneEl.value = l.phone || (currentUser && currentUser.phone) || '';
+    }
+
+    // ── Spec поля (крок 3) ──
+    // Тимчасово показуємо крок 3 щоб DOM елементи створились правильно
+    var step3 = document.getElementById('add-step-3');
+    if (step3) step3.style.display = '';
     if (typeof renderSpecFields === 'function') renderSpecFields();
+
+    // Заповнюємо spec поля з більшою затримкою
     setTimeout(function() {
       set('sp-battery-ah', l.battAh || '');
       set('sp-speed',      l.speedVal || '');
@@ -638,7 +649,6 @@ function _fillEditForm(l) {
           var sectionData = l.specs[sectionKey];
           if (sectionData && typeof sectionData === 'object' && !Array.isArray(sectionData)) {
             Object.keys(sectionData).forEach(function(label) {
-              // Шукаємо елемент по label через усі spec інпути
               var allInputs = document.querySelectorAll('#add-specs-form .form-input');
               allInputs.forEach(function(inp) {
                 var lbl = inp.closest('.form-group');
@@ -653,7 +663,10 @@ function _fillEditForm(l) {
           }
         });
       }
-    }, 100);
+
+      // Ховаємо крок 3 назад (залишаємо видимим тільки крок 2)
+      if (step3) step3.style.display = 'none';
+    }, 200);
 
     // ── UI для режиму редагування ──
     var h2 = document.querySelector('#add-step-2 h2');
