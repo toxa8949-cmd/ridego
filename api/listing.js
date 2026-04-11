@@ -121,7 +121,25 @@ module.exports = async (req, res) => {
       "url": `${BASE}/listing/${id}`,
       "priceValidUntil": new Date(Date.now()+30*86400000).toISOString().split('T')[0],
       "seller": { "@type": "Person", "name": listing.sellerName || "Продавець" },
-      "itemCondition": listing.condition === 'Новий' ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition"
+      "itemCondition": listing.condition === 'Новий' ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",
+      "hasMerchantReturnPolicy": {
+        "@type": "MerchantReturnPolicy",
+        "applicableCountry": "UA",
+        "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
+        "merchantReturnDays": 0
+      },
+      "shippingDetails": {
+        "@type": "OfferShippingDetails",
+        "shippingDestination": {
+          "@type": "DefinedRegion",
+          "addressCountry": "UA"
+        },
+        "deliveryTime": {
+          "@type": "ShippingDeliveryTime",
+          "handlingTime": { "@type": "QuantitativeValue", "minValue": 0, "maxValue": 3, "unitCode": "DAY" },
+          "transitTime": { "@type": "QuantitativeValue", "minValue": 1, "maxValue": 7, "unitCode": "DAY" }
+        }
+      }
     }
   });
 
