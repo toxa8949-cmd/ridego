@@ -525,6 +525,7 @@ function _fillEditForm(l) {
 
   _resetAddWizard();
 
+  // 1. Встановити категорію
   addSelectedCat = l.cat || null;
   document.querySelectorAll('#add-step-1 .transport-btn').forEach(function(b) {
     if (b.dataset.cat === l.cat) {
@@ -533,153 +534,160 @@ function _fillEditForm(l) {
     }
   });
 
+  // 2. Перейти на крок 2 (це побудує brand select)
   addGoStep(2);
 
-  // Невелика затримка щоб DOM крок-2 встиг відрендеритись
-  setTimeout(function() {
-    var set = function(id, val) {
-      var el = document.getElementById(id);
-      if (el && val !== undefined && val !== null) el.value = String(val);
-    };
+  // 3. Заповнити ВСЕ одним requestAnimationFrame — гарантовано після рендеру DOM
+  requestAnimationFrame(function() {
+    setTimeout(function() { _doFillEditForm(l); }, 50);
+  });
+}
 
-    // ── Основні поля (крок 2) ──
-    set('new-title',    l.title || '');
-    set('new-price',    l.price || '');
-    set('new-desc',     l.desc  || '');
-    set('new-phone',    l.phone || '');
-    set('new-mileage',  l.mileage || '');
-    set('new-district', l.district || l.address || '');
-    set('new-year',     l.year || '');
-    set('new-condition', l.condition || 'Хороший');
-    set('new-bargain',  l.bargain || '');
+function _doFillEditForm(l) {
+  var set = function(id, val) {
+    var el = document.getElementById(id);
+    if (el && val !== undefined && val !== null && val !== '') el.value = String(val);
+  };
 
-    // ── Бренд ──
-    var brandEl = document.getElementById('new-brand');
-    if (brandEl && l.brand) {
-      var found = false;
-      Array.from(brandEl.options).forEach(function(opt) {
-        if (opt.value === l.brand) { brandEl.value = l.brand; found = true; }
-      });
-      if (!found) {
-        brandEl.value = 'Інший бренд';
-        var customEl = document.getElementById('new-brand-custom');
-        if (customEl) { customEl.value = l.brand; customEl.style.display = ''; }
-      }
-      // Тригерити зміну бренду щоб завантажити моделі
-      if (typeof onBrandChange === 'function') onBrandChange();
-      else if (brandEl.onchange) brandEl.onchange();
+  // ── Основні поля (крок 2) ──
+  set('new-title',     l.title);
+  set('new-price',     l.price);
+  set('new-desc',      l.desc);
+  set('new-mileage',   l.mileage);
+  set('new-district',  l.district || l.address);
+  set('new-year',      l.year);
+  set('new-condition', l.condition || 'Хороший');
+  set('new-bargain',   l.bargain);
 
-      // ── Модель (після завантаження списку моделей) ──
-      if (l.model) {
-        setTimeout(function() {
-          var modelSelEl = document.getElementById('new-model-select');
-          if (modelSelEl) {
-            var modelFound = false;
-            Array.from(modelSelEl.options).forEach(function(opt) {
-              if (opt.value === l.model) { modelSelEl.value = l.model; modelFound = true; }
-            });
-            if (!modelFound) {
-              modelSelEl.value = '__other__';
-              if (typeof onModelChange === 'function') onModelChange();
-              else if (modelSelEl.onchange) modelSelEl.onchange();
-            }
-          }
-          // Завжди встановити текст моделі
-          set('new-model', l.model);
-        }, 150);
-      }
+  // ── Телефон — з оголошення або профілю ──
+  var phoneEl = document.getElementById('new-phone');
+  if (phoneEl) phoneEl.value = l.phone || (currentUser && currentUser.phone) || '';
+
+  // ── Бренд ──
+  var brandEl = document.getElementById('new-brand');
+  if (brandEl && l.brand) {
+    var brandFound = false;
+    Array.from(brandEl.options).forEach(function(opt) {
+      if (opt.value === l.brand) { brandEl.value = l.brand; brandFound = true; }
+    });
+    if (!brandFound) {
+      brandEl.value = 'Інший бренд';
+      var customEl = document.getElementById('new-brand-custom');
+      if (customEl) { customEl.value = l.brand; customEl.style.display = ''; }
     }
+    // Тригерити зміну бренду щоб завантажити моделі (але без auto-title)
+    if (typeof onBrandChange === 'function') onBrandChange();
+  }
 
-    // ── Локація ──
-    var oblastEl = document.getElementById('new-oblast');
-    if (oblastEl && l.oblast) {
-      oblastEl.value = l.oblast;
-      if (typeof onOblastChange === 'function') onOblastChange();
-      setTimeout(function() {
-        var raionEl = document.getElementById('new-raion');
-        if (raionEl && l.raion) {
-          raionEl.value = l.raion;
-          if (typeof onRaionChange === 'function') onRaionChange();
-        }
-        // Місто після того як район завантажився
-        setTimeout(function() {
-          set('new-city', l.city || '');
-          if (typeof onCityChange === 'function') onCityChange();
-        }, 100);
-      }, 150);
-    } else {
-      set('new-city', l.city || '');
-    }
-
-    // ── Фото ──
-    var existingImgs = (l.imgs && l.imgs.length) ? l.imgs : (l.img ? [l.img] : []);
-    if (existingImgs.length > 0) {
-      uploadedPhotos = existingImgs.map(function(url) {
-        return { blob: null, preview: url, uploaded: true, storageUrl: url };
-      });
-      window.uploadedPhotos = uploadedPhotos;
-      if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
-    }
-
-    // ── Телефон (крок 4) — підтягуємо з оголошення або профілю ──
-    var phoneEl = document.getElementById('new-phone');
-    if (phoneEl) {
-      phoneEl.value = l.phone || (currentUser && currentUser.phone) || '';
-    }
-
-    // ── Spec поля (крок 3) ──
-    // Тимчасово показуємо крок 3 щоб DOM елементи створились правильно
-    var step3 = document.getElementById('add-step-3');
-    if (step3) step3.style.display = '';
-    if (typeof renderSpecFields === 'function') renderSpecFields();
-
-    // Заповнюємо spec поля з більшою затримкою
+  // ── Модель (після завантаження списку через onBrandChange) ──
+  if (l.model) {
     setTimeout(function() {
-      set('sp-battery-ah', l.battAh || '');
-      set('sp-speed',      l.speedVal || '');
-      set('sp-range',      l.rangeVal || '');
-      set('sp-weight',     l.weightVal || '');
-      set('sp-wheel',      l.wheelVal || '');
-      set('sp-motor-w',    l.motorW || '');
-      set('sp-voltage',    l.voltage || '');
-
-      // Заповнити розширені spec поля з l.specs (якщо є)
-      if (l.specs && typeof l.specs === 'object') {
-        Object.keys(l.specs).forEach(function(sectionKey) {
-          var sectionData = l.specs[sectionKey];
-          if (sectionData && typeof sectionData === 'object' && !Array.isArray(sectionData)) {
-            Object.keys(sectionData).forEach(function(label) {
-              var allInputs = document.querySelectorAll('#add-specs-form .form-input');
-              allInputs.forEach(function(inp) {
-                var lbl = inp.closest('.form-group');
-                if (lbl) {
-                  var lblEl = lbl.querySelector('label');
-                  if (lblEl && lblEl.textContent.replace(' *','').trim() === label) {
-                    inp.value = sectionData[label];
-                  }
-                }
-              });
-            });
-          }
+      var modelSelEl = document.getElementById('new-model-select');
+      if (modelSelEl) {
+        var mFound = false;
+        Array.from(modelSelEl.options).forEach(function(opt) {
+          if (opt.value === l.model) { modelSelEl.value = l.model; mFound = true; }
         });
+        if (!mFound) {
+          modelSelEl.value = '__other__';
+        }
       }
+      // Завжди встановити текстове поле моделі
+      var modelInp = document.getElementById('new-model');
+      if (modelInp) modelInp.value = l.model;
+    }, 100);
+  }
 
-      // Ховаємо крок 3 назад (залишаємо видимим тільки крок 2)
-      if (step3) step3.style.display = 'none';
-    }, 200);
+  // ── Локація ──
+  var oblastEl = document.getElementById('new-oblast');
+  if (oblastEl && l.oblast) {
+    oblastEl.value = l.oblast;
+    if (typeof onOblastChange === 'function') onOblastChange();
+    setTimeout(function() {
+      var raionEl = document.getElementById('new-raion');
+      if (raionEl && l.raion) {
+        raionEl.value = l.raion;
+        if (typeof onRaionChange === 'function') onRaionChange();
+      }
+      setTimeout(function() {
+        set('new-city', l.city);
+        if (typeof onCityChange === 'function') onCityChange();
+      }, 100);
+    }, 150);
+  } else {
+    set('new-city', l.city);
+  }
 
-    // ── UI для режиму редагування ──
-    var h2 = document.querySelector('#add-step-2 h2');
-    if (h2) h2.textContent = 'Редагування оголошення';
-    var submitBtn = document.getElementById('add-submit-btn');
-    if (submitBtn) {
-      submitBtn.textContent = 'Зберегти зміни';
-      submitBtn.onclick = function() { saveEditListing(); };
+  // ── Фото ──
+  var existingImgs = (l.imgs && l.imgs.length) ? l.imgs : (l.img ? [l.img] : []);
+  if (existingImgs.length > 0) {
+    uploadedPhotos = existingImgs.map(function(url) {
+      return { blob: null, preview: url, uploaded: true, storageUrl: url };
+    });
+    window.uploadedPhotos = uploadedPhotos;
+    if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+  }
+
+  // ── Spec поля (крок 3) ──
+  // Тимчасово робимо крок 3 видимим щоб DOM елементи створились
+  var step3 = document.getElementById('add-step-3');
+  var wasHidden = step3 && step3.style.display === 'none';
+  if (step3) step3.style.display = '';
+  if (typeof renderSpecFields === 'function') renderSpecFields();
+
+  setTimeout(function() {
+    // Базові sp-поля
+    set('sp-battery-ah', l.battAh);
+    set('sp-speed',      l.speedVal);
+    set('sp-range',      l.rangeVal);
+    set('sp-weight',     l.weightVal);
+    set('sp-wheel',      l.wheelVal);
+    set('sp-motor-w',    l.motorW);
+    set('sp-voltage',    l.voltage);
+
+    // Розширені spec поля з l.specs
+    if (l.specs && typeof l.specs === 'object') {
+      Object.keys(l.specs).forEach(function(sectionKey) {
+        var sectionData = l.specs[sectionKey];
+        if (sectionData && typeof sectionData === 'object' && !Array.isArray(sectionData)) {
+          Object.keys(sectionData).forEach(function(label) {
+            var allInputs = document.querySelectorAll('#add-specs-form .form-input');
+            allInputs.forEach(function(inp) {
+              var fg = inp.closest('.form-group');
+              if (fg) {
+                var lblEl = fg.querySelector('label');
+                if (lblEl && lblEl.textContent.replace(' *','').trim() === label) {
+                  inp.value = sectionData[label];
+                }
+              }
+            });
+          });
+        }
+      });
     }
 
-    showToast('✏️ Режим редагування');
-  }, 350);
+    // Ховаємо крок 3 назад
+    if (wasHidden && step3) step3.style.display = 'none';
+  }, 150);
 
+  // ── Перезаписати назву (бо onBrandChange + _autoFillTitle могли затерти) ──
+  setTimeout(function() {
+    if (l.title) {
+      var titleEl = document.getElementById('new-title');
+      if (titleEl) titleEl.value = l.title;
+    }
+  }, 200);
+
+  // ── UI для режиму редагування ──
+  var h2 = document.querySelector('#add-step-2 h2');
+  if (h2) h2.textContent = 'Редагування оголошення';
+  var submitBtn = document.getElementById('add-submit-btn');
+  if (submitBtn) {
+    submitBtn.textContent = 'Зберегти зміни';
+    submitBtn.onclick = function() { saveEditListing(); };
+  }
+
+  showToast('✏️ Режим редагування');
 }
 
 function saveEditListing() {

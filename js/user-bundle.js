@@ -1549,6 +1549,8 @@ function onModelChange() {
 }
 
 function _autoFillTitle() {
+  // Не автозаповнювати при редагуванні
+  if (typeof _editListingId !== 'undefined' && _editListingId) return;
   var titleEl = document.getElementById('new-title');
   if (!titleEl || titleEl.value.trim()) return; // не перезаписувати якщо вже заповнено
   var brandEl = document.getElementById('new-brand');
