@@ -16,17 +16,19 @@ const STATIC_PAGES = [
 ];
 
 async function query(collection, filters, selectFields, limitN) {
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery?key=${API_KEY}`;
+  const key = API_KEY ? `?key=${API_KEY}` : '';
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery${key}`;
+
   const where = filters.length === 1
     ? { fieldFilter: filters[0] }
     : { compositeFilter: { op: 'AND', filters: filters.map(f => ({ fieldFilter: f })) } };
 
+  // БЕЗ orderBy — це головна причина 429 на анонімних запитах
   const body = {
     structuredQuery: {
       from: [{ collectionId: collection }],
       where,
       select: { fields: selectFields.map(f => ({ fieldPath: f })) },
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
       limit: limitN || 5000
     }
   };
@@ -62,7 +64,7 @@ module.exports = async (req, res) => {
   const urls = [...STATIC_PAGES];
 
   try {
-    // Паралельні запити — швидше і менше шансів на таймаут
+    // Всі запити паралельно
     const [listings, news, services, sellers] = await Promise.all([
       query(
         'listings',
@@ -134,7 +136,6 @@ module.exports = async (req, res) => {
     console.error('[sitemap] GENERAL ERROR:', e.message);
   }
 
-  // ── Генерація XML ──────────────────────────────────────
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
