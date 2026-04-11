@@ -970,7 +970,8 @@
 
   @media(max-width:900px){
     #detail-main-layout { grid-template-columns: 1fr !important; }
-    #detail-main-img-wrap { height: 260px !important; }
+    #detail-main-img-wrap { height: 280px !important; max-height: 50vh !important; }
+    .detail-main-img { height: 280px !important; max-height: 50vh !important; object-fit: contain !important; object-position: center !important; }
   }
 
   .add-step-dot {
