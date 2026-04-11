@@ -29,16 +29,33 @@ async function query(collection, filters, selectFields, limitN) {
       limit: limitN || 5000
     }
   };
+
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    if (!res.ok) return [];
-    return res.json();
+
+    const json = await res.json();
+
+    // ДЕТАЛЬНЕ ЛОГУВАННЯ
+    const docsCount = Array.isArray(json) ? json.filter(i => i.document).length : 0;
+    console.log(`[sitemap] ${collection}: http=${res.status}, total=${Array.isArray(json) ? json.length : 'N/A'}, docs=${docsCount}`);
+
+    if (!res.ok) {
+      console.error(`[sitemap] ${collection} ERROR:`, JSON.stringify(json).slice(0, 500));
+      return [];
+    }
+
+    // Якщо є елементи без document — логуємо перший для діагностики
+    if (Array.isArray(json) && json.length > 0 && !json[0].document) {
+      console.log(`[sitemap] ${collection} first item (no doc):`, JSON.stringify(json[0]).slice(0, 300));
+    }
+
+    return json;
   } catch(e) {
-    console.error('Sitemap query error:', e.message);
+    console.error(`[sitemap] ${collection} FETCH ERROR:`, e.message);
     return [];
   }
 }
@@ -102,7 +119,7 @@ module.exports = async (req, res) => {
       urls.push({ loc: `/service/${id}`, priority: '0.6', changefreq: 'monthly', lastmod: date });
     });
 
-    // ── Продавці / магазини (тип business або з оголошеннями) ──
+    // ── Продавці / магазини ────────────────────────────────
     const sellers = await query(
       'users',
       [{ field: { fieldPath: 'type' }, op: 'EQUAL', value: { stringValue: 'business' } }],
@@ -117,8 +134,10 @@ module.exports = async (req, res) => {
       urls.push({ loc: `/seller/${uid}`, priority: '0.6', changefreq: 'weekly', lastmod: date });
     });
 
+    console.log(`[sitemap] TOTAL URLs: ${urls.length}`);
+
   } catch(e) {
-    console.error('Sitemap error:', e.message);
+    console.error('[sitemap] GENERAL ERROR:', e.message);
   }
 
   // ── Генерація XML ──────────────────────────────────────
