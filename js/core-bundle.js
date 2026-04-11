@@ -310,6 +310,22 @@ function _parseDate(val) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+function _timeAgo(val) {
+  var date = _parseDate(val);
+  if (!date) return '';
+  var now = Date.now();
+  var diff = Math.floor((now - date.getTime()) / 1000);
+  if (diff < 60)    return 'Щойно';
+  if (diff < 3600)  return Math.floor(diff / 60) + ' хв. тому';
+  if (diff < 86400) return Math.floor(diff / 3600) + ' год. тому';
+  var days = Math.floor(diff / 86400);
+  if (days === 1) return 'Вчора';
+  if (days < 7)  return days + ' дн. тому';
+  if (days < 30) return Math.floor(days / 7) + ' тижд. тому';
+  if (days < 365) return Math.floor(days / 30) + ' міс. тому';
+  return date.toLocaleDateString('uk-UA', {day:'numeric',month:'short',year:'numeric'});
+}
+
 function _isPromoActive(l) {
   if (!l || !l.promo) return false;
   if (!l.promoUntil) return true;
@@ -687,6 +703,32 @@ function _renderRoute(route) {
       return;
     }
     setTimeout(initOblastSelect, 50);
+    // Автозаповнення телефону та локації з профілю
+    setTimeout(function() {
+      if (!currentUser || !currentUser.uid) return;
+      // Не перезаписувати якщо вже заповнено (режим редагування)
+      if (_editListingId) return;
+      var phoneEl = document.getElementById('new-phone');
+      if (phoneEl && !phoneEl.value && currentUser.phone) phoneEl.value = currentUser.phone;
+      var oblastEl = document.getElementById('new-oblast');
+      if (oblastEl && !oblastEl.value && currentUser.oblast) {
+        oblastEl.value = currentUser.oblast;
+        if (typeof onOblastChange === 'function') onOblastChange();
+        setTimeout(function() {
+          if (currentUser.raion) {
+            var raionEl = document.getElementById('new-raion');
+            if (raionEl) { raionEl.value = currentUser.raion; if (typeof onRaionChange === 'function') onRaionChange(); }
+          }
+          setTimeout(function() {
+            var cityEl = document.getElementById('new-city');
+            if (cityEl && !cityEl.value && currentUser.city) {
+              cityEl.value = currentUser.city;
+              if (typeof onCityChange === 'function') onCityChange();
+            }
+          }, 100);
+        }, 150);
+      }
+    }, 400);
   }
   if (page === 'seller' && id) renderSellerPage(id);
   if (page === 'detail' && id) showDetail(id, true);
@@ -958,7 +1000,11 @@ function createCard(l, backPage) {
             class="card-seller-btn">
             <i class="fa-solid fa-user-circle"></i>${eSellerName}
           </button>
-          <span class="loc"><i class="fa-solid fa-location-dot"></i>${eCity}</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="loc"><i class="fa-solid fa-location-dot"></i>${eCity}</span>
+            <span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:3px"><i class="fa-regular fa-clock" style="font-size:10px"></i>${_esc(_timeAgo(l.createdAt) || l.time || '')}</span>
+            ${l.views ? `<span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:3px"><i class="fa-solid fa-eye" style="font-size:10px"></i>${l.views}</span>` : ''}
+          </div>
         </div>
         <div style="display:flex;gap:4px;align-items:center">
           <button class="fav-btn compare-btn-card" id="cmp-btn-${_esc(l.id)}"

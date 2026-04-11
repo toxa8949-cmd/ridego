@@ -1531,6 +1531,7 @@ function onBrandChange() {
     }
     if (modelInp) modelInp.value = '';
   }
+  _autoFillTitle();
 }
 
 function onModelChange() {
@@ -1544,6 +1545,33 @@ function onModelChange() {
   } else if (sel.value) {
     inp.value = sel.value;
   }
+  _autoFillTitle();
+}
+
+function _autoFillTitle() {
+  var titleEl = document.getElementById('new-title');
+  if (!titleEl || titleEl.value.trim()) return; // не перезаписувати якщо вже заповнено
+  var brandEl = document.getElementById('new-brand');
+  var customBrand = document.getElementById('new-brand-custom');
+  var modelInp = document.getElementById('new-model');
+
+  var brand = (brandEl && brandEl.value === 'Інший бренд' && customBrand)
+    ? customBrand.value.trim()
+    : (brandEl ? brandEl.value : '');
+  var model = modelInp ? modelInp.value.trim() : '';
+
+  if (!brand || brand === 'Інший бренд') return;
+
+  var catPrefix = {
+    'Електросамокати': 'Електросамокат',
+    'Велосипеди': 'Велосипед',
+    'Електровелосипеди': 'Електровелосипед',
+    'Електроскутери': 'Електроскутер',
+    'Електромотоцикли': 'Електромотоцикл',
+  };
+  var prefix = catPrefix[addSelectedCat] || '';
+  var parts = [prefix, brand, model].filter(Boolean);
+  if (parts.length >= 2) titleEl.value = parts.join(' ');
 }
 
 function addSelectType(btn) {
@@ -1592,7 +1620,14 @@ function addGoStep(step) {
 
   if (step === 2) {
     const bs = document.getElementById('new-brand');
+    var prevBrand = bs ? bs.value : '';
     bs.innerHTML = (ADD_BRANDS[addSelectedCat] || []).map(b => `<option>${b}</option>`).join('');
+    // Відновити попередній вибір якщо він був
+    if (prevBrand) {
+      var found = false;
+      Array.from(bs.options).forEach(function(opt) { if (opt.value === prevBrand) { bs.value = prevBrand; found = true; } });
+      if (!found) bs.selectedIndex = 0;
+    }
     document.getElementById('add-type-badge').textContent = addSelectedIcon;
     document.getElementById('add-type-label').textContent = addSelectedCat;
   }
@@ -1691,18 +1726,85 @@ function compressImage(file, maxWidth, maxHeight, quality) {
 
 function handlePhotoUpload(event) {
   var files = Array.from(event.target.files);
-  var remaining = 10 - uploadedPhotos.length;
-  files.slice(0, remaining).forEach(function(file) {
+  _processPhotoFiles(files);
+  event.target.value = '';
+}
 
+function _processPhotoFiles(files) {
+  var remaining = 10 - uploadedPhotos.length;
+  if (remaining <= 0) { showToast('⚠️ Максимум 10 фото'); return; }
+  var validFiles = files.slice(0, remaining).filter(function(file) {
+    if (!file.type.startsWith('image/')) {
+      showToast('⚠️ ' + file.name + ' — не зображення');
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('⚠️ ' + file.name + ' перевищує 10 МБ');
+      return false;
+    }
+    return true;
+  });
+  if (!validFiles.length) return;
+
+  // Показати індикатор
+  var trigger = document.getElementById('upload-trigger');
+  if (trigger) trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:var(--brand)"></i><p>Обробка фото...</p>';
+
+  var processed = 0;
+  validFiles.forEach(function(file) {
     compressImage(file, 1600, 1600, 0.88).then(function(blob) {
       var url = URL.createObjectURL(blob);
       uploadedPhotos.push({ blob: blob, preview: url, uploaded: false, storageUrl: null });
       window.uploadedPhotos = uploadedPhotos;
-      renderPhotoGrid();
+      processed++;
+      if (processed === validFiles.length) {
+        renderPhotoGrid();
+        // Відновити upload area
+        if (trigger && uploadedPhotos.length < 10) {
+          trigger.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i><p>Клікніть або перетягніть фото<br><small>JPG, PNG — до 10 фото, кожне до 10 МБ</small></p>';
+        }
+      }
     });
   });
-  event.target.value = '';
 }
+
+// Drag-and-drop для фото
+function _initPhotoDragDrop() {
+  var area = document.getElementById('upload-trigger');
+  if (!area || area._dragInit) return;
+  area._dragInit = true;
+
+  area.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    area.style.borderColor = 'var(--brand)';
+    area.style.background = 'var(--brand-dim, rgba(0,200,83,0.08))';
+  });
+  area.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    area.style.borderColor = '';
+    area.style.background = '';
+  });
+  area.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    area.style.borderColor = '';
+    area.style.background = '';
+    var files = Array.from(e.dataTransfer.files);
+    if (files.length) _processPhotoFiles(files);
+  });
+}
+
+// Ініціалізувати drag-drop коли DOM готовий
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initPhotoDragDrop);
+} else {
+  _initPhotoDragDrop();
+}
+// Також при SPA-переходах
+var _ddObserver = new MutationObserver(function() { _initPhotoDragDrop(); });
+var _addPage = document.getElementById('page-add');
+if (_addPage) _ddObserver.observe(_addPage, { childList: true, subtree: true });
 
 function renderPhotoGrid() {
   const grid = document.getElementById('photo-grid');

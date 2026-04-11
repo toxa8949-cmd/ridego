@@ -1347,11 +1347,13 @@ function showDetail(id, _skipPush) {
   }
 
   const condColor = { 'Новий':'#00e676','Чудовий':'#69f0ae','Хороший':'#ffa726','Задовільний':'#ff5252' }[l.condition] || '#8b949e';
+  var viewsCount = l.views ? Number(l.views) : 0;
   document.getElementById('detail-meta').innerHTML = `
     <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-location-dot" style="color:var(--brand)"></i>${_esc(l.city)}</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${condColor};display:inline-block"></span>${_esc(l.condition)}</span>
-    <span style="display:flex;align-items:center;gap:5px"><i class="fa-regular fa-clock" style="color:var(--brand)"></i>${_esc(l.time)}</span>
+    <span style="display:flex;align-items:center;gap:5px"><i class="fa-regular fa-clock" style="color:var(--brand)"></i>${_esc(_timeAgo(l.createdAt) || l.time)}</span>
     <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-tag" style="color:var(--brand)"></i>${_esc(l.cat)}</span>
+    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-eye" style="color:var(--brand)"></i>${viewsCount} переглядів</span>
   `;
 
   renderDetailMap(l.city, l.fullLoc || `${l.city}, Україна`);
@@ -1398,13 +1400,43 @@ function showDetail(id, _skipPush) {
     }).catch(function(){});
   }
 
-  document.getElementById('detail-desc').textContent = l.desc || 'Опис не вказано';
+  var descEl = document.getElementById('detail-desc');
+  if (descEl) {
+    var descText = l.desc || 'Опис не вказано';
+    // Зберігаємо переноси рядків, але захищаємо від XSS
+    descEl.innerHTML = _esc(descText).replace(/\n/g, '<br>');
+  }
 
   buildSpecTable(l);
 
   updateFavBtn();
 
-  const similar = _allListings().filter(x => x && x.cat === l.cat && x.id !== id && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive').slice(0, 4);
+  const candidates = _allListings().filter(x => x && x.id !== id && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive');
+
+  // Скоринг схожості
+  var scored = candidates.map(function(c) {
+    var score = 0;
+    if (c.cat === l.cat)    score += 10;  // та сама категорія — найважливіше
+    if (c.brand && l.brand && c.brand === l.brand) score += 5;  // той самий бренд
+    if (c.city && l.city && c.city === l.city) score += 3;  // те саме місто
+    // Ціна в межах ±30%
+    if (c.price && l.price) {
+      var ratio = c.price / l.price;
+      if (ratio > 0.7 && ratio < 1.3) score += 2;
+    }
+    if (c.condition && l.condition && c.condition === l.condition) score += 1;
+    return { listing: c, score: score };
+  }).filter(function(s) { return s.score >= 5; }); // мін 5 балів (хоча б категорія)
+
+  scored.sort(function(a, b) { return b.score - a.score; });
+  var similar = scored.slice(0, 4).map(function(s) { return s.listing; });
+
+  // Fallback: якщо мало результатів — додати з тієї ж категорії
+  if (similar.length < 4) {
+    var extra = candidates.filter(function(c) { return c.cat === l.cat && !similar.find(function(s){ return s.id === c.id; }); }).slice(0, 4 - similar.length);
+    similar = similar.concat(extra);
+  }
+
   document.getElementById('similar-listings').innerHTML = similar.length
     ? similar.map(s => createCard(s, 'catalog')).join('')
     : '<p style="color:var(--text-muted);font-size:14px">Схожих оголошень не знайдено</p>';
@@ -1563,6 +1595,17 @@ function revealPhone() {
     return;
   }
 
+  // Спочатку перевіряємо телефон з оголошення
+  if (l.phone && l.phone.trim()) {
+    var ph = l.phone.trim();
+    phoneEl.href = 'tel:' + ph.replace(/\s/g, '');
+    phoneEl.textContent = ph;
+    btn.style.display = 'none';
+    revealed.style.display = '';
+    return;
+  }
+
+  // Якщо в оголошенні немає — беремо з профілю
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Завантаження...';
   btn.disabled = true;
 

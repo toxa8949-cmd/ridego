@@ -101,8 +101,17 @@ function applyPromo() {
 
 function submitListing() {
 
+  // Блокуємо кнопку одразу щоб не було подвійних натискань
+  var _submitBtn = document.getElementById('add-submit-btn');
+  if (_submitBtn && _submitBtn.disabled) return; // вже обробляється
+  if (_submitBtn) { _submitBtn.disabled = true; _submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Публікація...'; }
+
+  function _unlockBtn() {
+    if (_submitBtn) { _submitBtn.disabled = false; _submitBtn.innerHTML = '<i class="fa-solid fa-bolt" style="margin-right:8px"></i>Опублікувати'; }
+  }
+
   if (!isLoggedIn || !currentUser || !currentUser.uid) {
-    showToast('⚠️ Увійдіть щоб публікувати'); showPage('profile'); return;
+    showToast('⚠️ Увійдіть щоб публікувати'); showPage('profile'); _unlockBtn(); return;
   }
 
   var _rateKey = 'ridego_post_rate';
@@ -121,28 +130,28 @@ function submitListing() {
   if (_userSlots.loaded && _totalSlots() <= 0) {
     showToast('⚠️ Немає слотів для публікації');
     openBuySlots();
-    return;
+    _unlockBtn(); return;
   }
 
   const title = document.getElementById('new-title')?.value.trim();
   const price = parseInt(document.getElementById('new-price')?.value);
   const phone = document.getElementById('new-phone')?.value.trim();
 
-  if (!title) { showToast('⚠️ Введіть назву оголошення'); return; }
-  if (title.length > 200) { showToast('⚠️ Назва занадто довга (макс 200 символів)'); return; }
-  if (!price || price < 1) { showToast('⚠️ Введіть коректну ціну'); return; }
-  if (price > 10000000) { showToast('⚠️ Ціна перевищує максимум (10 млн грн)'); return; }
-  if (!phone) { showToast('⚠️ Введіть номер телефону'); return; }
+  if (!title) { showToast('⚠️ Введіть назву оголошення'); _unlockBtn(); return; }
+  if (title.length > 200) { showToast('⚠️ Назва занадто довга (макс 200 символів)'); _unlockBtn(); return; }
+  if (!price || price < 1) { showToast('⚠️ Введіть коректну ціну'); _unlockBtn(); return; }
+  if (price > 10000000) { showToast('⚠️ Ціна перевищує максимум (10 млн грн)'); _unlockBtn(); return; }
+  if (!phone) { showToast('⚠️ Введіть номер телефону'); _unlockBtn(); return; }
 
   if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
-    showToast('⚠️ Невірний формат телефону'); return;
+    showToast('⚠️ Невірний формат телефону'); _unlockBtn(); return;
   }
   if (!uploadedPhotos || uploadedPhotos.length === 0) {
-    showToast('⚠️ Додайте хоча б одне фото'); return;
+    showToast('⚠️ Додайте хоча б одне фото'); _unlockBtn(); return;
   }
 
   if (/https?:\/\/|www\.|\.com|\.ua|\.org/i.test(title)) {
-    showToast('⚠️ Посилання в назві заборонені'); return;
+    showToast('⚠️ Посилання в назві заборонені'); _unlockBtn(); return;
   }
 
   const condition = document.getElementById('new-condition')?.value || 'Хороший';
@@ -354,6 +363,24 @@ function submitListing() {
         renderHomeListings();
         showToast('✅ Оголошення опубліковано!');
 
+        // Зберегти телефон/місто/область в профілі для автозаповнення
+        if (window._db && currentUser && currentUser.uid) {
+          var profileUpdate = {};
+          var _phone = fbListing.phone || '';
+          var _city  = fbListing.city || '';
+          var _oblast = fbListing.oblast || '';
+          var _raion = fbListing.raion || '';
+          if (_phone && _phone !== currentUser.phone) profileUpdate.phone = _phone;
+          if (_city && _city !== currentUser.city)    profileUpdate.city = _city;
+          if (_oblast && _oblast !== currentUser.oblast) profileUpdate.oblast = _oblast;
+          if (_raion) profileUpdate.raion = _raion;
+          if (Object.keys(profileUpdate).length > 0) {
+            window._db.collection('users').doc(currentUser.uid).update(profileUpdate)
+              .then(function() { Object.assign(currentUser, profileUpdate); })
+              .catch(function(){});
+          }
+        }
+
         try {
           var _rd = JSON.parse(localStorage.getItem('ridego_post_rate') || '{"count":0,"since":' + Date.now() + '}');
           _rd.count = (_rd.count || 0) + 1;
@@ -472,21 +499,25 @@ function _resetAddWizard() {
 
 
 var _editListingId = null;
+var _editOriginalData = null; // зберігаємо оригінальні дані для збереження спеків
 
 function openEditListing(id) {
   _editListingId = id;
+  _editOriginalData = null;
   showPage('add');
   // Завжди беремо свіжі дані з Firestore
   if (window._db) {
     window._db.collection('listings').doc(id).get().then(function(snap) {
       if (!snap.exists) { showToast('⚠️ Оголошення не знайдено'); return; }
       var l = Object.assign({ id: snap.id }, snap.data());
+      _editOriginalData = l; // зберігаємо повні дані
       _fillEditForm(l);
     });
     return;
   }
   var l = _allListings().find(function(x){ return x && x.id === id; });
   if (!l) { showToast('⚠️ Оголошення не знайдено'); return; }
+  _editOriginalData = l;
   _fillEditForm(l);
 }
 
@@ -664,51 +695,90 @@ function saveEditListing() {
   if (!price || price < 1) { showToast('⚠️ Введіть коректну ціну'); return; }
   if (title.length > 200) { showToast('⚠️ Назва занадто довга'); return; }
   if (price > 10000000) { showToast('⚠️ Ціна перевищує максимум'); return; }
+  if (phone && !/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
+    showToast('⚠️ Невірний формат телефону'); return;
+  }
+  if (/https?:\/\/|www\.|\.com|\.ua|\.org/i.test(title)) {
+    showToast('⚠️ Посилання в назві заборонені'); return;
+  }
 
   var fullLoc = [city, raion, oblast].filter(Boolean).join(', ');
 
-  // Зібрати розширені характеристики
-  var rawSpecs = (typeof collectSpecs === 'function') ? collectSpecs() : {};
-  var SECTION_KEY_MAP = {
-    'Електросистема':'motor','Двигун':'motor',
-    'Акумулятор':'battery',
-    'Їзда':'performance','Динаміка':'performance','Характеристики руху':'performance',
-    'Характеристики':'performance','Ходові':'performance',
-    'Рама і колеса':'physical','Рама':'physical','Трансмісія':'physical',
-    'Колеса і ходова':'physical','Колеса':'physical','Шасі':'physical',
-    'Гальма і підвіска':'physical','Гальма':'physical','Підвіска':'physical',
-    'Конструкція':'physical','Посадка і кузов':'physical',
-    'Розміри та вага':'physical','Розміри':'physical','Габарити':'physical',
-    'Оснащення':'extras','Електроніка':'extras','Додатково':'extras',
-    'Стан і кількість':'extras','Сертифікати':'extras','Безпека':'extras','Документи':'extras',
-    'Деталь':'general','Аксесуар':'general','Загальне':'general',
+  // ── Зібрати характеристики ──
+  // sp-поля (основні — можуть бути на кроці 2 або 3)
+  var spFields = {
+    'sp-battery-ah': 'battAh', 'sp-speed': 'speedVal',
+    'sp-range': 'rangeVal', 'sp-weight': 'weightVal',
+    'sp-wheel': 'wheelVal', 'sp-motor-w': 'motorW', 'sp-voltage': 'voltage'
   };
-  var specsForCard = {};
-  Object.keys(rawSpecs).forEach(function(sectionName) {
-    var clean = sectionName.replace(/^[^\u0400-\u04FFa-zA-Z]+/, '').trim();
-    var key = SECTION_KEY_MAP[clean] || null;
-    if (!key) {
-      Object.keys(SECTION_KEY_MAP).forEach(function(k) {
-        if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
-      });
-    }
-    if (!key) key = 'extras';
-    if (!specsForCard[key]) specsForCard[key] = [];
-    specsForCard[key] = specsForCard[key].concat(rawSpecs[sectionName]);
-  });
-  // Конвертувати масиви в об'єкти для Firestore
-  var safeSpecs = {};
-  Object.keys(specsForCard).forEach(function(key) {
-    if (Array.isArray(specsForCard[key])) {
-      var obj = {};
-      specsForCard[key].forEach(function(row) {
-        if (Array.isArray(row) && row.length >= 2) obj[row[0]] = row[1];
-      });
-      safeSpecs[key] = obj;
-    } else {
-      safeSpecs[key] = specsForCard[key];
+  var spData = {};
+  var anySpFilled = false;
+  Object.keys(spFields).forEach(function(domId) {
+    var el = document.getElementById(domId);
+    if (el && el.value) {
+      spData[spFields[domId]] = el.value;
+      anySpFilled = true;
     }
   });
+
+  // Якщо юзер не заповнював sp-поля — зберегти оригінальні
+  if (!anySpFilled && _editOriginalData) {
+    Object.keys(spFields).forEach(function(domId) {
+      var key = spFields[domId];
+      if (_editOriginalData[key]) spData[key] = _editOriginalData[key];
+    });
+  }
+
+  // Розширені характеристики
+  var rawSpecs = (typeof collectSpecs === 'function') ? collectSpecs() : {};
+  var hasNewSpecs = Object.keys(rawSpecs).length > 0;
+
+  var safeSpecs;
+  if (hasNewSpecs) {
+    // Юзер заповнив spec-поля — збираємо з форми
+    var SECTION_KEY_MAP = {
+      'Електросистема':'motor','Двигун':'motor',
+      'Акумулятор':'battery',
+      'Їзда':'performance','Динаміка':'performance','Характеристики руху':'performance',
+      'Характеристики':'performance','Ходові':'performance',
+      'Рама і колеса':'physical','Рама':'physical','Трансмісія':'physical',
+      'Колеса і ходова':'physical','Колеса':'physical','Шасі':'physical',
+      'Гальма і підвіска':'physical','Гальма':'physical','Підвіска':'physical',
+      'Конструкція':'physical','Посадка і кузов':'physical',
+      'Розміри та вага':'physical','Розміри':'physical','Габарити':'physical',
+      'Оснащення':'extras','Електроніка':'extras','Додатково':'extras',
+      'Стан і кількість':'extras','Сертифікати':'extras','Безпека':'extras','Документи':'extras',
+      'Деталь':'general','Аксесуар':'general','Загальне':'general',
+    };
+    var specsForCard = {};
+    Object.keys(rawSpecs).forEach(function(sectionName) {
+      var clean = sectionName.replace(/^[^\u0400-\u04FFa-zA-Z]+/, '').trim();
+      var key = SECTION_KEY_MAP[clean] || null;
+      if (!key) {
+        Object.keys(SECTION_KEY_MAP).forEach(function(k) {
+          if (clean.toLowerCase().includes(k.toLowerCase())) key = SECTION_KEY_MAP[k];
+        });
+      }
+      if (!key) key = 'extras';
+      if (!specsForCard[key]) specsForCard[key] = [];
+      specsForCard[key] = specsForCard[key].concat(rawSpecs[sectionName]);
+    });
+    safeSpecs = {};
+    Object.keys(specsForCard).forEach(function(key) {
+      if (Array.isArray(specsForCard[key])) {
+        var obj = {};
+        specsForCard[key].forEach(function(row) {
+          if (Array.isArray(row) && row.length >= 2) obj[row[0]] = row[1];
+        });
+        safeSpecs[key] = obj;
+      } else {
+        safeSpecs[key] = specsForCard[key];
+      }
+    });
+  } else {
+    // Юзер не чіпав крок 3 — зберігаємо оригінальні спеки
+    safeSpecs = (_editOriginalData && _editOriginalData.specs) ? _editOriginalData.specs : {};
+  }
 
   var updateData = {
     title, price, desc, phone, mileage, district, year,
@@ -723,16 +793,10 @@ function saveEditListing() {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
-  var spFields = {
-    'sp-battery-ah': 'battAh', 'sp-speed': 'speedVal',
-    'sp-range': 'rangeVal', 'sp-weight': 'weightVal',
-    'sp-wheel': 'wheelVal', 'sp-motor-w': 'motorW', 'sp-voltage': 'voltage'
-  };
-  Object.keys(spFields).forEach(function(domId) {
-    var el = document.getElementById(domId);
-    if (el && el.value) updateData[spFields[domId]] = el.value;
-  });
+  // Додати sp-дані
+  Object.assign(updateData, spData);
 
+  // Побудувати human-readable поля
   var battAh = updateData.battAh || '';
   var speedVal = updateData.speedVal || '';
   var rangeVal = updateData.rangeVal || '';
@@ -817,6 +881,7 @@ function saveEditListing() {
       var cached = _allListings().find(function(x){ return x && x.id === editId; });
       if (cached) Object.assign(cached, updateData);
       _editListingId = null;
+      _editOriginalData = null;
       _resetAddWizard();
 
       var submitBtn = document.getElementById('add-submit-btn');
