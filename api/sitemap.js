@@ -1,5 +1,6 @@
 const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
+const API_KEY = process.env.FIREBASE_API_KEY;
 
 const STATIC_PAGES = [
   { loc: '/',                           priority: '1.0', changefreq: 'daily' },
@@ -15,7 +16,7 @@ const STATIC_PAGES = [
 ];
 
 async function query(collection, filters, selectFields, limitN) {
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery?key=${API_KEY}`;
   const where = filters.length === 1
     ? { fieldFilter: filters[0] }
     : { compositeFilter: { op: 'AND', filters: filters.map(f => ({ fieldFilter: f })) } };
@@ -38,19 +39,12 @@ async function query(collection, filters, selectFields, limitN) {
     });
 
     const json = await res.json();
-
-    // ДЕТАЛЬНЕ ЛОГУВАННЯ
     const docsCount = Array.isArray(json) ? json.filter(i => i.document).length : 0;
-    console.log(`[sitemap] ${collection}: http=${res.status}, total=${Array.isArray(json) ? json.length : 'N/A'}, docs=${docsCount}`);
+    console.log(`[sitemap] ${collection}: http=${res.status}, docs=${docsCount}`);
 
     if (!res.ok) {
-      console.error(`[sitemap] ${collection} ERROR:`, JSON.stringify(json).slice(0, 500));
+      console.error(`[sitemap] ${collection} ERROR:`, JSON.stringify(json).slice(0, 300));
       return [];
-    }
-
-    // Якщо є елементи без document — логуємо перший для діагностики
-    if (Array.isArray(json) && json.length > 0 && !json[0].document) {
-      console.log(`[sitemap] ${collection} first item (no doc):`, JSON.stringify(json[0]).slice(0, 300));
     }
 
     return json;
@@ -68,13 +62,34 @@ module.exports = async (req, res) => {
   const urls = [...STATIC_PAGES];
 
   try {
-    // ── Оголошення (тільки active) ─────────────────────────
-    const listings = await query(
-      'listings',
-      [{ field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } }],
-      ['createdAt', 'updatedAt', 'promo', 'status'],
-      5000
-    );
+    // Паралельні запити — швидше і менше шансів на таймаут
+    const [listings, news, services, sellers] = await Promise.all([
+      query(
+        'listings',
+        [{ field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } }],
+        ['createdAt', 'updatedAt', 'promo', 'status'],
+        5000
+      ),
+      query(
+        'news',
+        [{ field: { fieldPath: 'published' }, op: 'EQUAL', value: { booleanValue: true } }],
+        ['createdAt', 'updatedAt'],
+        1000
+      ),
+      query(
+        'services',
+        [{ field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } }],
+        ['createdAt', 'updatedAt'],
+        1000
+      ),
+      query(
+        'users',
+        [{ field: { fieldPath: 'type' }, op: 'EQUAL', value: { stringValue: 'business' } }],
+        ['createdAt', 'updatedAt'],
+        2000
+      ),
+    ]);
+
     listings.forEach(item => {
       if (!item.document) return;
       const f = item.document.fields || {};
@@ -89,13 +104,6 @@ module.exports = async (req, res) => {
       });
     });
 
-    // ── Новини ─────────────────────────────────────────────
-    const news = await query(
-      'news',
-      [{ field: { fieldPath: 'published' }, op: 'EQUAL', value: { booleanValue: true } }],
-      ['createdAt', 'updatedAt'],
-      1000
-    );
     news.forEach(item => {
       if (!item.document) return;
       const f = item.document.fields || {};
@@ -104,13 +112,6 @@ module.exports = async (req, res) => {
       urls.push({ loc: `/news/${id}`, priority: '0.8', changefreq: 'monthly', lastmod: date });
     });
 
-    // ── Сервісні центри ────────────────────────────────────
-    const services = await query(
-      'services',
-      [{ field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } }],
-      ['createdAt', 'updatedAt'],
-      1000
-    );
     services.forEach(item => {
       if (!item.document) return;
       const f = item.document.fields || {};
@@ -119,13 +120,6 @@ module.exports = async (req, res) => {
       urls.push({ loc: `/service/${id}`, priority: '0.6', changefreq: 'monthly', lastmod: date });
     });
 
-    // ── Продавці / магазини ────────────────────────────────
-    const sellers = await query(
-      'users',
-      [{ field: { fieldPath: 'type' }, op: 'EQUAL', value: { stringValue: 'business' } }],
-      ['createdAt', 'updatedAt'],
-      2000
-    );
     sellers.forEach(item => {
       if (!item.document) return;
       const f = item.document.fields || {};
