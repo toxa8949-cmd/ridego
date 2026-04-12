@@ -271,6 +271,15 @@ function _initReviewForm(sellerUid) {
 
   loginEl.style.display = 'none';
   if (!window._db) { formWrap.style.display = ''; return; }
+
+  // Кеш — зберігаємо Set uid продавців яким вже залишали відгук
+  if (!window._reviewedSellers) window._reviewedSellers = new Set();
+  if (window._reviewedSellers.has(sellerUid)) {
+    formWrap.style.display  = 'none';
+    alreadyEl.style.display = '';
+    return;
+  }
+
   window._db.collection('reviews')
     .where('reviewerUid', '==', currentUser.uid)
     .where('sellerUid',   '==', sellerUid)
@@ -279,6 +288,7 @@ function _initReviewForm(sellerUid) {
         formWrap.style.display  = '';
         alreadyEl.style.display = 'none';
       } else {
+        window._reviewedSellers.add(sellerUid); // кешуємо результат
         formWrap.style.display  = 'none';
         alreadyEl.style.display = '';
       }
@@ -311,7 +321,10 @@ function submitReview() {
     showToast('✅ Відгук опубліковано!');
     document.getElementById('review-form-wrap').style.display  = 'none';
     document.getElementById('review-already-done').style.display = '';
-
+    // Кешуємо щоб не перевіряти знову
+    if (window._reviewedSellers) window._reviewedSellers.add(_reviewSellerUid);
+    // Інвалідуємо кеш відгуків щоб показати новий
+    if (typeof _reviewsCache !== 'undefined') delete _reviewsCache[_reviewSellerUid];
     _loadSellerReviews(_reviewSellerUid);
   }).catch(function(e) {
     showToast('⚠️ Помилка: ' + e.message);
@@ -497,9 +510,18 @@ function doSearch(query) {
 }
 
 var _allNews = [];
+var _newsLoadedAt = 0;
+var _NEWS_TTL = 30 * 60 * 1000; // 30 хвилин
 
 function loadSiteNews() {
   if (!window._db) return;
+
+  // Якщо кеш свіжий — просто рендеримо без Firestore
+  if (_allNews.length && (Date.now() - _newsLoadedAt) < _NEWS_TTL) {
+    renderHomeNews();
+    if (document.getElementById('news-grid')) renderNewsGrid(_allNews);
+    return;
+  }
 
   var newsGridEl = document.getElementById('news-grid');
   if (newsGridEl && !_allNews.length) {
@@ -516,6 +538,7 @@ function loadSiteNews() {
   window._db.collection('news').where('published','==',true).get()
     .then(function(snap) {
       _allNews = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      _newsLoadedAt = Date.now();
       renderHomeNews();
       if (document.getElementById('news-grid')) renderNewsGrid(_allNews);
     }).catch(function(e){ console.error('news:', e); });
@@ -628,12 +651,25 @@ function filterNewsCat(cat, btn) {
 }
 
 var _chatsUnsubscribe = null;
+var _chatsSubscribedUid = null;
+window.__chatListenersCount = 0; // лічильник для дебагу
 
 function _subscribeChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
 
+  // Idempotent guard — не підписуємось двічі на одного юзера
+  if (_chatsUnsubscribe && _chatsSubscribedUid === currentUser.uid) return;
 
-  if (_chatsUnsubscribe) { _chatsUnsubscribe(); _chatsUnsubscribe = null; }
+  // Bulletproof — завжди відписуємось перед новою підпискою
+  if (_chatsUnsubscribe) {
+    _chatsUnsubscribe();
+    _chatsUnsubscribe = null;
+    window.__chatListenersCount = Math.max(0, window.__chatListenersCount - 1);
+  }
+
+  _chatsSubscribedUid = currentUser.uid;
+  window.__chatListenersCount++;
+  console.log('[RideGO] Chats subscribe for uid:', currentUser.uid, '| Active listeners:', window.__chatListenersCount);
 
   var _prevUnreadTotal = 0;
 
@@ -657,7 +693,6 @@ function _subscribeChats() {
         return tb - ta;
       });
 
-
       var totalUnread = _fbChats.reduce(function(s, c) { return s + (c.unread || 0); }, 0);
       if (totalUnread > _prevUnreadTotal && _prevUnreadTotal >= 0) {
         var newChat = _fbChats.find(function(c) {
@@ -676,6 +711,18 @@ function _subscribeChats() {
       loadUserChats();
     });
 }
+
+// Visibility control — не слухаємо чати коли вкладка неактивна
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) {
+    // Вкладка знову активна — відновлюємо підписку якщо залогінені і listener закритий
+    if (currentUser && currentUser.uid && window._db && !_chatsUnsubscribe) {
+      _chatsSubscribedUid = null;
+      _subscribeChats();
+      console.log('[RideGO] Chats resubscribed (tab visible)');
+    }
+  }
+});
 
 function _updateSEO(opts) {
   var title = opts.title ? opts.title + ' — RideGO' : 'RideGO — Маркетплейс електротранспорту України';
