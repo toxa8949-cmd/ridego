@@ -319,7 +319,9 @@
             }
           }
           if (typeof _subscribeChats === 'function') _subscribeChats(); else loadUserChats();
-          if (typeof loadUserSlots === 'function') loadUserSlots();
+          // Передаємо дані профілю щоб не робити зайвий Firestore read
+          var _profileDataForSlots = snap.exists ? snap.data() : null;
+          if (typeof loadUserSlots === 'function') loadUserSlots(_profileDataForSlots);
           // Запросити дозвіл на push-повідомлення
           if (typeof _requestNotifPermission === 'function') setTimeout(_requestNotifPermission, 2000);
           // Завантажити сервіси юзера
@@ -328,7 +330,7 @@
           // Оголошення юзера — з кешу або Firestore
           var _mlKey = '_ml_' + user.uid;
           var _mlAt  = parseInt(localStorage.getItem(_mlKey + '_at') || '0');
-          if (Date.now() - _mlAt < 10 * 60 * 1000) {
+          if (Date.now() - _mlAt < 30 * 60 * 1000) {
             try {
               var _mlCached = JSON.parse(localStorage.getItem(_mlKey) || 'null');
               if (_mlCached) {

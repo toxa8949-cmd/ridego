@@ -516,12 +516,27 @@ var _NEWS_TTL = 30 * 60 * 1000; // 30 хвилин
 function loadSiteNews() {
   if (!window._db) return;
 
-  // Якщо кеш свіжий — просто рендеримо без Firestore
+  // Якщо in-memory кеш свіжий — просто рендеримо
   if (_allNews.length && (Date.now() - _newsLoadedAt) < _NEWS_TTL) {
     renderHomeNews();
     if (document.getElementById('news-grid')) renderNewsGrid(_allNews);
     return;
   }
+
+  // Спробувати localStorage кеш (30 хв)
+  try {
+    var _newsAt = parseInt(localStorage.getItem('_news_at') || '0');
+    if (Date.now() - _newsAt < 30 * 60 * 1000) {
+      var cached = JSON.parse(localStorage.getItem('_news_data') || 'null');
+      if (cached && cached.length) {
+        _allNews = cached;
+        _newsLoadedAt = Date.now();
+        renderHomeNews();
+        if (document.getElementById('news-grid')) renderNewsGrid(_allNews);
+        return;
+      }
+    }
+  } catch(e) {}
 
   var newsGridEl = document.getElementById('news-grid');
   if (newsGridEl && !_allNews.length) {
@@ -539,6 +554,10 @@ function loadSiteNews() {
     .then(function(snap) {
       _allNews = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _newsLoadedAt = Date.now();
+      try {
+        localStorage.setItem('_news_data', JSON.stringify(_allNews));
+        localStorage.setItem('_news_at', String(Date.now()));
+      } catch(e) {}
       renderHomeNews();
       if (document.getElementById('news-grid')) renderNewsGrid(_allNews);
     }).catch(function(e){ console.error('news:', e); });
@@ -675,7 +694,7 @@ function _subscribeChats() {
 
   _chatsUnsubscribe = window._db.collection('chats')
     .where('participants', 'array-contains', currentUser.uid)
-    .limit(20)
+    .limit(10)
     .onSnapshot(function(snap) {
       _fbChats = snap.docs.map(function(d) {
         var data = Object.assign({ id: d.id }, d.data());
