@@ -342,8 +342,8 @@
               }
             } catch(e) {}
           }
-          return window._db.collection('listings').where('uid','==',user.uid).get();
-        }).then(function(snap) {
+          return window._db.collection('listings').where('uid','==',user.uid).get()
+          .then(function(snap) {
           if (!snap || !snap.docs) return;
           var loaded = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
           // Оновити ОБИДВІ змінні
