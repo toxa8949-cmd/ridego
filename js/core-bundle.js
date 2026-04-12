@@ -64,28 +64,41 @@ function _totalSlots() {
   return bought + welcome;
 }
 
-function loadUserSlots() {
-  if (!window._db || !currentUser || !currentUser.uid) return;
+function loadUserSlots(profileData) {
+  if (!currentUser || !currentUser.uid) return;
+
+  // Якщо передали дані з профілю — не робити зайвий Firestore read
+  if (profileData) {
+    _applySlots(profileData);
+    return;
+  }
+
+  // Спробувати з localStorage кешу профілю
+  var _pcKey = '_pc_' + currentUser.uid;
+  try {
+    var _pcAt = parseInt(localStorage.getItem(_pcKey + '_at') || '0');
+    if (Date.now() - _pcAt < 15 * 60 * 1000) {
+      var cached = JSON.parse(localStorage.getItem(_pcKey) || 'null');
+      if (cached) { _applySlots(cached); return; }
+    }
+  } catch(e) {}
+
+  // Fallback — читаємо з Firestore (рідко, тільки коли немає кешу)
+  if (!window._db) return;
   window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
     if (!snap.exists) return;
-    var d = snap.data();
+    _applySlots(snap.data());
+  }).catch(function(e){ console.log('slots load:', e.message); });
+}
 
+function _applySlots(d) {
     _userSlots.slots             = Math.max(0, d.slots || 0);
     _userSlots.slotsWelcome      = Math.max(0, d.slotsWelcome || 0);
     _userSlots.slotsWelcomeExpiry= d.slotsWelcomeExpiry || null;
     _userSlots.lastFreeSlotAt    = d.lastFreeSlotAt || null;
     _userSlots.loaded            = true;
-
-    var fixUpdate = {};
-    if ((d.slots || 0) < 0)        { fixUpdate.slots = 0; }
-    if ((d.slotsWelcome || 0) < 0) { fixUpdate.slotsWelcome = 0; }
-    if (Object.keys(fixUpdate).length > 0) {
-      window._db.collection('users').doc(currentUser.uid).update(fixUpdate).catch(function(){});
-    }
-
     _checkMonthlyFreeSlot();
     _renderSlotsUI();
-  }).catch(function(e){ console.log('slots load:', e.message); });
 }
 
 function _checkMonthlyFreeSlot() {
@@ -1050,22 +1063,40 @@ let _fbServices = [];
 let _fbChats    = [];
 let _fbLoaded   = false;
 
+function _applyUserServices(loaded) {
+  myServices = myServices.filter(function(s){ return !s._isOwn; });
+  myServices = loaded.concat(myServices);
+  var myIds = loaded.map(function(s){ return s.id; });
+  _fbServices = _fbServices.filter(function(s){ return myIds.indexOf(s.id) < 0; });
+  renderMyServiceTab();
+  renderHomeServices();
+  if (typeof renderServices === 'function') renderServices();
+}
+
 function _loadUserServices(uid) {
   if (!window._db || !uid) return;
+
+  // Кеш в sessionStorage на 15 хвилин
+  var _svcKey   = '_userSvc_' + uid;
+  var _svcKeyAt = '_userSvc_at_' + uid;
+  try {
+    var _svcAt = parseInt(sessionStorage.getItem(_svcKeyAt) || '0');
+    if (Date.now() - _svcAt < 15 * 60 * 1000) {
+      var _svcCached = JSON.parse(sessionStorage.getItem(_svcKey) || 'null');
+      if (_svcCached) { _applyUserServices(_svcCached); return; }
+    }
+  } catch(e) {}
+
   window._db.collection('services').where('uid','==',uid).get()
     .then(function(snap) {
       var loaded = snap.docs.map(function(d){
         return Object.assign({id:d.id, _isOwn:true}, d.data());
       });
-
-      myServices = myServices.filter(function(s){ return !s._isOwn; });
-      myServices = loaded.concat(myServices);
-
-      var myIds = loaded.map(function(s){ return s.id; });
-      _fbServices = _fbServices.filter(function(s){ return myIds.indexOf(s.id) < 0; });
-      renderMyServiceTab();
-      renderHomeServices();
-      if (typeof renderServices === 'function') renderServices();
+      try {
+        sessionStorage.setItem(_svcKey, JSON.stringify(loaded));
+        sessionStorage.setItem(_svcKeyAt, String(Date.now()));
+      } catch(e) {}
+      _applyUserServices(loaded);
     }).catch(function(e){ console.log('services load:', e.message); });
 }
 
@@ -1164,15 +1195,15 @@ function _loadFirebaseFromNetwork(force) {
     return;
   }
 
-  // Завантажуємо 24 для першого рендеру (менше reads, достатньо для UX)
+  // Завантажуємо 12 для першого рендеру (3 ряди по 4 — достатньо для першого екрану)
   window._db.collection('listings')
     .where('status','==','active')
-    .orderBy('createdAt','desc').limit(24).get()
+    .orderBy('createdAt','desc').limit(12).get()
     .then(function(snap) {
       _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       _fbDataLoadedAt = Date.now();
       _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
-      _allListingsLoaded = snap.docs.length < 24;
+      _allListingsLoaded = snap.docs.length < 12;
 
       _idbSet('listings', _fbListings);
 
@@ -1201,17 +1232,29 @@ function _loadFirebaseFromNetwork(force) {
       if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
     });
 
-  window._db.collection('services').orderBy('rating','desc').limit(30).get()
-    .then(function(snap) {
-      var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+  // Services — спочатку IDB кеш, потім Firestore (якщо треба)
+  _idbGet('services', 30 * 60 * 1000, function(cachedSvcs) {
+    if (cachedSvcs && cachedSvcs.length) {
       var myIds = myServices.map(function(s){ return s.id; });
-      _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
-      _idbSet('services', _fbServices);
+      _fbServices = cachedSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
       var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
       if (_svcPath) showServiceDetail(_svcPath[1]);
-    }).catch(function(e){ console.log('services:', e.message); });
+      return;
+    }
+    window._db.collection('services').orderBy('rating','desc').limit(30).get()
+      .then(function(snap) {
+        var allSvcs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+        var myIds = myServices.map(function(s){ return s.id; });
+        _fbServices = allSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
+        _idbSet('services', _fbServices);
+        renderHomeServices();
+        if (typeof renderServices === 'function') renderServices();
+        var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
+        if (_svcPath) showServiceDetail(_svcPath[1]);
+      }).catch(function(e){ console.log('services:', e.message); });
+  });
 }
 
 function _updateChatBadge() {
@@ -1300,7 +1343,7 @@ function loadUserChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
   window._db.collection('chats')
     .where('participants','array-contains', currentUser.uid)
-    .limit(20).get()
+    .limit(10).get()
     .then(function(snap) {
       _fbChats = snap.docs.map(function(d){
         var data = Object.assign({id:d.id}, d.data());

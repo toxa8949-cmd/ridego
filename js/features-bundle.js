@@ -2617,10 +2617,9 @@ function _initFollowBtn(sellerUid) {
 }
 
 // Preload всіх підписок одним запитом при логіні
-function _preloadFollowing() {
-  if (!window._db || !currentUser || !currentUser.uid) return;
-  if (_followingCache !== null && _followingCacheUid === currentUser.uid) return;
-  window._db.collection('follows')
+function _doPreloadFollowing() {
+  if (!window._db || !currentUser || !currentUser.uid) return Promise.resolve();
+  return window._db.collection('follows')
     .where('followerUid', '==', currentUser.uid)
     .get()
     .then(function(snap) {
@@ -2630,23 +2629,31 @@ function _preloadFollowing() {
     .catch(function() { _followingCache = new Set(); });
 }
 
+function _preloadFollowing() {
+  if (_followingCache !== null && _followingCacheUid === currentUser.uid) return;
+  _followingPreloadPromise = _doPreloadFollowing();
+}
+
+var _followingPreloadPromise = null;
+
 function _isFollowing(sellerUid, cb) {
   if (!currentUser || !currentUser.uid) return cb(false);
   // Використовуємо кеш якщо він є
   if (_followingCache !== null && _followingCacheUid === currentUser.uid) {
     return cb(_followingCache.has(sellerUid));
   }
-  // Кеш ще не готовий — завантажуємо і чекаємо
-  if (!window._db) return cb(false);
-  window._db.collection('follows')
-    .where('followerUid', '==', currentUser.uid)
-    .get()
-    .then(function(snap) {
-      _followingCache = new Set(snap.docs.map(function(d) { return d.data().sellerUid; }));
-      _followingCacheUid = currentUser.uid;
-      cb(_followingCache.has(sellerUid));
-    })
-    .catch(function() { cb(false); });
+  // Кеш ще не готовий — чекаємо на preload (без дублювання запиту)
+  if (_followingPreloadPromise) {
+    _followingPreloadPromise.then(function() {
+      cb(_followingCache ? _followingCache.has(sellerUid) : false);
+    }).catch(function() { cb(false); });
+    return;
+  }
+  // Preload не запущений — запускаємо один раз
+  _followingPreloadPromise = _doPreloadFollowing();
+  _followingPreloadPromise.then(function() {
+    cb(_followingCache ? _followingCache.has(sellerUid) : false);
+  }).catch(function() { cb(false); });
 }
 
 function _renderFollowBtn(following) {
