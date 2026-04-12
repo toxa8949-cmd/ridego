@@ -260,17 +260,8 @@
         if (!_cu.name) _cu.name = _cu._googleName;
         _cu.initial = (_cu.name||'U')[0].toUpperCase();
         window.currentUser = _cu;
-        // Завантажуємо профіль з Firestore (з кешем sessionStorage)
-        var _authCacheKey = '_authProfile_' + user.uid;
-        var _authCacheAt  = parseInt(sessionStorage.getItem(_authCacheKey + '_at') || '0');
-        var _authCached   = null;
-        try {
-          if (Date.now() - _authCacheAt < 15 * 60 * 1000) {
-            _authCached = JSON.parse(sessionStorage.getItem(_authCacheKey) || 'null');
-          }
-        } catch(e) {}
-
-        var _handleProfileData = function(snap) {
+        // Завантажуємо профіль з Firestore
+        window._db.collection('users').doc(user.uid).get().then(function(snap) {
           if (snap.exists) {
             var d = snap.data();
             // Якщо юзер змінив ім'я — використовувати з Firestore
@@ -311,66 +302,55 @@
           if (typeof _updateChatBadge === 'function') _updateChatBadge();
           // Навігація після авторизації
           if (isNewLogin && typeof showPage === 'function') {
+            // Реальний логін через кнопку — перейти на профіль
             showPage('profile');
           } else if (!window._hashRestored) {
+            // Оновлення сторінки — відновити попередню сторінку
             window._hashRestored = true;
             if (_pageToRestore && _pageToRestore !== '/' && _pageToRestore !== '/home') {
               if (typeof _initRouter === 'function') _initRouter();
             }
+            // якщо hash порожній або #home — залишитись на головній (не переходити на профіль)
           }
           if (typeof _subscribeChats === 'function') _subscribeChats(); else loadUserChats();
           if (typeof loadUserSlots === 'function') loadUserSlots();
+          // Запросити дозвіл на push-повідомлення
           if (typeof _requestNotifPermission === 'function') setTimeout(_requestNotifPermission, 2000);
+          // Завантажити сервіси юзера
           _loadUserServices(_cu.uid);
           if (typeof _preloadFollowing === 'function') _preloadFollowing();
-
           // Оголошення юзера — з кешу або Firestore
-          var _mlCacheKey = '_myListings_' + user.uid;
-          var _mlCacheAt  = parseInt(sessionStorage.getItem(_mlCacheKey + '_at') || '0');
-          var _mlCached   = null;
-          try {
-            if (Date.now() - _mlCacheAt < 10 * 60 * 1000) {
-              _mlCached = JSON.parse(sessionStorage.getItem(_mlCacheKey) || 'null');
-            }
-          } catch(e) {}
-
-          if (_mlCached && _mlCached.length >= 0) {
-            if (typeof myListings !== 'undefined') myListings = _mlCached;
-            window.myListings = _mlCached;
-            if (typeof renderMyListings === 'function') renderMyListings();
-            if (typeof renderProfile === 'function') renderProfile();
-            // Фоновий refresh тільки якщо кеш старіший за 10 хв
-          } else {
-            return window._db.collection('listings').where('uid','==',user.uid).get()
-              .then(function(snap) {
-                var loaded = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-                if (typeof myListings !== 'undefined') myListings = loaded;
-                window.myListings = loaded;
-                try {
-                  sessionStorage.setItem(_mlCacheKey, JSON.stringify(loaded));
-                  sessionStorage.setItem(_mlCacheKey + '_at', String(Date.now()));
-                } catch(e) {}
+          var _mlKey = '_ml_' + user.uid;
+          var _mlAt  = parseInt(localStorage.getItem(_mlKey + '_at') || '0');
+          if (Date.now() - _mlAt < 10 * 60 * 1000) {
+            try {
+              var _mlCached = JSON.parse(localStorage.getItem(_mlKey) || 'null');
+              if (_mlCached) {
+                if (typeof myListings !== 'undefined') myListings = _mlCached;
+                window.myListings = _mlCached;
                 if (typeof renderMyListings === 'function') renderMyListings();
                 if (typeof renderProfile === 'function') renderProfile();
-              }).catch(function(e){ console.log('Firebase listings:', e.message); });
+                return Promise.resolve();
+              }
+            } catch(e) {}
           }
-        };
-
-        if (_authCached) {
-          _handleProfileData({ exists: true, data: function(){ return _authCached; } });
-        } else {
-          window._db.collection('users').doc(user.uid).get().then(function(snap) {
-            if (snap.exists) {
-              try {
-                sessionStorage.setItem(_authCacheKey, JSON.stringify(snap.data()));
-                sessionStorage.setItem(_authCacheKey + '_at', String(Date.now()));
-              } catch(e) {}
+          return window._db.collection('listings').where('uid','==',user.uid).get();
+        }).then(function(snap) {
+          if (!snap || !snap.docs) return;
+          var loaded = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+          // Оновити ОБИДВІ змінні
+          if (typeof myListings !== 'undefined') myListings = loaded;
+          window.myListings = loaded;
+          try {
+            var _mlKey2 = '_ml_' + (window.currentUser && window.currentUser.uid ? window.currentUser.uid : '');
+            if (_mlKey2 !== '_ml_') {
+              localStorage.setItem(_mlKey2, JSON.stringify(loaded));
+              localStorage.setItem(_mlKey2 + '_at', String(Date.now()));
             }
-            _handleProfileData(snap);
-          }).catch(function(e){ console.log('Firebase auth profile:', e.message); });
-        }
-        // dummy to avoid JS error — real chain is inside _handleProfileData
-        return Promise.resolve();
+          } catch(e) {}
+          if (typeof renderMyListings === 'function') renderMyListings();
+          if (typeof renderProfile === 'function') renderProfile();
+        }).catch(function(e){ console.log('Firebase listings:', e.message); });
       } else {
         window._authWasLoggedIn = false;
         if (typeof isLoggedIn !== 'undefined') isLoggedIn = false;
