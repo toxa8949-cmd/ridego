@@ -260,8 +260,15 @@
         if (!_cu.name) _cu.name = _cu._googleName;
         _cu.initial = (_cu.name||'U')[0].toUpperCase();
         window.currentUser = _cu;
-        // Завантажуємо профіль з Firestore
-        window._db.collection('users').doc(user.uid).get().then(function(snap) {
+        // Завантажуємо профіль з Firestore (localStorage кеш 15 хвилин)
+        var _pcKey = '_pc_' + user.uid;
+        var _pcAt  = parseInt(localStorage.getItem(_pcKey + '_at') || '0');
+        var _pcCached = null;
+        if (Date.now() - _pcAt < 15 * 60 * 1000) {
+          try { _pcCached = JSON.parse(localStorage.getItem(_pcKey) || 'null'); } catch(e) {}
+        }
+
+        var _applySnap = function(snap) {
           if (snap.exists) {
             var d = snap.data();
             // Якщо юзер змінив ім'я — використовувати з Firestore
@@ -310,7 +317,6 @@
             if (_pageToRestore && _pageToRestore !== '/' && _pageToRestore !== '/home') {
               if (typeof _initRouter === 'function') _initRouter();
             }
-            // якщо hash порожній або #home — залишитись на головній (не переходити на профіль)
           }
           if (typeof _subscribeChats === 'function') _subscribeChats(); else loadUserChats();
           if (typeof loadUserSlots === 'function') loadUserSlots();
@@ -351,6 +357,22 @@
           if (typeof renderMyListings === 'function') renderMyListings();
           if (typeof renderProfile === 'function') renderProfile();
         }).catch(function(e){ console.log('Firebase listings:', e.message); });
+        }; // кінець _applySnap
+
+        if (_pcCached) {
+          // Профіль з localStorage кешу — без Firestore read
+          _applySnap({ exists: true, data: function(){ return _pcCached; } });
+        } else {
+          window._db.collection('users').doc(user.uid).get().then(function(snap) {
+            if (snap.exists) {
+              try {
+                localStorage.setItem(_pcKey, JSON.stringify(snap.data()));
+                localStorage.setItem(_pcKey + '_at', String(Date.now()));
+              } catch(e) {}
+            }
+            _applySnap(snap);
+          }).catch(function(e){ console.log('Firebase profile:', e.message); });
+        }
       } else {
         window._authWasLoggedIn = false;
         if (typeof isLoggedIn !== 'undefined') isLoggedIn = false;
