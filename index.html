@@ -686,11 +686,17 @@
     <!-- STEP 2: Smart filter panel -->
     <div class="filter-panel" id="filter-panel">
       <div class="filter-panel-inner">
-        <div class="fp-header" onclick="_toggleFilterPanel()" style="cursor:pointer">
-          <div class="fp-title" id="fp-title">Фільтри</div>
+        <div class="fp-header" onclick="_toggleFilterPanel()" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:10px">
+            <i class="fa-solid fa-sliders" style="color:var(--brand);font-size:16px"></i>
+            <div class="fp-title" id="fp-title">Фільтри</div>
+          </div>
           <div style="display:flex;align-items:center;gap:10px">
             <button class="fp-clear" onclick="event.stopPropagation();clearFilters()"><i class="fa-solid fa-rotate-left" style="margin-right:5px"></i>Скинути</button>
-            <i class="fa-solid fa-chevron-down" id="fp-toggle-icon" style="color:var(--text-muted);transition:transform .3s;font-size:14px"></i>
+            <div id="fp-toggle-btn" style="background:var(--brand);color:#000;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap">
+              <i class="fa-solid fa-chevron-down" id="fp-toggle-icon" style="transition:transform .3s;font-size:11px"></i>
+              <span id="fp-toggle-label">Відкрити</span>
+            </div>
           </div>
         </div>
         <div id="fp-body">
