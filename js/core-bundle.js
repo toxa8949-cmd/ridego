@@ -802,6 +802,17 @@ window.addEventListener('popstate', function() {
 });
 
 function showPage(page, sellerId) {
+  // Cleanup: відписуємось від messages listener коли покидаємо чат
+  if (page !== 'messages' && typeof _chatUnsubscribe === 'function') {
+    _chatUnsubscribe();
+    _chatUnsubscribe = null;
+  }
+
+  // GA: відправляємо page_view при SPA навігації
+  if (typeof gtag === 'function') {
+    var _gaPath = page === 'home' ? '/' : '/' + page + (sellerId ? '/' + sellerId : '');
+    gtag('event', 'page_view', { page_path: _gaPath, page_title: 'RideGO — ' + (page || 'Головна') });
+  }
   var pageSEO = {
     home:    { title: 'Головна', desc: 'Купуй та продавай електросамокати, велосипеди, скутери в Україні.' },
     catalog: { title: 'Каталог оголошень', desc: 'Всі оголошення електротранспорту в Україні. Електросамокати, велосипеди, скутери.' },
