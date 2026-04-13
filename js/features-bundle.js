@@ -368,7 +368,17 @@ function submitListing() {
         }
         if (typeof renderMyListings === 'function') renderMyListings();
         renderHomeListings();
+        renderCatalog();
         showToast('✅ Оголошення опубліковано!');
+
+        // Інвалідувати кеш щоб нове оголошення з'явилось для всіх
+        if (typeof _fbDataLoadedAt !== 'undefined') _fbDataLoadedAt = 0;
+        if (typeof _idbSet === 'function') _idbSet('listings', _fbListings);
+        try {
+          var _mlKey = '_ml_' + (currentUser && currentUser.uid || '');
+          localStorage.removeItem(_mlKey);
+          localStorage.removeItem(_mlKey + '_at');
+        } catch(e) {}
 
         // Зберегти телефон/місто/область в профілі для автозаповнення
         if (window._db && currentUser && currentUser.uid) {

@@ -1122,16 +1122,21 @@ var _allListingsLoaded = false;
 var _loadingMore = false;
 
 function loadMoreListings(callback) {
-  if (_allListingsLoaded || _loadingMore || !window._db || !_lastListingDoc) {
+  if (_allListingsLoaded || _loadingMore || !window._db) {
     if (callback) callback(false);
     return;
   }
   _loadingMore = true;
-  window._db.collection('listings')
-    .where('status','==','active')
-    .orderBy('createdAt','desc')
-    .startAfter(_lastListingDoc)
-    .limit(50).get()
+
+  var query = window._db.collection('listings')
+    .where('status','==','active');
+
+  // Якщо є cursor — продовжуємо з нього
+  if (_lastListingDoc) {
+    query = query.orderBy('createdAt','desc').startAfter(_lastListingDoc);
+  }
+
+  query.limit(50).get()
     .then(function(snap) {
       _loadingMore = false;
       if (!snap.docs.length) {
@@ -1155,7 +1160,26 @@ function loadMoreListings(callback) {
     }).catch(function(e) {
       _loadingMore = false;
       console.log('loadMore:', e.message);
-      if (callback) callback(false);
+      // Fallback без orderBy
+      if (e.message && e.message.includes('index')) {
+        window._db.collection('listings')
+          .where('status','==','active')
+          .limit(50).get()
+          .then(function(snap) {
+            _allListingsLoaded = true; // без cursor не можемо пагінувати
+            var existingIds = {};
+            _fbListings.forEach(function(l){ if (l.id) existingIds[l.id] = true; });
+            snap.docs.forEach(function(d) {
+              if (!existingIds[d.id]) {
+                _fbListings.push(Object.assign({id: d.id}, d.data()));
+              }
+            });
+            _idbSet('listings', _fbListings);
+            if (callback) callback(true);
+          }).catch(function() { if (callback) callback(false); });
+      } else {
+        if (callback) callback(false);
+      }
     });
 }
 
@@ -1206,44 +1230,40 @@ function _loadFirebaseFromNetwork(force) {
     return;
   }
 
-  // Завантажуємо 12 для першого рендеру (3 ряди по 4 — достатньо для першого екрану)
+  // Завантажуємо 12 для першого рендеру
   window._db.collection('listings')
     .where('status','==','active')
     .orderBy('createdAt','desc').limit(12).get()
     .then(function(snap) {
-      _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-      _fbDataLoadedAt = Date.now();
-      _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
-      _allListingsLoaded = snap.docs.length < 12;
-
-      _idbSet('listings', _fbListings);
-
-      var fbIds = {};
-      _fbListings.forEach(function(l){ if (l.id) fbIds[l.id] = true; });
-      myListings = myListings.filter(function(l){ return l && l.id && !fbIds[l.id]; });
-
-      renderHomeListings();
-      renderCatalog();
-      if (typeof _updateActiveCount === 'function') _updateActiveCount();
-
-      setTimeout(function() {
-        if (typeof _trackFavPrices === 'function') _trackFavPrices();
-      }, 1500);
-
-      var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
-      if (_lstPath) showDetail(_lstPath[1], true);
-
-      var _catPath = window.location.pathname.match(/^\/category\/(.+)$/);
-      if (_catPath && CAT_SLUGS[_catPath[1]]) {
-        var _catName = CAT_SLUGS[_catPath[1]];
-        setTimeout(function() { filterCatalog(_catName); }, 200);
-      }
+      _applyListingsSnap(snap);
     }).catch(function(e){
-      console.log('listings:', e.message);
-      if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
+      console.log('listings (indexed):', e.message);
+      // Fallback — без orderBy (якщо composite index ще не створений)
+      window._db.collection('listings')
+        .where('status','==','active')
+        .limit(50).get()
+        .then(function(snap) {
+          console.log('listings (fallback): got', snap.docs.length);
+          _applyListingsSnap(snap);
+        }).catch(function(e2) {
+          console.log('listings (fallback2):', e2.message);
+          // Останній fallback — без фільтрів взагалі
+          window._db.collection('listings').limit(50).get()
+            .then(function(snap) {
+              // Фільтруємо видалені на клієнті
+              var filtered = { docs: snap.docs.filter(function(d) {
+                var data = d.data();
+                return data.status === 'active' || !data.status;
+              })};
+              _applyListingsSnap(filtered);
+            }).catch(function(e3) {
+              console.log('listings FAIL:', e3.message);
+              if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
+            });
+        });
     });
 
-  // Services — спочатку IDB кеш, потім Firestore (якщо треба)
+  // Services — спочатку IDB кеш, потім Firestore
   _idbGet('services', 30 * 60 * 1000, function(cachedSvcs) {
     if (cachedSvcs && cachedSvcs.length) {
       var myIds = myServices.map(function(s){ return s.id; });
@@ -1266,6 +1286,36 @@ function _loadFirebaseFromNetwork(force) {
         if (_svcPath) showServiceDetail(_svcPath[1]);
       }).catch(function(e){ console.log('services:', e.message); });
   });
+}
+
+function _applyListingsSnap(snap) {
+  _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+  _fbDataLoadedAt = Date.now();
+  _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+  _allListingsLoaded = snap.docs.length < 12;
+
+  _idbSet('listings', _fbListings);
+
+  var fbIds = {};
+  _fbListings.forEach(function(l){ if (l.id) fbIds[l.id] = true; });
+  myListings = myListings.filter(function(l){ return l && l.id && !fbIds[l.id]; });
+
+  renderHomeListings();
+  renderCatalog();
+  if (typeof _updateActiveCount === 'function') _updateActiveCount();
+
+  setTimeout(function() {
+    if (typeof _trackFavPrices === 'function') _trackFavPrices();
+  }, 1500);
+
+  var _lstPath = window.location.pathname.match(/^\/listing\/(.+)$/);
+  if (_lstPath) showDetail(_lstPath[1], true);
+
+  var _catPath = window.location.pathname.match(/^\/category\/(.+)$/);
+  if (_catPath && CAT_SLUGS[_catPath[1]]) {
+    var _catName = CAT_SLUGS[_catPath[1]];
+    setTimeout(function() { filterCatalog(_catName); }, 200);
+  }
 }
 
 function _updateChatBadge() {
