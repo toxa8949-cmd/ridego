@@ -2462,7 +2462,7 @@
       <div style="font-size:12px;color:var(--text-muted)">Додайте на головний екран</div>
     </div>
     <button id="pwa-install-btn" style="background:var(--brand);border:none;color:#000;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Додати</button>
-    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa-banner-dismissed','1')" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0;flex-shrink:0">&times;</button>
+    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa-banner-dismissed-at',String(Date.now()))" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0;flex-shrink:0">&times;</button>
   </div>
 </div>
 
@@ -2520,12 +2520,18 @@ window.addEventListener('beforeinstallprompt', function(e) {
   // Показати кнопку у футері
   var footerBtn = document.getElementById('footer-install-btn');
   if (footerBtn) footerBtn.style.display = '';
-  if (localStorage.getItem('pwa-banner-dismissed')) return;
   if (localStorage.getItem('pwa-installed')) return;
+  // Перевірити dismiss з таймером (повторно через 7 днів)
+  var dismissedAt = parseInt(localStorage.getItem('pwa-banner-dismissed-at') || '0');
+  if (dismissedAt && (Date.now() - dismissedAt) < 7 * 24 * 60 * 60 * 1000) return;
+  // Показати на другому візиті або через 30 секунд
+  var visitCount = parseInt(localStorage.getItem('pwa-visit-count') || '0') + 1;
+  localStorage.setItem('pwa-visit-count', String(visitCount));
+  var delay = visitCount >= 2 ? 5000 : 30000;
   setTimeout(function() {
     var banner = document.getElementById('pwa-install-banner');
     if (banner) banner.style.display = '';
-  }, 3000);
+  }, delay);
 });
 
 var _installBtn = document.getElementById('pwa-install-btn');
