@@ -404,7 +404,6 @@ function openFilterPanel(cat) {
   if (modelSel) { modelSel.innerHTML = '<option value="">Будь-яка</option>'; modelSel.disabled = true; }
   document.getElementById('fp-title').textContent = 'Фільтри: ' + cat;
   document.getElementById('fp-specific').innerHTML = CAT_SPECIFIC[cat] || '';
-  // Фільтри відкриті але згорнуті — юзер може розкрити якщо потрібно
   document.getElementById('filter-panel').classList.add('open');
   const divider = document.getElementById('catalog-divider');
   if (divider) divider.style.display = '';
@@ -413,9 +412,25 @@ function openFilterPanel(cat) {
 
   setTimeout(function() { if (typeof _initPriceSlider === 'function') _initPriceSlider(); }, 50);
 
-  // Одразу показуємо результати замість ховання
+  // На мобільних — згорнути фільтри, показати одразу результати
+  if (window.innerWidth <= 768) {
+    var fpBody = document.getElementById('fp-body');
+    if (fpBody) fpBody.style.display = 'none';
+    var icon = document.getElementById('fp-toggle-icon');
+    if (icon) icon.style.transform = 'rotate(-90deg)';
+  }
+
   updateResultCount();
   setTimeout(function() { runSearch(); }, 100);
+}
+
+function _toggleFilterPanel() {
+  var fpBody = document.getElementById('fp-body');
+  var icon = document.getElementById('fp-toggle-icon');
+  if (!fpBody) return;
+  var isHidden = fpBody.style.display === 'none';
+  fpBody.style.display = isHidden ? '' : 'none';
+  if (icon) icon.style.transform = isHidden ? '' : 'rotate(-90deg)';
 }
 
 function setPill(el, groupId) {
