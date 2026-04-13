@@ -417,7 +417,16 @@ function openFilterPanel(cat) {
     var fpBody = document.getElementById('fp-body');
     if (fpBody) fpBody.style.display = 'none';
     var icon = document.getElementById('fp-toggle-icon');
-    if (icon) icon.style.transform = 'rotate(-90deg)';
+    if (icon) icon.style.transform = '';
+    var label = document.getElementById('fp-toggle-label');
+    if (label) label.textContent = 'Відкрити';
+  } else {
+    var fpBody = document.getElementById('fp-body');
+    if (fpBody) fpBody.style.display = '';
+    var icon = document.getElementById('fp-toggle-icon');
+    if (icon) icon.style.transform = 'rotate(180deg)';
+    var label = document.getElementById('fp-toggle-label');
+    if (label) label.textContent = 'Згорнути';
   }
 
   updateResultCount();
@@ -427,10 +436,12 @@ function openFilterPanel(cat) {
 function _toggleFilterPanel() {
   var fpBody = document.getElementById('fp-body');
   var icon = document.getElementById('fp-toggle-icon');
+  var label = document.getElementById('fp-toggle-label');
   if (!fpBody) return;
   var isHidden = fpBody.style.display === 'none';
   fpBody.style.display = isHidden ? '' : 'none';
-  if (icon) icon.style.transform = isHidden ? '' : 'rotate(-90deg)';
+  if (icon) icon.style.transform = isHidden ? 'rotate(180deg)' : '';
+  if (label) label.textContent = isHidden ? 'Згорнути' : 'Відкрити';
 }
 
 function setPill(el, groupId) {
