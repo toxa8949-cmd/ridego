@@ -404,20 +404,18 @@ function openFilterPanel(cat) {
   if (modelSel) { modelSel.innerHTML = '<option value="">Будь-яка</option>'; modelSel.disabled = true; }
   document.getElementById('fp-title').textContent = 'Фільтри: ' + cat;
   document.getElementById('fp-specific').innerHTML = CAT_SPECIFIC[cat] || '';
+  // Фільтри відкриті але згорнуті — юзер може розкрити якщо потрібно
   document.getElementById('filter-panel').classList.add('open');
-  document.getElementById('catalog-results-wrap').style.display = 'none';
   const divider = document.getElementById('catalog-divider');
   if (divider) divider.style.display = '';
   conditionFilter = '';
   document.querySelectorAll('#fp-condition .pill').forEach((p,i) => p.classList.toggle('active', i===0));
 
   setTimeout(function() { if (typeof _initPriceSlider === 'function') _initPriceSlider(); }, 50);
-  setTimeout(() => {
-    const divEl = document.getElementById('catalog-divider');
-    if (divEl) divEl.scrollIntoView({ behavior:'smooth', block:'start' });
-    else document.getElementById('filter-panel').scrollIntoView({ behavior:'smooth', block:'start' });
-  }, 120);
+
+  // Одразу показуємо результати замість ховання
   updateResultCount();
+  setTimeout(function() { runSearch(); }, 100);
 }
 
 function setPill(el, groupId) {
