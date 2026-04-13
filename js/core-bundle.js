@@ -563,10 +563,13 @@ function toggleMobileSearch() {
 }
 
 let _routerLock = false;
+var _savedScrollPositions = {};
 
 function _setPath(path) {
   if (location.pathname !== path) {
-    history.pushState(null, '', path);
+    // Зберігаємо поточну позицію скролу для поточного шляху
+    _savedScrollPositions[location.pathname] = window.scrollY;
+    history.pushState({ scrollY: window.scrollY, from: location.pathname }, '', path);
   }
 }
 
@@ -629,7 +632,7 @@ function _setHash(hash) {
 
 function _parseHash(hash) { return _parsePath(); }
 
-function _renderRoute(route) {
+function _renderRoute(route, isBack) {
   _routerLock = true;
   const { page, id, cat } = route;
 
@@ -667,7 +670,7 @@ function _renderRoute(route) {
   const navItems = document.querySelectorAll('.mnav-item');
   if (navMap[page] !== undefined && navItems[navMap[page]]) navItems[navMap[page]].classList.add('active');
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (!isBack) window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (page === 'home')     renderHomeListings();
   if (page === 'messages') {
@@ -796,9 +799,20 @@ function _pageTitle(page, id) {
   return base;
 }
 
-window.addEventListener('popstate', function() {
+window.addEventListener('popstate', function(e) {
   if (_routerLock) return;
-  _renderRoute(_parsePath());
+  var route = _parsePath();
+  _renderRoute(route, true); // true = це "назад", не скролити вгору
+  // Відновити збережену позицію скролу
+  var savedY = 0;
+  if (e.state && e.state.scrollY !== undefined) {
+    savedY = e.state.scrollY;
+  } else if (_savedScrollPositions[location.pathname] !== undefined) {
+    savedY = _savedScrollPositions[location.pathname];
+  }
+  if (savedY > 0) {
+    setTimeout(function() { window.scrollTo({ top: savedY, behavior: 'instant' }); }, 50);
+  }
 });
 
 function showPage(page, sellerId) {
