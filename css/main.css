@@ -3266,3 +3266,22 @@ body.light .mnav-item span {
     gap: 12px !important;
   }
 }
+
+/* ── MOBILE OVERFLOW FIX ─────────────────────────────────── */
+@media screen and (max-width: 900px) {
+  #page-detail {
+    overflow-x: hidden;
+  }
+  .detail-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    position: static !important;
+  }
+  #detail-map {
+    max-width: 100% !important;
+  }
+  .leaflet-container {
+    max-width: 100% !important;
+  }
+}
