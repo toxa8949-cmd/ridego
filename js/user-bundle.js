@@ -836,62 +836,63 @@ function _renderMessages(msgs, chat) {
     }
 
     var time = m.createdAt ? _formatChatTime(typeof m.createdAt === 'object' ? m.createdAt.seconds : m.createdAt/1000) : '';
-    // Картка обміну
+    // Exchange card
     if (m.exchangeOffer) {
       var ex = m.exchangeOffer;
-
       var exImg = ex.offerImg
         ? '<img src="' + ex.offerImg + '" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">'
-        : '<div style="width:44px;height:44px;border-radius:8px;background:var(--dark3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📦</div>';
-
+        : '<div style="width:44px;height:44px;border-radius:8px;background:var(--dark3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + String.fromCodePoint(0x1F4E6) + '</div>';
       var surchargeHtml = '';
       if (ex.surchargeType === 'i-pay' && ex.surchargeAmount > 0) {
-        surchargeHtml = '<div style="margin-top:8px;padding:5px 9px;background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.22);border-radius:7px;font-size:11px;color:var(--brand);font-weight:700">💵 Доплачу ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' грн</div>';
+        surchargeHtml = '<div style="margin-top:8px;padding:5px 9px;background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.22);border-radius:7px;font-size:11px;color:var(--brand);font-weight:700">' + '\u0414\u043e\u043f\u043b\u0430\u0447\u0443 ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' \u0433\u0440\u043d</div>';
       } else if (ex.surchargeType === 'they-pay' && ex.surchargeAmount > 0) {
-        surchargeHtml = '<div style="margin-top:8px;padding:5px 9px;background:rgba(255,160,0,.1);border:1px solid rgba(255,160,0,.22);border-radius:7px;font-size:11px;color:#e67e00;font-weight:700">💵 Прошу доплату ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' грн</div>';
+        surchargeHtml = '<div style="margin-top:8px;padding:5px 9px;background:rgba(255,160,0,.1);border:1px solid rgba(255,160,0,.22);border-radius:7px;font-size:11px;color:#e67e00;font-weight:700">\u041f\u0440\u043e\u0448\u0443 \u0434\u043e\u043f\u043b\u0430\u0442\u0443 ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' \u0433\u0440\u043d</div>';
       } else {
-        surchargeHtml = '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">Без доплати</div>';
+        surchargeHtml = '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">\u0411\u0435\u0437 \u0434\u043e\u043f\u043b\u0430\u0442\u0438</div>';
       }
-
       var commentHtml = ex.comment
-        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">💬 ' + _esc(ex.comment) + '</div>'
+        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">' + ex.comment + '</div>'
         : '';
-
       var viewBtn = ex.offerId
         ? '<div onclick="showDetail(\'' + ex.offerId + '\')" style="cursor:pointer;width:28px;height:28px;border-radius:7px;background:var(--dark3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;color:var(--brand)"></i></div>'
         : '';
-
       var card = '<div style="width:256px">'
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">'
-        +   '<span style="font-size:13px">🔄</span>'
-        +   '<span style="font-size:10px;font-weight:800;letter-spacing:.7px;color:var(--brand)">ПРОПОЗИЦІЯ ОБМІНУ</span>'
+        + '<span style="font-size:10px;font-weight:800;letter-spacing:.7px;color:var(--brand)">\u{1F504} \u041f\u0420\u041e\u041f\u041e\u0417\u0418\u0426\u0406\u042f \u041e\u0411\u041c\u0406\u041d\u0423</span>'
         + '</div>'
-
         + '<div class="exc-inner-box" style="margin-bottom:8px">'
-        +   '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:3px">Хоче отримати</div>'
-        +   '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">' + _esc(ex.targetTitle || '') + '</div>'
-        +   (ex.targetPrice ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + Number(ex.targetPrice).toLocaleString('uk') + ' грн</div>' : '')
+        + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:3px">\u0425\u043e\u0447\u0435 \u043e\u0442\u0440\u0438\u043c\u0430\u0442\u0438</div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _esc(ex.targetTitle || '') + '</div>'
+        + (ex.targetPrice ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + Number(ex.targetPrice).toLocaleString('uk') + ' \u0433\u0440\u043d</div>' : '')
         + '</div>'
-
-        + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">Пропонує в обмін</div>'
+        + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">\u041f\u0440\u043e\u043f\u043e\u043d\u0443\u0454 \u0432 \u043e\u0431\u043c\u0456\u043d</div>'
         + '<div class="exc-inner-box" style="display:flex;align-items:center;gap:8px">'
-        +   exImg
-        +   '<div style="min-width:0;flex:1">'
-        +     '<div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(ex.offerTitle || '') + '</div>'
-        +     (ex.offerPrice ? '<div style="font-size:11px;color:var(--brand);font-weight:700;margin-top:1px">' + Number(ex.offerPrice).toLocaleString('uk') + ' грн</div>' : '')
-        +   '</div>'
-        +   viewBtn
+        + exImg
+        + '<div style="min-width:0;flex:1">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(ex.offerTitle || '') + '</div>'
+        + (ex.offerPrice ? '<div style="font-size:11px;color:var(--brand);font-weight:700;margin-top:1px">' + Number(ex.offerPrice).toLocaleString('uk') + ' \u0433\u0440\u043d</div>' : '')
         + '</div>'
-
+        + viewBtn
+        + '</div>'
         + surchargeHtml
         + commentHtml
         + '</div>';
-
       return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
         + '<div class="msg-bubble exchange-card" style="border-radius:16px;max-width:none">' + card + '</div>'
         + '<div class="msg-time">' + time + '</div>'
         + '</div>';
     }
+
+
+    return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
+      + '<div class="msg-bubble">' + _esc(m.text || '') + '</div>'
+      + '<div class="msg-time">' + time + '</div>'
+      + '</div>';
+  }).join('');
+
+  area.innerHTML = html;
+  area.scrollTop = area.scrollHeight;
+}
 
 function sendMessage() {
   if (!_activeChatId || !isLoggedIn) return;
