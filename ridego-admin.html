@@ -943,7 +943,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           </select>
         </div>
         <div class="full-table-card">
-          <table><thead><tr><th>Користувач</th><th>Тип</th><th>Оголошення</th><th>Реєстрація</th><th>Статус</th><th>Дії</th></tr></thead>
+          <table id="users-table"><thead><tr><th style="cursor:pointer" onclick="sortUsers('name')">Користувач <span id="ush-name"></span></th><th style="cursor:pointer" onclick="sortUsers('type')">Тип <span id="ush-type"></span></th><th style="cursor:pointer" onclick="sortUsers('listings')">Оголошення <span id="ush-listings"></span></th><th style="cursor:pointer" onclick="sortUsers('createdAt')">Реєстрація <span id="ush-createdAt"></span></th><th style="cursor:pointer" onclick="sortUsers('status')">Статус <span id="ush-status"></span></th><th>Дії</th></tr></thead>
           <tbody id="users-tbody"></tbody></table>
         </div>
       </div>
@@ -969,7 +969,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           </select>
         </div>
         <div class="full-table-card">
-          <table><thead><tr><th>Оголошення</th><th>Продавець</th><th>Ціна</th><th>Місто</th><th>Дата</th><th>Статус</th><th>Дії</th></tr></thead>
+          <table id="listings-table"><thead><tr><th style="cursor:pointer" onclick="sortListings('title')">Оголошення <span id="lsh-title"></span></th><th style="cursor:pointer" onclick="sortListings('sellerName')">Продавець <span id="lsh-sellerName"></span></th><th style="cursor:pointer" onclick="sortListings('price')">Ціна <span id="lsh-price"></span></th><th style="cursor:pointer" onclick="sortListings('city')">Місто <span id="lsh-city"></span></th><th style="cursor:pointer" onclick="sortListings('createdAt')">Дата <span id="lsh-createdAt"></span></th><th style="cursor:pointer" onclick="sortListings('status')">Статус <span id="lsh-status"></span></th><th>Дії</th></tr></thead>
           <tbody id="listings-tbody"></tbody></table>
         </div>
       </div>
@@ -1008,7 +1008,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
       <div id="page-reports" class="page">
         <div class="page-header"><div class="page-header-left"><h1>Скарги</h1><p>Скарги від користувачів</p></div></div>
         <div class="full-table-card">
-          <table><thead><tr><th>Оголошення</th><th>Причина</th><th>Від кого</th><th>Дата</th><th>Статус</th><th>Дії</th></tr></thead>
+          <table id="reports-table"><thead><tr><th>Оголошення</th><th style="cursor:pointer" onclick="sortReports('reason')">Причина <span id="rsh-reason"></span></th><th>Від кого</th><th style="cursor:pointer" onclick="sortReports('createdAt')">Дата <span id="rsh-createdAt"></span></th><th style="cursor:pointer" onclick="sortReports('status')">Статус <span id="rsh-status"></span></th><th>Дії</th></tr></thead>
           <tbody id="reports-tbody"></tbody></table>
         </div>
       </div>
@@ -1077,7 +1077,7 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
           <button class="btn btn-outline" onclick="loadLogs()"><i class="fa-solid fa-rotate"></i> Оновити</button>
         </div>
         <div class="full-table-card">
-          <table><thead><tr><th>Час</th><th>Адмін</th><th>Дія</th><th>Деталі</th></tr></thead>
+          <table id="logs-table"><thead><tr><th style="cursor:pointer" onclick="sortLogs('createdAt')">Час <span id="lgsh-createdAt"></span></th><th style="cursor:pointer" onclick="sortLogs('admin')">Адмін <span id="lgsh-admin"></span></th><th style="cursor:pointer" onclick="sortLogs('action')">Дія <span id="lgsh-action"></span></th><th>Деталі</th></tr></thead>
           <tbody id="logs-tbody"></tbody></table>
         </div>
       </div>
@@ -1559,6 +1559,74 @@ function stopGA4AutoRefresh() {
   if (_ga4AutoRefreshTimer) { clearInterval(_ga4AutoRefreshTimer); _ga4AutoRefreshTimer = null; }
 }
 
+// ═══ SORT STATE ═══
+var _usersSort = { field: 'createdAt', dir: -1 };
+var _listingsSort = { field: 'createdAt', dir: -1 };
+var _reportsSort = { field: 'createdAt', dir: -1 };
+var _logsSort = { field: 'createdAt', dir: -1 };
+
+function _sortData(data, sort, getField) {
+  return data.slice().sort(function(a, b) {
+    var va = getField(a, sort.field);
+    var vb = getField(b, sort.field);
+    if (va == null) va = sort.field === 'createdAt' ? 0 : '';
+    if (vb == null) vb = sort.field === 'createdAt' ? 0 : '';
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return -sort.dir;
+    if (va > vb) return sort.dir;
+    return 0;
+  });
+}
+
+function _getSortIcon(sort, field) {
+  if (sort.field !== field) return '<i class="fa-solid fa-sort" style="opacity:.3;font-size:10px;margin-left:4px"></i>';
+  return sort.dir === 1
+    ? '<i class="fa-solid fa-sort-up" style="color:var(--brand);font-size:10px;margin-left:4px"></i>'
+    : '<i class="fa-solid fa-sort-down" style="color:var(--brand);font-size:10px;margin-left:4px"></i>';
+}
+
+function _thStyle() {
+  return 'cursor:pointer;user-select:none;white-space:nowrap;';
+}
+
+function sortUsers(field) {
+  if (_usersSort.field === field) _usersSort.dir *= -1;
+  else { _usersSort.field = field; _usersSort.dir = -1; }
+  renderUsersTable();
+}
+function sortListings(field) {
+  if (_listingsSort.field === field) _listingsSort.dir *= -1;
+  else { _listingsSort.field = field; _listingsSort.dir = -1; }
+  renderListingsTable();
+}
+function sortReports(field) {
+  if (_reportsSort.field === field) _reportsSort.dir *= -1;
+  else { _reportsSort.field = field; _reportsSort.dir = -1; }
+  renderReportsTable();
+}
+function sortLogs(field) {
+  if (_logsSort.field === field) _logsSort.dir *= -1;
+  else { _logsSort.field = field; _logsSort.dir = -1; }
+  var logs = _currentLogs || [];
+  renderLogsTable(_sortData(logs, _logsSort, function(l, f) {
+    if (f === 'createdAt') return l.createdAt ? (l.createdAt.seconds || 0) : 0;
+    return l[f] || '';
+  }));
+}
+
+function _updateSortIcons(prefix, sort) {
+  var fields = ['name','type','listings','createdAt','status','title','sellerName','price','city','reason','admin','action'];
+  fields.forEach(function(f) {
+    var el = document.getElementById(prefix + f);
+    if (!el) return;
+    if (sort.field !== f) { el.innerHTML = '<i class="fa-solid fa-sort" style="opacity:.3;font-size:9px"></i>'; return; }
+    el.innerHTML = sort.dir === 1
+      ? '<i class="fa-solid fa-sort-up" style="color:var(--brand);font-size:9px"></i>'
+      : '<i class="fa-solid fa-sort-down" style="color:var(--brand);font-size:9px"></i>';
+  });
+}
+
 // ═══ STATS ═══
 function updateUserStats(){
   var total=_users.length;
@@ -1600,6 +1668,7 @@ function showAdminPage(page,btn){
 
 // ═══ USERS TABLE ═══
 function renderUsersTable(){
+  _updateSortIcons('ush-', _usersSort);
   var data=getFilteredUsers();
   var tbody=document.getElementById('users-tbody');if(!tbody)return;
   if(!data.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Немає</td></tr>';return;}
@@ -1628,11 +1697,16 @@ function getFilteredUsers(){
   var q=(document.getElementById('users-search')||{}).value||'';
   var st=(document.getElementById('users-status-filter')||{}).value||'';
   var tp=(document.getElementById('users-type-filter')||{}).value||'';
-  return _users.filter(function(u){
+  var filtered = _users.filter(function(u){
     if(q){var ql=q.toLowerCase();if(!(u.name||'').toLowerCase().includes(ql)&&!(u.email||'').toLowerCase().includes(ql))return false;}
     if(st&&u.status!==st)return false;
     if(tp&&u.type!==tp)return false;
     return true;
+  });
+  return _sortData(filtered, _usersSort, function(u, f) {
+    if (f === 'createdAt') return u.createdAt ? (u.createdAt.seconds || 0) : 0;
+    if (f === 'listings') return u._listingCount || 0;
+    return u[f] || '';
   });
 }
 function applyUsersFilter(){renderUsersTable();}
@@ -1688,6 +1762,7 @@ function exportUsers(){
 
 // ═══ LISTINGS TABLE ═══
 function renderListingsTable(){
+  _updateSortIcons('lsh-', _listingsSort);
   var data=getFilteredListings();
   var tbody=document.getElementById('listings-tbody');if(!tbody)return;
   var icons={'Електросамокати':'⚡','Велосипеди':'🚲','Електровелосипеди':'🔋','Електроскутери':'🛵','Електромотоцикли':'🏍'};
@@ -1713,11 +1788,16 @@ function getFilteredListings(){
   var q=(document.getElementById('listings-search')||{}).value||'';
   var cat=(document.getElementById('listings-cat-filter')||{}).value||'';
   var st=(document.getElementById('listings-status-filter')||{}).value||'';
-  return _listings.filter(function(l){
+  var filtered = _listings.filter(function(l){
     if(q){var ql=q.toLowerCase();if(!(l.title||'').toLowerCase().includes(ql)&&!(l.city||'').toLowerCase().includes(ql)&&!(l.sellerName||l.seller||'').toLowerCase().includes(ql))return false;}
     if(cat&&l.cat!==cat)return false;
     if(st&&l.status!==st)return false;
     return true;
+  });
+  return _sortData(filtered, _listingsSort, function(l, f) {
+    if (f === 'createdAt') return l.createdAt ? (l.createdAt.seconds || 0) : 0;
+    if (f === 'price') return Number(l.price) || 0;
+    return l[f] || '';
   });
 }
 function applyListingsFilter(){renderListingsTable();}
@@ -1803,11 +1883,16 @@ function deleteService(id){
 
 // ═══ REPORTS TABLE ═══
 function renderReportsTable(){
+  _updateSortIcons('rsh-', _reportsSort);
   var tbody=document.getElementById('reports-tbody');if(!tbody)return;
   var nb=document.getElementById('nb-reports');
   if(nb)nb.textContent=_reports.filter(function(r){return r.status!=='resolved';}).length;
   if(!_reports.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Скарг немає</td></tr>';return;}
-  tbody.innerHTML=_reports.map(function(r){
+  var sortedReports = _sortData(_reports, _reportsSort, function(r, f) {
+    if (f === 'createdAt') return r.createdAt ? (r.createdAt.seconds || 0) : 0;
+    return r[f] || '';
+  });
+  tbody.innerHTML=sortedReports.map(function(r){
     var date=r.createdAt?new Date(r.createdAt.seconds*1000).toLocaleDateString('uk-UA'):'—';
     var sB=r.status==='resolved'?'<span class="badge badge-green">Вирішена</span>':'<span class="badge badge-orange">Нова</span>';
     return '<tr>'
@@ -2033,13 +2118,15 @@ function clearNewsImg(){
 }
 
 // ═══ LOGS (from Firebase) ═══
+var _currentLogs = [];
 function loadLogs(){
   _db.collection('adminLogs').orderBy('createdAt','desc').limit(100).get().then(function(snap){
-    var logs=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
-    renderLogsTable(logs);
+    _currentLogs=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    renderLogsTable(_currentLogs);
   }).catch(function(){renderLogsTable([]);});
 }
 function renderLogsTable(logs){
+  _updateSortIcons('lgsh-', _logsSort);
   var tbody=document.getElementById('logs-tbody');if(!tbody)return;
   if(!logs.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">Логів немає</td></tr>';return;}
   tbody.innerHTML=logs.map(function(l){
