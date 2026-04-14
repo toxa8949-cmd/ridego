@@ -3740,48 +3740,32 @@ function _sendChatMessage(sellerUid, message, listing) {
   if (listing && listing.id) chatId += '_' + listing.id;
 
   var chatRef = window._db.collection('chats').doc(chatId);
+  var now = firebase.firestore.FieldValue.serverTimestamp();
 
-  return chatRef.get().then(function(snap) {
-    var now = firebase.firestore.FieldValue.serverTimestamp();
-    var msgData = {
-      text: message,
-      senderUid: currentUser.uid,
-      createdAt: now
-    };
+  var chatData = {
+    participants: [currentUser.uid, sellerUid],
+    lastMessage: message.substring(0, 100),
+    lastMessageAt: now,
+    lastSenderUid: currentUser.uid,
+    createdAt: now
+  };
+  chatData[currentUser.uid + '_name'] = currentUser.name || currentUser.email;
+  chatData[sellerUid + '_name'] = listing ? (listing.sellerName || listing.seller || '') : '';
+  chatData['unread_' + sellerUid] = firebase.firestore.FieldValue.increment(1);
+  chatData['unread_' + currentUser.uid] = 0;
+  if (listing) {
+    chatData.listingId = listing.id;
+    chatData.listingTitle = listing.title;
+  }
 
-    if (!snap.exists) {
-      // Створюємо новий чат
-      var chatData = {
-        participants: [currentUser.uid, sellerUid],
-        lastMessage: message.substring(0, 100),
-        lastMessageAt: now,
-        lastSenderUid: currentUser.uid,
-        createdAt: now
-      };
-      chatData[currentUser.uid + '_name'] = currentUser.name || currentUser.email;
-      chatData[sellerUid + '_name'] = listing ? (listing.sellerName || listing.seller || '') : '';
-      chatData['unread_' + sellerUid] = 1;
-      chatData['unread_' + currentUser.uid] = 0;
-      if (listing) {
-        chatData.listingId = listing.id;
-        chatData.listingTitle = listing.title;
-      }
+  var msgData = {
+    text: message,
+    senderUid: currentUser.uid,
+    createdAt: now
+  };
 
-      return chatRef.set(chatData).then(function() {
-        return chatRef.collection('messages').add(msgData);
-      });
-    } else {
-      // Оновлюємо існуючий чат
-      var upd = {
-        lastMessage: message.substring(0, 100),
-        lastMessageAt: now,
-        lastSenderUid: currentUser.uid
-      };
-      upd['unread_' + sellerUid] = firebase.firestore.FieldValue.increment(1);
-      return chatRef.update(upd).then(function() {
-        return chatRef.collection('messages').add(msgData);
-      });
-    }
+  return chatRef.set(chatData, { merge: true }).then(function() {
+    return chatRef.collection('messages').add(msgData);
   });
 }
 
