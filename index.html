@@ -929,6 +929,7 @@
             <a id="phone-number" href="tel:+380670000000" style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;color:var(--brand);text-decoration:none">+380 67 000 00 00</a>
           </div>
           <button class="btn-msg" onclick="_startChatFromListing()"><i class="fa-solid fa-comment" style="margin-right:8px"></i>Написати в чат</button>
+          <button class="btn-msg" onclick="_openExchangeModal()" style="background:rgba(255,152,0,.1);color:#ff9800;border-color:rgba(255,152,0,.3)"><i class="fa-solid fa-repeat" style="margin-right:8px"></i>Запропонувати обмін</button>
           <button class="btn-msg" onclick="toggleFavDetail()" id="fav-detail-btn"><i class="fa-regular fa-heart" style="margin-right:8px"></i>В обране</button>
           <div style="display:flex;gap:8px;margin-top:4px">
             <button class="btn-msg" style="flex:1;font-size:13px;padding:10px 8px" onclick="shareListing()"><i class="fa-solid fa-share-nodes"></i> Поділитись</button>
@@ -2451,6 +2452,69 @@
       &#x1F381; Щомісяця +1 безкоштовний слот автоматично.
     </div>
     <button class="btn-outline" style="width:100%;margin-top:14px;padding:12px" onclick="closeBuySlots()">Скасувати</button>
+  </div>
+</div>
+
+<!-- Exchange Modal -->
+<div id="exchange-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card-bg);border-radius:20px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.3)">
+    <!-- Header -->
+    <div style="padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,152,0,.12);display:flex;align-items:center;justify-content:center">
+          <i class="fa-solid fa-repeat" style="color:#ff9800;font-size:18px"></i>
+        </div>
+        <div>
+          <div style="font-size:17px;font-weight:800">Запропонувати обмін</div>
+          <div style="font-size:12px;color:var(--text-muted)" id="exch-target-title"></div>
+        </div>
+      </div>
+      <button onclick="_closeExchangeModal()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:4px">&times;</button>
+    </div>
+
+    <div style="padding:20px 24px">
+      <!-- Що пропоную -->
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--brand);margin-bottom:12px"><i class="fa-solid fa-gift" style="margin-right:6px"></i>Що пропоную на обмін</div>
+
+      <!-- Варіант 1: вибрати зі своїх -->
+      <div id="exch-my-listings" style="margin-bottom:16px">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Оберіть зі своїх оголошень:</div>
+        <div id="exch-my-grid" style="display:grid;gap:8px;max-height:200px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Варіант 2: або описати текстом -->
+      <div style="position:relative;text-align:center;margin:12px 0">
+        <div style="border-top:1px solid var(--border)"></div>
+        <span style="background:var(--card-bg);padding:0 12px;font-size:12px;color:var(--text-muted);position:relative;top:-9px">або опишіть що пропонуєте</span>
+      </div>
+      <textarea id="exch-custom-text" class="form-input" rows="3" placeholder="Наприклад: Xiaomi Mi Scooter 3, стан хороший, пробіг 500 км..." style="width:100%;resize:vertical;font-size:14px"></textarea>
+
+      <!-- Доплата -->
+      <div style="margin-top:20px;padding:16px;background:var(--dark3);border-radius:14px">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:10px"><i class="fa-solid fa-wallet" style="margin-right:6px"></i>Доплата</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px" id="exch-surcharge-btns">
+          <button class="pill active" onclick="_setExchSurcharge('none',this)" data-val="none">Без доплати</button>
+          <button class="pill" onclick="_setExchSurcharge('i-pay',this)" data-val="i-pay">Я доплачу</button>
+          <button class="pill" onclick="_setExchSurcharge('they-pay',this)" data-val="they-pay">Мені доплатять</button>
+        </div>
+        <div id="exch-surcharge-input" style="display:none;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="exch-surcharge-amount" class="form-input" placeholder="0" style="width:120px;font-size:16px;font-weight:700;text-align:center">
+            <span style="font-size:14px;color:var(--text-muted)">грн</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Коментар -->
+      <div style="margin-top:16px">
+        <textarea id="exch-comment" class="form-input" rows="2" placeholder="Додатковий коментар (необов'язково)..." style="width:100%;resize:vertical;font-size:14px"></textarea>
+      </div>
+
+      <!-- Кнопка -->
+      <button id="exch-send-btn" onclick="_sendExchangeOffer()" class="btn-primary" style="width:100%;margin-top:20px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px">
+        <i class="fa-solid fa-paper-plane"></i>Надіслати пропозицію обміну
+      </button>
+    </div>
   </div>
 </div>
 
