@@ -800,6 +800,24 @@ function renderCatalog(catFilter) {
 
   if (all.length === 0) {
     if (topSec) topSec.style.display = 'none';
+    if (!window._catalogReady) {
+      // Ще завантажується — показуємо скелетон
+      var skeletonCard = '<div style="border-radius:16px;overflow:hidden;background:var(--card-bg);border:1px solid var(--border)">'
+        + '<div style="height:180px;background:var(--dark3);animation:_skPulse 1.4s ease-in-out infinite"></div>'
+        + '<div style="padding:14px 16px">'
+        + '<div style="height:14px;border-radius:6px;background:var(--dark3);animation:_skPulse 1.4s ease-in-out infinite;margin-bottom:8px;width:80%"></div>'
+        + '<div style="height:22px;border-radius:6px;background:var(--dark3);animation:_skPulse 1.4s ease-in-out infinite;margin-bottom:10px;width:50%"></div>'
+        + '<div style="height:11px;border-radius:6px;background:var(--dark3);animation:_skPulse 1.4s ease-in-out infinite;width:65%"></div>'
+        + '</div></div>';
+      if (!document.getElementById('_sk_style')) {
+        var st = document.createElement('style');
+        st.id = '_sk_style';
+        st.textContent = '@keyframes _skPulse{0%,100%{opacity:1}50%{opacity:.45}}';
+        document.head.appendChild(st);
+      }
+      allEl.innerHTML = Array(8).fill(skeletonCard).join('');
+      return;
+    }
     allEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:48px 24px">Оголошень поки немає.<br>Будьте першим!</p>';
     return;
   }
