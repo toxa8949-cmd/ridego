@@ -839,42 +839,57 @@ function _renderMessages(msgs, chat) {
     // Картка обміну
     if (m.exchangeOffer) {
       var ex = m.exchangeOffer;
+
       var exImg = ex.offerImg
-        ? '<img src="' + ex.offerImg + '" style="width:100%;height:110px;object-fit:cover;border-radius:10px;display:block;margin-bottom:10px">'
-        : '';
+        ? '<img src="' + ex.offerImg + '" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">'
+        : '<div style="width:44px;height:44px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📦</div>';
+
       var surchargeHtml = '';
       if (ex.surchargeType === 'i-pay' && ex.surchargeAmount > 0) {
-        surchargeHtml = '<div style="margin-top:8px;padding:6px 10px;background:rgba(0,200,83,.12);border-radius:8px;font-size:13px;color:var(--brand);font-weight:600">💵 Я доплачу: ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' грн</div>';
+        surchargeHtml = '<div style="margin-top:8px;padding:5px 9px;background:rgba(0,200,83,.15);border:1px solid rgba(0,200,83,.25);border-radius:7px;font-size:11px;color:#00c853;font-weight:700">💵 Доплачу ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' грн</div>';
       } else if (ex.surchargeType === 'they-pay' && ex.surchargeAmount > 0) {
-        surchargeHtml = '<div style="margin-top:8px;padding:6px 10px;background:rgba(255,165,0,.1);border-radius:8px;font-size:13px;color:#e67e00;font-weight:600">💵 Прошу доплату: ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' грн</div>';
+        surchargeHtml = '<div style="margin-top:8px;padding:5px 9px;background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.25);border-radius:7px;font-size:11px;color:#ffa000;font-weight:700">💵 Прошу доплату ' + Number(ex.surchargeAmount).toLocaleString('uk') + ' грн</div>';
       }
+
       var commentHtml = ex.comment
-        ? '<div style="margin-top:8px;font-size:13px;color:var(--text-muted);font-style:italic">💬 ' + _esc(ex.comment) + '</div>'
+        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2a2a;font-size:11px;color:#777">💬 ' + _esc(ex.comment) + '</div>'
         : '';
-      var offerLinkHtml = ex.offerId
-        ? '<a onclick="showDetail(\'' + ex.offerId + '\')" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 10px;background:var(--dark3);border-radius:8px;text-decoration:none;color:inherit">'
-          + '<i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--brand);font-size:11px"></i>'
-          + '<span style="font-size:12px;color:var(--text-muted)">Переглянути оголошення</span>'
-          + '</a>'
+
+      var viewBtn = ex.offerId
+        ? '<div onclick="showDetail(\'' + ex.offerId + '\')" style="cursor:pointer;width:26px;height:26px;border-radius:6px;background:#1e1e1e;border:1px solid #333;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;color:#00c853"></i></div>'
         : '';
-      var bubbleContent = '<div style="min-width:220px;max-width:280px">'
-        + '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--brand);margin-bottom:10px;display:flex;align-items:center;gap:6px"><span style="font-size:14px">🔄</span> ПРОПОЗИЦІЯ ОБМІНУ</div>'
-        + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Хочу отримати</div>'
-        + '<div style="font-weight:700;font-size:14px;margin-bottom:2px">' + _esc(ex.targetTitle || '') + '</div>'
-        + (ex.targetPrice ? '<div style="font-size:13px;color:var(--brand);font-weight:600;margin-bottom:10px">' + Number(ex.targetPrice).toLocaleString('uk') + ' грн</div>' : '<div style="margin-bottom:10px"></div>')
-        + '<div style="height:1px;background:var(--border);margin-bottom:10px"></div>'
-        + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Пропоную в обмін</div>'
-        + exImg
-        + '<div style="font-weight:700;font-size:14px">' + _esc(ex.offerTitle || '') + '</div>'
-        + (ex.offerPrice ? '<div style="font-size:13px;color:var(--brand);font-weight:600">' + Number(ex.offerPrice).toLocaleString('uk') + ' грн</div>' : '')
-        + offerLinkHtml
+
+      var card = '<div style="width:252px;font-family:inherit">'
+        + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:10px">'
+        +   '<span style="font-size:13px">🔄</span>'
+        +   '<span style="font-size:10px;font-weight:800;letter-spacing:.7px;color:#00c853">ПРОПОЗИЦІЯ ОБМІНУ</span>'
+        + '</div>'
+
+        + '<div style="background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:9px 11px;margin-bottom:6px">'
+        +   '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;margin-bottom:3px">Хоче отримати</div>'
+        +   '<div style="font-size:13px;font-weight:700;color:#fff;line-height:1.3">' + _esc(ex.targetTitle || '') + '</div>'
+        +   (ex.targetPrice ? '<div style="font-size:11px;color:#888;margin-top:2px">' + Number(ex.targetPrice).toLocaleString('uk') + ' грн</div>' : '')
+        + '</div>'
+
+        + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#555;margin-bottom:6px">Пропонує в обмін</div>'
+        + '<div style="background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:8px">'
+        +   exImg
+        +   '<div style="min-width:0;flex:1">'
+        +     '<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(ex.offerTitle || '') + '</div>'
+        +     (ex.offerPrice ? '<div style="font-size:11px;color:#00c853;font-weight:700;margin-top:1px">' + Number(ex.offerPrice).toLocaleString('uk') + ' грн</div>' : '')
+        +   '</div>'
+        +   viewBtn
+        + '</div>'
+
         + surchargeHtml
         + commentHtml
         + '</div>';
-      return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'        + '<div class="msg-bubble" style="padding:14px 16px;background:' + (mine ? 'var(--brand)' : 'var(--card-bg)') + ';border:' + (mine ? 'none' : '1px solid var(--border)') + ';border-radius:16px">' + bubbleContent + '</div>'        + '<div class="msg-time">' + time + '</div>'        + '</div>';
-    }
 
-    return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'      + '<div class="msg-bubble">' + _esc(m.text || '') + '</div>'      + '<div class="msg-time">' + time + '</div>'      + '</div>';
+      return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
+        + '<div class="msg-bubble" style="padding:11px 13px;background:#161616;border:1px solid #2a2a2a;border-radius:16px;max-width:none">' + card + '</div>'
+        + '<div class="msg-time">' + time + '</div>'
+        + '</div>';
+    }
   }).join('');
 
   area.innerHTML = html;
