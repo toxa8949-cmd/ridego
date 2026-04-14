@@ -3244,3 +3244,25 @@ body.light .mnav-item span {
     text-overflow: ellipsis;
   }
 }
+
+/* ── DETAIL MAIN GRID ────────────────────────────────────── */
+.detail-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+  align-items: start;
+}
+@media screen and (max-width: 900px) {
+  .detail-main-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .detail-main-grid .detail-card {
+    position: static !important;
+  }
+}
+@media screen and (max-width: 600px) {
+  .detail-main-grid {
+    gap: 12px !important;
+  }
+}
