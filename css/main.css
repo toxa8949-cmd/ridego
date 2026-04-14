@@ -3208,3 +3208,39 @@ body.light .mnav-item span {
 /* ── HERO SEARCH ─────────────────────────────────────────── */
 .hero-search-wrap input::placeholder { color: var(--text-muted); }
 .hero-search-wrap input:focus { outline: none; }
+
+/* ── DETAIL PAGE MOBILE FIX (top-level) ──────────────────── */
+@media screen and (max-width: 900px) {
+  #detail-main-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  #detail-main-img-wrap {
+    height: 260px !important;
+    max-height: 50vh !important;
+  }
+  #detail-main-layout .detail-card {
+    position: static !important;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  #detail-main-img-wrap {
+    height: 220px !important;
+  }
+  #detail-main-layout {
+    gap: 12px !important;
+  }
+  .detail-card {
+    padding: 16px !important;
+  }
+  .btn-action-sm {
+    flex: 1 1 calc(33% - 6px) !important;
+    font-size: 11px !important;
+    padding: 9px 4px !important;
+    min-width: 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
