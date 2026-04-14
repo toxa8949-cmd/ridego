@@ -1136,8 +1136,13 @@ var _allListingsLoaded = false;
 var _loadingMore = false;
 
 function loadMoreListings(callback) {
-  if (_allListingsLoaded || _loadingMore || !window._db) {
+  if (_allListingsLoaded || !window._db) {
     if (callback) callback(false);
+    return;
+  }
+  // Якщо вже завантажується — чекаємо і повторюємо
+  if (_loadingMore) {
+    setTimeout(function() { loadMoreListings(callback); }, 600);
     return;
   }
   _loadingMore = true;
@@ -1212,7 +1217,6 @@ function loadFirebaseData(force) {
       if (cached && cached.length) {
         _fbListings = cached.filter(function(l){ return l && l.status !== 'deleted'; });
         _fbDataLoadedAt = Date.now();
-        window._catalogReady = true;
         _idbGet('services', 30 * 60 * 1000, function(svcs) {
           if (svcs) _fbServices = svcs;
           renderHomeListings();
@@ -1304,7 +1308,6 @@ function _loadFirebaseFromNetwork(force) {
 }
 
 function _applyListingsSnap(snap) {
-  window._catalogReady = true;
   _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
   _fbDataLoadedAt = Date.now();
   _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
