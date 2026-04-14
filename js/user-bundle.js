@@ -861,20 +861,20 @@ function _renderMessages(msgs, chat) {
         ? '<div onclick="showDetail(\'' + ex.offerId + '\')" style="cursor:pointer;width:28px;height:28px;border-radius:7px;background:var(--dark3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;color:var(--brand)"></i></div>'
         : '';
 
-      var card = '<div style="width:256px;font-family:inherit">'
+      var card = '<div style="width:256px">'
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">'
         +   '<span style="font-size:13px">🔄</span>'
         +   '<span style="font-size:10px;font-weight:800;letter-spacing:.7px;color:var(--brand)">ПРОПОЗИЦІЯ ОБМІНУ</span>'
         + '</div>'
 
-        + '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:8px">'
+        + '<div class="exc-inner-box" style="margin-bottom:8px">'
         +   '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:3px">Хоче отримати</div>'
         +   '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">' + _esc(ex.targetTitle || '') + '</div>'
         +   (ex.targetPrice ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + Number(ex.targetPrice).toLocaleString('uk') + ' грн</div>' : '')
         + '</div>'
 
         + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">Пропонує в обмін</div>'
-        + '<div style="background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:8px">'
+        + '<div class="exc-inner-box" style="display:flex;align-items:center;gap:8px">'
         +   exImg
         +   '<div style="min-width:0;flex:1">'
         +     '<div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(ex.offerTitle || '') + '</div>'
@@ -888,14 +888,10 @@ function _renderMessages(msgs, chat) {
         + '</div>';
 
       return '<div class="msg ' + (mine ? 'mine' : 'theirs') + '">'
-        + '<div class="msg-bubble" style="padding:11px 13px;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;max-width:none">' + card + '</div>'
+        + '<div class="msg-bubble exchange-card" style="border-radius:16px;max-width:none">' + card + '</div>'
         + '<div class="msg-time">' + time + '</div>'
         + '</div>';
     }
-
-  area.innerHTML = html;
-  area.scrollTop = area.scrollHeight;
-}
 
 function sendMessage() {
   if (!_activeChatId || !isLoggedIn) return;
