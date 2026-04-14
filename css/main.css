@@ -3252,6 +3252,9 @@ body.light .mnav-item span {
   gap: 28px;
   align-items: start;
 }
+.detail-main-grid > * {
+  min-width: 0;
+}
 @media screen and (max-width: 900px) {
   .detail-main-grid {
     grid-template-columns: 1fr !important;
@@ -3283,5 +3286,35 @@ body.light .mnav-item span {
   }
   .leaflet-container {
     max-width: 100% !important;
+  }
+}
+
+/* ── SPEC TABLE MOBILE FIX ───────────────────────────────── */
+@media screen and (max-width: 900px) {
+  .spec-section {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  .spec-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+  .spec-table td {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    padding: 10px 12px !important;
+  }
+  #detail-specs-wrap,
+  #detail-tabs-content,
+  .detail-left-col {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  /* Головне — лівa колонка grid не може бути ширшою за екран */
+  .detail-main-grid > div:first-child {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 }
