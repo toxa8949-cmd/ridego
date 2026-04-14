@@ -3568,6 +3568,224 @@ function loadMyFeedback() {
 }
 
 
+// ═══════════════════════════════════════════════════
+// 🔄 Обмін — пропозиція обміну оголошеннями
+// ═══════════════════════════════════════════════════
+
+var _exchTargetListing = null;
+var _exchSelectedMyId = null;
+var _exchSurchargeType = 'none';
+
+function _openExchangeModal() {
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Увійдіть щоб запропонувати обмін');
+    showPage('profile');
+    return;
+  }
+
+  var l = _allListings().find(function(x) { return x && x.id === currentDetailId; });
+  if (!l) { showToast('⚠️ Оголошення не знайдено'); return; }
+
+  // Не можна обміняти своє на своє
+  if (l.uid === currentUser.uid) {
+    showToast('ℹ️ Це ваше оголошення');
+    return;
+  }
+
+  _exchTargetListing = l;
+  _exchSelectedMyId = null;
+  _exchSurchargeType = 'none';
+
+  // Заповнити заголовок
+  var titleEl = document.getElementById('exch-target-title');
+  if (titleEl) titleEl.textContent = l.title + ' — ' + (l.price ? l.price.toLocaleString('uk') + ' грн' : '');
+
+  // Заповнити мої оголошення
+  var myGrid = document.getElementById('exch-my-grid');
+  var mine = (typeof myListings !== 'undefined' ? myListings : [])
+    .filter(function(m) { return m && m.status !== 'deleted' && m.status !== 'sold' && m.id !== l.id; });
+
+  if (mine.length > 0) {
+    myGrid.innerHTML = mine.map(function(m) {
+      var img = m.img ? '<img src="' + _cdnTiny(m.img) + '" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '<div style="width:48px;height:48px;border-radius:8px;background:var(--dark3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">' + (m.icon || '📦') + '</div>';
+      return '<div class="exch-my-item" data-id="' + m.id + '" onclick="_selectExchListing(\'' + m.id + '\',this)" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:2px solid var(--border);cursor:pointer;transition:all .2s">'
+        + img
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(m.title) + '</div>'
+        + '<div style="font-size:13px;color:var(--brand);font-weight:700">' + (m.price ? m.price.toLocaleString('uk') + ' грн' : '') + '</div>'
+        + '</div>'
+        + '<i class="fa-regular fa-circle" style="font-size:18px;color:var(--border);flex-shrink:0"></i>'
+        + '</div>';
+    }).join('');
+    document.getElementById('exch-my-listings').style.display = '';
+  } else {
+    myGrid.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px"><i class="fa-solid fa-info-circle" style="margin-right:4px"></i>У вас немає активних оголошень. Опишіть пропозицію текстом нижче.</div>';
+    document.getElementById('exch-my-listings').style.display = '';
+  }
+
+  // Скинути поля
+  document.getElementById('exch-custom-text').value = '';
+  document.getElementById('exch-comment').value = '';
+  document.getElementById('exch-surcharge-amount').value = '';
+  document.getElementById('exch-surcharge-input').style.display = 'none';
+  document.querySelectorAll('#exch-surcharge-btns .pill').forEach(function(p, i) { p.classList.toggle('active', i === 0); });
+
+  // Показати модал
+  var modal = document.getElementById('exchange-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function _closeExchangeModal() {
+  var modal = document.getElementById('exchange-modal');
+  if (modal) modal.style.display = 'none';
+  _exchTargetListing = null;
+  _exchSelectedMyId = null;
+}
+
+function _selectExchListing(id, el) {
+  // Зняти виділення з усіх
+  document.querySelectorAll('.exch-my-item').forEach(function(item) {
+    item.style.borderColor = 'var(--border)';
+    item.style.background = '';
+    var icon = item.querySelector('i');
+    if (icon) { icon.className = 'fa-regular fa-circle'; icon.style.color = 'var(--border)'; }
+  });
+
+  if (_exchSelectedMyId === id) {
+    // Деселект
+    _exchSelectedMyId = null;
+    return;
+  }
+
+  _exchSelectedMyId = id;
+  if (el) {
+    el.style.borderColor = 'var(--brand)';
+    el.style.background = 'var(--brand-dim)';
+    var icon = el.querySelector('i');
+    if (icon) { icon.className = 'fa-solid fa-circle-check'; icon.style.color = 'var(--brand)'; }
+  }
+}
+
+function _setExchSurcharge(type, btn) {
+  _exchSurchargeType = type;
+  document.querySelectorAll('#exch-surcharge-btns .pill').forEach(function(p) { p.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var input = document.getElementById('exch-surcharge-input');
+  if (input) input.style.display = (type === 'none') ? 'none' : '';
+}
+
+function _sendExchangeOffer() {
+  if (!isLoggedIn || !currentUser || !currentUser.uid) {
+    showToast('⚠️ Увійдіть щоб надіслати пропозицію');
+    return;
+  }
+  if (!_exchTargetListing) { showToast('⚠️ Оголошення не знайдено'); return; }
+
+  var customText = document.getElementById('exch-custom-text').value.trim();
+  var comment = document.getElementById('exch-comment').value.trim();
+  var surchargeAmount = parseInt(document.getElementById('exch-surcharge-amount').value) || 0;
+
+  if (!_exchSelectedMyId && !customText) {
+    showToast('⚠️ Оберіть оголошення або опишіть що пропонуєте');
+    return;
+  }
+
+  var myListing = _exchSelectedMyId
+    ? (typeof myListings !== 'undefined' ? myListings : []).find(function(m) { return m.id === _exchSelectedMyId; })
+    : null;
+
+  // Формуємо повідомлення для чату
+  var msg = '🔄 ПРОПОЗИЦІЯ ОБМІНУ\n\n';
+  msg += '📦 Хочу: ' + _exchTargetListing.title + '\n';
+  if (_exchTargetListing.price) msg += '💰 Ціна: ' + _exchTargetListing.price.toLocaleString('uk') + ' грн\n';
+  msg += '\n';
+
+  if (myListing) {
+    msg += '🎁 Пропоную: ' + myListing.title + '\n';
+    if (myListing.price) msg += '💰 Ціна мого: ' + myListing.price.toLocaleString('uk') + ' грн\n';
+    msg += '🔗 ridego.com.ua/listing/' + myListing.id + '\n';
+  }
+  if (customText) {
+    msg += '🎁 Пропоную: ' + customText + '\n';
+  }
+
+  if (_exchSurchargeType === 'i-pay' && surchargeAmount > 0) {
+    msg += '\n💵 Я доплачу: ' + surchargeAmount.toLocaleString('uk') + ' грн\n';
+  } else if (_exchSurchargeType === 'they-pay' && surchargeAmount > 0) {
+    msg += '\n💵 Прошу доплату: ' + surchargeAmount.toLocaleString('uk') + ' грн\n';
+  }
+
+  if (comment) {
+    msg += '\n💬 ' + comment + '\n';
+  }
+
+  // Відправляємо через чат
+  var btn = document.getElementById('exch-send-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Надсилання...'; }
+
+  _sendChatMessage(_exchTargetListing.uid, msg, _exchTargetListing).then(function() {
+    showToast('✅ Пропозицію обміну надіслано!');
+    _closeExchangeModal();
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Надіслати пропозицію обміну'; }
+  }).catch(function(e) {
+    showToast('⚠️ Помилка: ' + e.message);
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Надіслати пропозицію обміну'; }
+  });
+}
+
+function _sendChatMessage(sellerUid, message, listing) {
+  if (!window._db || !currentUser || !currentUser.uid) return Promise.reject(new Error('Не авторизовано'));
+
+  var chatId = [currentUser.uid, sellerUid].sort().join('_');
+  if (listing && listing.id) chatId += '_' + listing.id;
+
+  var chatRef = window._db.collection('chats').doc(chatId);
+
+  return chatRef.get().then(function(snap) {
+    var now = firebase.firestore.FieldValue.serverTimestamp();
+    var msgData = {
+      text: message,
+      senderUid: currentUser.uid,
+      createdAt: now
+    };
+
+    if (!snap.exists) {
+      // Створюємо новий чат
+      var chatData = {
+        participants: [currentUser.uid, sellerUid],
+        lastMessage: message.substring(0, 100),
+        lastMessageAt: now,
+        lastSenderUid: currentUser.uid,
+        createdAt: now
+      };
+      chatData[currentUser.uid + '_name'] = currentUser.name || currentUser.email;
+      chatData[sellerUid + '_name'] = listing ? (listing.sellerName || listing.seller || '') : '';
+      chatData['unread_' + sellerUid] = 1;
+      chatData['unread_' + currentUser.uid] = 0;
+      if (listing) {
+        chatData.listingId = listing.id;
+        chatData.listingTitle = listing.title;
+      }
+
+      return chatRef.set(chatData).then(function() {
+        return chatRef.collection('messages').add(msgData);
+      });
+    } else {
+      // Оновлюємо існуючий чат
+      var upd = {
+        lastMessage: message.substring(0, 100),
+        lastMessageAt: now,
+        lastSenderUid: currentUser.uid
+      };
+      upd['unread_' + sellerUid] = firebase.firestore.FieldValue.increment(1);
+      return chatRef.update(upd).then(function() {
+        return chatRef.collection('messages').add(msgData);
+      });
+    }
+  });
+}
+
+
 // ── Ініціалізація (після завантаження всіх бандлів) ──────────
 loadSavedProfile();
 _initRouter();
