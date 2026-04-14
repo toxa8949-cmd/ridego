@@ -2557,6 +2557,25 @@
   .service-detail-wrap { padding: 12px 10px 80px; }
   .service-detail-name { font-size: 18px; }
 
+  /* Кнопки дій на detail — 3 в ряд → wrap */
+  .btn-action-sm {
+    flex: 1 1 calc(33% - 6px) !important;
+    font-size: 12px !important;
+    padding: 9px 4px !important;
+    min-width: 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Галерея */
+  #detail-main-img-wrap { height: 240px !important; }
+  .detail-main-img { height: 240px !important; object-position: center !important; }
+  .detail-thumbs { gap: 6px !important; overflow-x: auto; padding-bottom: 4px; }
+  .thumb { width: 58px !important; height: 44px !important; flex-shrink: 0; }
+
+  /* Кнопки btn-msg в detail-card */
+  .detail-card .btn-msg { font-size: 13px !important; padding: 11px 10px !important; }
 }
 
 @keyframes skeleton-shine {
