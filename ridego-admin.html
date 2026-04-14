@@ -1440,6 +1440,125 @@ function loadAllData(){
   loadLogs();
 }
 
+// ═══ GA4 STATS (з Firestore analytics) ═══
+var _ga4AutoRefreshTimer = null;
+
+function loadGA4Stats() {
+  if (!_db) return;
+  var today = new Date().toISOString().slice(0, 10);
+  var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  // Онлайн зараз — з колекції analytics doc 'online'
+  _db.collection('analytics').doc('online_' + today).get().then(function(s) {
+    var online = s.exists ? (s.data().count || 0) : 0;
+    var el = document.getElementById('ga4-online');
+    if (el) el.textContent = online;
+  }).catch(function() {
+    // Fallback — рахуємо унікальних юзерів з visitors_today
+    var el = document.getElementById('ga4-online');
+    if (el) el.textContent = '—';
+  });
+
+  // Відвідувачів сьогодні
+  _db.collection('analytics').doc('visitors_' + today).get().then(function(s) {
+    var v = s.exists ? (s.data().count || 0) : 0;
+    var el = document.getElementById('ga4-today');
+    if (el) el.textContent = v > 999 ? (v / 1000).toFixed(1) + 'K' : v;
+
+    // Також оновлюємо сесії (browserIds = унікальні юзери)
+    var ids = s.exists && s.data().browserIds ? Object.keys(s.data().browserIds).length : v;
+    var sess = document.getElementById('ga4-sessions');
+    if (sess) sess.textContent = ids > 999 ? (ids / 1000).toFixed(1) + 'K' : ids;
+  }).catch(function() {});
+
+  // Середній час — з analytics doc 'duration_today'
+  _db.collection('analytics').doc('duration_' + today).get().then(function(s) {
+    var dur = s.exists ? (s.data().avgSeconds || 0) : 0;
+    var el = document.getElementById('ga4-duration');
+    if (el) {
+      if (dur > 0) {
+        var m = Math.floor(dur / 60), sec = dur % 60;
+        el.textContent = m + ':' + (sec < 10 ? '0' : '') + sec;
+      } else {
+        el.textContent = '—';
+      }
+    }
+  }).catch(function() {
+    var el = document.getElementById('ga4-duration');
+    if (el) el.textContent = '—';
+  });
+
+  // Топ сторінок — з analytics collection де є pageviews
+  _db.collection('analytics').where('date', '==', today).limit(20).get().then(function(snap) {
+    var pages = [];
+    snap.docs.forEach(function(d) {
+      var data = d.data();
+      if (data.page && data.count) {
+        pages.push({ page: data.page, count: data.count });
+      }
+    });
+
+    // Якщо немає по date — спробуємо інший формат
+    if (!pages.length) {
+      // Формуємо топ зі всіх visitors_ документів за сьогодні
+      _db.collection('analytics').orderBy('updatedAt', 'desc').limit(30).get().then(function(snap2) {
+        var pageMap = {};
+        snap2.docs.forEach(function(d) {
+          var id = d.id;
+          var data = d.data();
+          // Пропускаємо агреговані документи
+          if (id.startsWith('visitors_') || id.startsWith('pwa_') || id.startsWith('online_') || id.startsWith('duration_')) return;
+          if (data.count && id) {
+            var label = id.replace(/_\d{4}-\d{2}-\d{2}$/, '').replace(/_/g, '/');
+            pageMap[label] = (pageMap[label] || 0) + (data.count || 0);
+          }
+        });
+        var sorted = Object.entries(pageMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
+        _renderTopPages(sorted);
+      }).catch(function() { _renderTopPages([]); });
+      return;
+    }
+
+    pages.sort(function(a, b) { return b.count - a.count; });
+    _renderTopPages(pages.map(function(p) { return [p.page, p.count]; }));
+  }).catch(function() { _renderTopPages([]); });
+}
+
+function _renderTopPages(pages) {
+  var el = document.getElementById('ga4-top-pages');
+  if (!el) return;
+  if (!pages.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">'
+      + '<i class="fa-solid fa-chart-line" style="font-size:24px;margin-bottom:8px;display:block;opacity:.3"></i>'
+      + 'Даних за сьогодні немає</div>';
+    return;
+  }
+  var max = pages[0][1] || 1;
+  el.innerHTML = pages.map(function(p, i) {
+    var pct = Math.round((p[1] / max) * 100);
+    var label = String(p[0]).replace('https://www.ridego.com.ua', '') || '/';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<div style="width:20px;text-align:center;font-size:11px;color:var(--text-muted);font-weight:600">' + (i + 1) + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px">' + _esc(label) + '</div>'
+      + '<div style="height:4px;border-radius:2px;background:var(--dark4)">'
+      + '<div style="height:4px;border-radius:2px;background:var(--brand);width:' + pct + '%"></div>'
+      + '</div></div>'
+      + '<div style="font-size:12px;font-weight:700;color:var(--brand);flex-shrink:0">' + p[1] + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function startGA4AutoRefresh() {
+  loadGA4Stats();
+  if (_ga4AutoRefreshTimer) clearInterval(_ga4AutoRefreshTimer);
+  _ga4AutoRefreshTimer = setInterval(loadGA4Stats, 30000);
+}
+
+function stopGA4AutoRefresh() {
+  if (_ga4AutoRefreshTimer) { clearInterval(_ga4AutoRefreshTimer); _ga4AutoRefreshTimer = null; }
+}
+
 // ═══ STATS ═══
 function updateUserStats(){
   var total=_users.length;
