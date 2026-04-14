@@ -3723,7 +3723,7 @@ function _sendExchangeOffer() {
   var btn = document.getElementById('exch-send-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Надсилання...'; }
 
-  _sendChatMessage(_exchTargetListing.uid, msg, _exchTargetListing).then(function() {
+  _sendExchangeMessage(_exchTargetListing.uid, _exchTargetListing, myListing, customText, _exchSurchargeType, surchargeAmount, comment).then(function() {
     showToast('✅ Пропозицію обміну надіслано!');
     _closeExchangeModal();
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Надіслати пропозицію обміну'; }
@@ -3781,6 +3781,67 @@ function _sendChatMessage(sellerUid, message, listing) {
   return Promise.resolve();
 }
 
+
+// ── Відправка картки обміну ─────────────────────────────────
+function _sendExchangeMessage(sellerUid, targetListing, myListing, customText, surchargeType, surchargeAmount, comment) {
+  if (!currentUser || !currentUser.uid) return Promise.reject(new Error('Не авторизовано'));
+
+  var chatId = [currentUser.uid, sellerUid].sort().join('_');
+  if (targetListing && targetListing.id) chatId += '_' + targetListing.id;
+
+  var nowMs = Date.now();
+
+  var exchangeOffer = {
+    targetId:      targetListing ? targetListing.id : '',
+    targetTitle:   targetListing ? (targetListing.title || '') : '',
+    targetPrice:   targetListing ? (targetListing.price || 0) : 0,
+    offerTitle:    myListing ? myListing.title : (customText || ''),
+    offerPrice:    myListing ? (myListing.price || 0) : 0,
+    offerId:       myListing ? myListing.id : '',
+    offerImg:      myListing ? (myListing.img || '') : '',
+    surchargeType: surchargeType || 'none',
+    surchargeAmount: surchargeAmount || 0,
+    comment:       comment || ''
+  };
+
+  var msgData = {
+    exchangeOffer: exchangeOffer,
+    text: '🔄 Пропозиція обміну: ' + exchangeOffer.offerTitle,
+    senderUid: currentUser.uid,
+    senderName: currentUser.name || currentUser.email || '',
+    createdAt: nowMs
+  };
+
+  if (window._rtdb) {
+    window._rtdb.ref('chats/' + chatId + '/messages').push(msgData);
+    window._rtdb.ref('chats/' + chatId).update({
+      lastMessage: '🔄 ПРОПОЗИЦІЯ ОБМІНУ',
+      lastMessageAt: { seconds: Math.floor(nowMs / 1000) }
+    });
+  }
+
+  if (window._db) {
+    var now = firebase.firestore.FieldValue.serverTimestamp();
+    var chatData = {
+      participants: [currentUser.uid, sellerUid],
+      lastMessage: '🔄 ПРОПОЗИЦІЯ ОБМІНУ',
+      lastMessageAt: now,
+      lastSenderUid: currentUser.uid,
+      createdAt: now
+    };
+    chatData[currentUser.uid + '_name'] = currentUser.name || currentUser.email;
+    chatData[sellerUid + '_name'] = targetListing ? (targetListing.sellerName || targetListing.seller || '') : '';
+    chatData['unread_' + sellerUid] = firebase.firestore.FieldValue.increment(1);
+    chatData['unread_' + currentUser.uid] = 0;
+    if (targetListing) {
+      chatData.listingId = targetListing.id;
+      chatData.listingTitle = targetListing.title;
+    }
+    return window._db.collection('chats').doc(chatId).set(chatData, { merge: true });
+  }
+
+  return Promise.resolve();
+}
 
 // ── Ініціалізація (після завантаження всіх бандлів) ──────────
 loadSavedProfile();
