@@ -84,7 +84,10 @@ function loadUserSlots(profileData) {
   } catch(e) {}
 
   // Fallback — читаємо з Firestore (рідко, тільки коли немає кешу)
-  if (!window._db) return;
+  if (!window._db) {
+    if (typeof window._onFirebaseReady === 'function') window._onFirebaseReady(function() { _loadUserSlots(); });
+    return;
+  }
   window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
     if (!snap.exists) return;
     _applySlots(snap.data());
@@ -1288,7 +1291,14 @@ function loadMoreListings(callback) {
 }
 
 function loadFirebaseData(force) {
-  if (!window._db) return;
+  if (!window._db) {
+    if (typeof window._onFirebaseReady === 'function') {
+      window._onFirebaseReady(function() { loadFirebaseData(force); });
+    } else {
+      setTimeout(function() { loadFirebaseData(force); }, 1000);
+    }
+    return;
+  }
   var now = Date.now();
 
   if (!force && _fbListings.length && (now - _fbDataLoadedAt) < _FB_CACHE_TTL) {

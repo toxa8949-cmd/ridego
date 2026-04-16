@@ -872,7 +872,15 @@ function showSeller(sellerName) {
 }
 
 function _renderSellerByUid(uid) {
-  if (!window._db) return;
+  if (!window._db) {
+    // Firebase ще не завантажився — чекаємо
+    if (typeof window._onFirebaseReady === 'function') {
+      window._onFirebaseReady(function() { _renderSellerByUid(uid); });
+    } else {
+      setTimeout(function() { _renderSellerByUid(uid); }, 1000);
+    }
+    return;
+  }
 
   var av = document.getElementById('seller-page-avatar');
   if (av) { av.textContent = '?'; av.className = 'seller-avatar-big'; }
