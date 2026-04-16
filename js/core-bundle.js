@@ -713,7 +713,7 @@ function _renderRoute(route, isBack) {
       var dv = document.getElementById('catalog-divider');
       if (dv) dv.style.display = 'none';
     }
-    // Якщо прийшли з /brand/kukirin — автоматично вибрати категорію і бренд
+    // Якщо прийшли з /brand/kukirin або /kukirin-g4 — автоматично вибрати категорію, бренд і модель
     if (route.brand) {
       var _brandMap = {
         'kukirin': { cat: 'Електросамокати', brand: 'Kukirin' },
@@ -721,16 +721,47 @@ function _renderRoute(route, isBack) {
         'ninebot': { cat: 'Електросамокати', brand: 'Ninebot' },
         'xiaomi':  { cat: 'Електросамокати', brand: 'Xiaomi' },
       };
+      var _modelMap = {
+        'g2': 'Kirin G2', 'g2-pro': 'Kirin G2 Pro', 'g2-max': 'Kirin G2 Max',
+        'g3': 'Kirin G3', 'g3-pro': 'Kirin G3 Pro',
+        'g4': 'Kirin G4', 'g4-max': 'Kirin G4 Max',
+        'm4-pro': 'Kirin M4 Pro', 'm5-pro': 'Kirin M5 Pro',
+        's1-max': 'Kirin S1 Max', 't3': 'Kirin T3', 'c1-pro': 'Kirin C1 Pro'
+      };
       var _bm = _brandMap[route.brand];
+      var _modelName = route.model ? _modelMap[route.model] : null;
       if (_bm) {
         setTimeout(function() {
-          // Вибрати категорію
           if (typeof selectCategory === 'function') selectCategory(_bm.cat);
-          // Встановити бренд у фільтрі
           setTimeout(function() {
             var brandSel = document.getElementById('fp-brand');
             if (brandSel) { brandSel.value = _bm.brand; if (typeof onFpBrandChange === 'function') onFpBrandChange(); }
-            setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
+            // Якщо є модель — встановити і її
+            if (_modelName) {
+              setTimeout(function() {
+                var modelSel = document.getElementById('fp-model');
+                if (modelSel) {
+                  // Знайти опцію що містить назву моделі
+                  for (var i = 0; i < modelSel.options.length; i++) {
+                    if (modelSel.options[i].value === _modelName || modelSel.options[i].text === _modelName) {
+                      modelSel.value = modelSel.options[i].value; break;
+                    }
+                  }
+                  // Якщо модель не знайдена в списку — шукаємо через G4, G2 Max etc
+                  if (!modelSel.value && route.model) {
+                    var shortName = route.model.toUpperCase().replace(/-/g, ' ');
+                    for (var i = 0; i < modelSel.options.length; i++) {
+                      if (modelSel.options[i].value.toUpperCase().indexOf(shortName) !== -1) {
+                        modelSel.value = modelSel.options[i].value; break;
+                      }
+                    }
+                  }
+                }
+                setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
+              }, 300);
+            } else {
+              setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
+            }
           }, 300);
         }, 200);
       }
@@ -808,6 +839,9 @@ function _pageTitle(page, id, route) {
   if (page === 'home')     return base + ' — Маркетплейс електротранспорту';
   if (page === 'catalog' && route && route.brand) {
     var _brandTitles = { 'kukirin': 'KuKirin — купити електросамокат в Україні', 'kugoo': 'Kugoo — купити електросамокат', 'ninebot': 'Ninebot — купити електросамокат', 'xiaomi': 'Xiaomi — купити електросамокат' };
+    if (route.model) {
+      return base + ' — KuKirin ' + route.model.toUpperCase().replace(/-/g, ' ') + ' — купити в Україні';
+    }
     return base + ' — ' + (_brandTitles[route.brand] || route.brand);
   }
   if (page === 'catalog')  return base + ' — Каталог';
