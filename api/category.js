@@ -110,23 +110,55 @@ function card(l) { const price=l.price?Number(l.price).toLocaleString('uk')+' г
 
 function shell(head,body) { return `<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">${head}<link rel="icon" type="image/svg+xml" href="/favicon.svg"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;max-width:980px;margin:0 auto;padding:20px;color:#222;background:#fff}header{padding:16px 0;border-bottom:2px solid #1db954;margin-bottom:20px}header a{font-size:26px;font-weight:800;color:#111;text-decoration:none}header a span{color:#1db954}.bc{font-size:13px;color:#888;margin-bottom:20px}.bc a{color:#1db954;text-decoration:none}.bc span{margin:0 5px;color:#ccc}h1{font-size:clamp(22px,4vw,34px);font-weight:800;margin-bottom:8px;color:#111}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:32px}footer{padding:20px 0;border-top:1px solid #eee;font-size:13px;color:#999;text-align:center;margin-top:32px}footer a{color:#1db954;text-decoration:none;margin:0 8px}details summary{list-style:none}details summary::-webkit-details-marker{display:none}details summary::before{content:'▸ ';color:#1db954}details[open] summary::before{content:'▾ '}.specs{border-collapse:collapse;width:100%;margin-bottom:20px;font-size:15px}.specs td{padding:10px 12px;border-bottom:1px solid #f0f0f0}.specs td:first-child{color:#888;width:140px}.specs td:last-child{font-weight:600}</style></head><body><header><a href="${BASE}">Ride<span>GO</span></a></header>${body}<footer><span>© 2024–2026 RideGO</span><a href="${BASE}">Головна</a><a href="${BASE}/catalog">Каталог</a><a href="${BASE}/category/elektrosamokaty">Електросамокати</a><a href="${BASE}/news">Новини</a><a href="${BASE}/faq">FAQ</a></footer></body></html>`; }
 
+async function getListingsFiltered(catFilter, opts) {
+  const all = await getListingsByCategory(catFilter);
+  let result = all;
+  if (opts.city) result = result.filter(l => l.city === opts.city);
+  if (opts.titleFilter) { const tf = opts.titleFilter.map(t=>t.toLowerCase()); result = result.filter(l => { const t=l.title.toLowerCase(); return tf.some(f=>t.includes(f)); }); }
+  if (opts.priceMax) result = result.filter(l => l.price && Number(l.price) <= opts.priceMax);
+  return result;
+}
 module.exports = async (req, res) => {
   const ua=req.headers['user-agent']||''; const isBot=BOTS.test(ua);
   const slug=getParam(req,'slug').replace(/[^a-zA-Z0-9_-]/g,'');
   const brandSlug=getParam(req,'brand').replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase();
   const modelSlug=getParam(req,'model').replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase();
+  const pageSlug=getParam(req,'page').replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase();
 
-  const isBrand=!!brandSlug; const isModel=!!modelSlug;
+  const isBrand=!!brandSlug; const isModel=!!modelSlug; const isPage=!!pageSlug;
   const brand=isBrand?BRANDS[brandSlug]:null;
   const model=isModel?MODELS[modelSlug]:null;
-  const catInfo=(!isBrand&&!isModel)?CATEGORIES[slug]:null;
+  const pageData=isPage?PAGES[pageSlug]:null;
+  const catInfo=(!isBrand&&!isModel&&!isPage)?CATEGORIES[slug]:null;
 
   // Unknown → redirect
   if(isBrand&&!brand){res.setHeader('Location',`${BASE}/catalog`);return res.status(302).end();}
   if(isModel&&!model){res.setHeader('Location',`${BASE}/catalog`);return res.status(302).end();}
+  if(isPage&&!pageData){res.setHeader('Location',`${BASE}/catalog`);return res.status(302).end();}
 
   // Non-bot → SPA
   if(!isBot){const fs=require('fs');const path=require('path');try{const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','public, max-age=0, must-revalidate');return res.status(200).send(html);}catch(e){return res.status(302).end();}}
+
+  // ════════════════════════════════════
+  // STATIC SEO PAGES (sell, use-case, geo, compare)
+  // ════════════════════════════════════
+  if(isPage&&pageData){
+    let listings=[];
+    if(pageData.type==='geo'&&pageData.city) listings=await getListingsFiltered(pageData.catFilter,{city:pageData.city});
+    else if(pageData.type==='filter'&&pageData.titleFilter) listings=await getListingsFiltered(pageData.catFilter,{titleFilter:pageData.titleFilter});
+    else if(pageData.type==='filter'&&pageData.priceMax) listings=await getListingsFiltered(pageData.catFilter,{priceMax:pageData.priceMax});
+    else if(pageData.type==='compare'&&pageData.brands) { for(const bs of pageData.brands){const br=BRANDS[bs]; if(br) { const bl=await getListingsByBrand(br.firebaseNames,10); listings=listings.concat(bl);}} }
+    else if(pageData.type==='sell') listings=await getListingsByCategory(pageData.catFilter);
+    const lHtml=listings.length?listings.slice(0,20).map(l=>card(l)).join('\n'):`<p style="color:#888;grid-column:1/-1">Оголошень поки немає</p>`;
+    const faqH=pageData.faqItems&&pageData.faqItems.length?`<section style="margin-bottom:32px"><h2 style="font-size:19px;font-weight:800;margin-bottom:16px;color:#111">Часті питання</h2>${pageData.faqItems.map(f=>`<details style="margin-bottom:10px;border:1px solid #eee;border-radius:10px;overflow:hidden"><summary style="padding:14px 18px;font-weight:700;font-size:15px;cursor:pointer;background:#fafafa;color:#111">${escHtml(f.q)}</summary><div style="padding:14px 18px;font-size:14px;color:#555;line-height:1.7">${escHtml(f.a)}</div></details>`).join('')}</section>`:'';
+    const faqSchema=pageData.faqItems&&pageData.faqItems.length?JSON.stringify({"@context":"https://schema.org","@type":"FAQPage","mainEntity":pageData.faqItems.map(f=>({"@type":"Question","name":f.q,"acceptedAnswer":{"@type":"Answer","text":f.a}}))}):''
+    const bcs=JSON.stringify({"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"RideGO","item":BASE},{"@type":"ListItem","position":2,"name":"Електросамокати","item":`${BASE}/category/elektrosamokaty`},{"@type":"ListItem","position":3,"name":pageData.h1,"item":`${BASE}/${pageSlug}`}]});
+    const head=`<title>${escHtml(pageData.title)}</title><meta name="description" content="${escHtml(pageData.metaDesc)}"><meta name="robots" content="index, follow"><link rel="canonical" href="${BASE}/${pageSlug}"><meta property="og:type" content="website"><meta property="og:title" content="${escHtml(pageData.h1)} | RideGO"><meta property="og:description" content="${escHtml(pageData.metaDesc)}"><meta property="og:url" content="${BASE}/${pageSlug}"><meta property="og:site_name" content="RideGO"><meta property="og:image" content="${BASE}/og-image.png"><meta property="og:locale" content="uk_UA"><script type="application/ld+json">${bcs}</script>${faqSchema?`<script type="application/ld+json">${faqSchema}</script>`:''}`;
+    const sellCta=pageData.type==='sell'?`<section style="padding:28px;background:#1db954;border-radius:16px;text-align:center;margin-bottom:32px"><h2 style="font-size:22px;font-weight:800;margin-bottom:8px;color:#fff">Продайте свій електросамокат прямо зараз</h2><p style="color:#d4edda;margin-bottom:16px">Безкоштовно, за 2 хвилини, без комісій</p><a href="${BASE}/add" style="display:inline-block;background:#fff;color:#1db954;padding:15px 36px;border-radius:12px;text-decoration:none;font-weight:800;font-size:17px">Подати оголошення →</a></section>`:`<section style="padding:28px;background:#f0fdf4;border-radius:16px;text-align:center;margin-bottom:32px"><h2 style="font-size:19px;font-weight:700;margin-bottom:8px">Не знайшли потрібне?</h2><p style="color:#555;margin-bottom:16px">Подайте оголошення "Шукаю" або перегляньте весь каталог</p><a href="${BASE}/catalog" style="display:inline-block;background:#1db954;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700;margin-right:12px">Каталог</a><a href="${BASE}/add" style="display:inline-block;background:#fff;color:#1db954;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700;border:2px solid #1db954">Подати оголошення</a></section>`;
+    const brandsLinks=`<section style="margin-bottom:28px"><h2 style="font-size:16px;font-weight:700;margin-bottom:12px">Популярні бренди</h2><div>${Object.entries(BRANDS).map(([s,b])=>`<a href="${BASE}/${s}" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:#f0fdf4;border-radius:8px;text-decoration:none;color:#166534;font-size:13px;font-weight:600;margin:3px">${b.icon} ${escHtml(b.name)}</a>`).join('')}</div></section>`;
+    const body=`<nav class="bc" aria-label="Breadcrumb"><a href="${BASE}">RideGO</a><span>›</span><a href="${BASE}/category/elektrosamokaty">Електросамокати</a><span>›</span><span>${escHtml(pageData.h1)}</span></nav><h1>⚡ ${escHtml(pageData.h1)}</h1><p style="color:#666;margin-bottom:24px;font-size:15px">${escHtml(pageData.metaDesc)}</p>${pageData.introHtml||''}${listings.length?`<section style="margin-bottom:28px"><h2 style="font-size:17px;font-weight:700;margin-bottom:16px;color:#111">Оголошення <span style="color:#888;font-weight:400;font-size:14px">(${listings.length})</span></h2><div class="grid">${lHtml}</div></section>`:''}<br>${faqH}${sellCta}${brandsLinks}`;
+    res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','s-maxage=1800, stale-while-revalidate=3600');return res.status(200).send(shell(head,body));
+  }
 
   // ════════════════════════════════════
   // MODEL PAGE SSR  /kukirin-g4
@@ -189,4 +221,148 @@ ${otherModels?`<section style="margin-bottom:28px"><h2 style="font-size:16px;fon
   const head=`<title>${escHtml(catName)} — купити в Україні, ціни, оголошення | RideGO</title><meta name="description" content="${escHtml(catDesc)}"><meta name="robots" content="index, follow"><link rel="canonical" href="${BASE}/category/${slug}"><meta property="og:type" content="website"><meta property="og:title" content="${escHtml(catName)} — RideGO"><meta property="og:description" content="${escHtml(catDesc)}"><meta property="og:url" content="${BASE}/category/${slug}"><meta property="og:site_name" content="RideGO"><meta property="og:locale" content="uk_UA"><script type="application/ld+json">${bcs}</script><script type="application/ld+json">${ils}</script>`;
   const body=`<nav class="bc" aria-label="Breadcrumb"><a href="${BASE}">RideGO</a><span>›</span><a href="${BASE}/catalog">Каталог</a><span>›</span><span>${escHtml(catName)}</span></nav><h1>${escHtml(catInfo?.icon||'')} ${escHtml(catName)}</h1><p style="color:#666;margin-bottom:24px;font-size:15px">${escHtml(catDesc)}</p><section style="margin-bottom:28px"><h2 style="font-size:17px;font-weight:700;margin-bottom:12px">Оголошення <span style="color:#888;font-weight:400;font-size:14px">(${listings.length})</span></h2><div class="grid">${lHtml}</div></section><section style="margin-bottom:28px"><h2 style="font-size:16px;font-weight:700;margin-bottom:12px">Інші категорії</h2><div>${otherCats}</div></section>${slug==='elektrosamokaty'?`<section style="margin-bottom:28px"><h2 style="font-size:16px;font-weight:700;margin-bottom:12px">Популярні бренди електросамокатів</h2><div><a href="${BASE}/brand/kukirin" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:#f0fdf4;border-radius:8px;text-decoration:none;color:#166534;font-size:13px;font-weight:600;margin:3px">⚡ KuKirin (Kugoo Kirin)</a></div></section>`:''}`;
   res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','s-maxage=3600, stale-while-revalidate=86400');res.status(200).send(shell(head,body));
+};
+
+// ════════════════════════════════════════════════════════════════
+// STATIC SEO PAGES (selling, use-case, geo, comparisons)
+// ════════════════════════════════════════════════════════════════
+const PAGES = {
+  // ─── SELLING ───
+  'prodaty-elektrosamokat': {
+    type:'sell', catFilter:'Електросамокати',
+    title:'Продати електросамокат в Україні — безкоштовне оголошення | RideGO',
+    h1:'Продати електросамокат в Україні',
+    metaDesc:'Продати електросамокат швидко та безкоштовно на RideGO. Розмістіть оголошення за 2 хвилини — тисячі покупців шукають електросамокати щодня.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Як продати електросамокат на RideGO?</h2><p>RideGO — спеціалізований маркетплейс електротранспорту України. Тут шукають саме електросамокати, тому ваше оголошення побачать цільові покупці.</p><h3 style="font-size:17px;font-weight:700;margin-top:16px;margin-bottom:8px">3 кроки до продажу:</h3><ol style="padding-left:20px;color:#444"><li><strong>Зареєструйтесь</strong> — через Google або email, 30 секунд</li><li><strong>Додайте оголошення</strong> — фото, опис, ціна, характеристики</li><li><strong>Отримайте покупця</strong> — прямий чат без посередників</li></ol><h3 style="font-size:17px;font-weight:700;margin-top:16px;margin-bottom:8px">Поради для швидкого продажу:</h3><ul style="padding-left:20px;color:#444"><li>Додайте 5+ якісних фото (загальний вигляд, деталі, пробіг на дисплеї)</li><li>Вкажіть реальний пробіг і стан батареї</li><li>Порівняйте ціну з аналогами на RideGO</li><li>Активуйте промо для підняття в ТОП</li></ul></div>',
+    faqItems:[
+      {q:'Скільки коштує розміщення оголошення?',a:'Базове розміщення безкоштовне. Є платні промо-опції для швидшого продажу.'},
+      {q:'Як швидко продається електросамокат?',a:'Популярні моделі (KuKirin, Xiaomi, Ninebot) продаються за 3-7 днів. Рідкісні моделі — до 2-3 тижнів.'},
+      {q:'Чи безпечно продавати на RideGO?',a:'Так. Ви спілкуєтесь напряму з покупцем через вбудований чат. Ми не беремо комісій з продажу.'}
+    ]
+  },
+  // ─── USE-CASE: з сидінням ───
+  'elektrosamokat-z-sydinniam': {
+    type:'filter', catFilter:'Електросамокати', titleFilter:['сидінн','seat','сідінн','M4','M5'],
+    title:'Електросамокати з сидінням — купити в Україні ⚡ ціни | RideGO',
+    h1:'Електросамокати з сидінням — купити в Україні',
+    metaDesc:'Електросамокати з сидінням — купити нові та б/в в Україні. KuKirin M4 Pro, M5 Pro, Kugoo та інші. Порівняйте ціни на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Електросамокати з сидінням — для комфортних поїздок</h2><p>Електросамокат із сидінням — ідеальний вибір для тривалих поїздок, людей старшого віку або тих, хто просто цінує комфорт. Популярні моделі: <strong>KuKirin M4 Pro</strong>, <strong>KuKirin M5 Pro</strong>, <strong>Kugoo M4</strong>. Сидіння зазвичай знімне — можна їздити як стоячи, так і сидячи.</p></div>',
+    faqItems:[
+      {q:'Які переваги самоката з сидінням?',a:'Комфорт на далеких дистанціях, менше навантаження на ноги, зручніше для людей старшого віку.'},
+      {q:'Чи можна зняти сидіння?',a:'Так, у більшості моделей сидіння знімне — можна їздити стоячи або сидячи.'}
+    ]
+  },
+  // ─── USE-CASE: для міста ───
+  'elektrosamokat-dlya-mista': {
+    type:'filter', catFilter:'Електросамокати', titleFilter:['Xiaomi','Ninebot','S1 Max','M365','Scooter 4','Scooter 5','F2','E2'],
+    title:'Електросамокат для міста — як вибрати, купити в Україні | RideGO',
+    h1:'Електросамокат для міста — купити в Україні',
+    metaDesc:'Кращі електросамокати для міста: Xiaomi, Ninebot, KuKirin S1 Max. Легкі, складні, до 25 км/год. Порівняйте ціни на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Як вибрати електросамокат для міста?</h2><p>Для міських поїздок потрібен <strong>легкий</strong> (до 16 кг), <strong>складний</strong> самокат з запасом ходу <strong>30-50 км</strong>. Ідеальні бренди: <strong>Xiaomi</strong>, <strong>Ninebot</strong>, <strong>KuKirin S1 Max</strong>.</p><h3 style="font-size:17px;font-weight:700;margin-top:16px;margin-bottom:8px">На що звертати увагу:</h3><ul style="padding-left:20px;color:#444"><li><strong>Вага</strong> — до 16 кг, щоб легко заносити в транспорт</li><li><strong>Запас ходу</strong> — мінімум 30 км для щоденних поїздок</li><li><strong>Колеса</strong> — 8.5-10 дюймів, краще пневматичні</li><li><strong>Швидкість</strong> — 25 км/год достатньо для тротуарів</li></ul></div>',
+    faqItems:[
+      {q:'Який найкращий самокат для міста?',a:'Xiaomi Mi Scooter 4 Pro або Ninebot MAX G30 — перевірені, надійні, легкі.'},
+      {q:'Скільки коштує міський електросамокат?',a:'Від 10 000 грн (б/в) до 25 000 грн (новий). Xiaomi Scooter 4 — від 14 000 грн.'}
+    ]
+  },
+  // ─── USE-CASE: для бездоріжжя ───
+  'elektrosamokat-dlia-bezdorizhzhia': {
+    type:'filter', catFilter:'Електросамокати', titleFilter:['Dualtron','Kaabo','Wolf','G3','G4','Storm','Thunder','Vsett 10','Vsett 11'],
+    title:'Позашляхові електросамокати — купити в Україні ⚡ потужні | RideGO',
+    h1:'Позашляхові електросамокати — купити в Україні',
+    metaDesc:'Потужні електросамокати для бездоріжжя: Dualtron, Kaabo, KuKirin G3/G4. Подвійні двигуни, великі колеса. Ціни на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Позашляхові електросамокати — для бездоріжжя та поганих доріг</h2><p>Для їзди по ґрунтовим дорогам, бордюрам та поганому асфальту потрібні потужні самокати з <strong>великими колесами</strong> (10-11"), <strong>подвійною амортизацією</strong> та <strong>двигуном від 1000 Вт</strong>. Топ бренди: <strong>Dualtron</strong>, <strong>Kaabo</strong>, <strong>KuKirin G3/G4</strong>, <strong>Vsett</strong>.</p></div>',
+    faqItems:[
+      {q:'Який самокат для бездоріжжя найкращий?',a:'Dualtron Thunder 2 або Kaabo Wolf King GT Pro — найпотужніші. Дешевше — KuKirin G3 або Vsett 10+.'},
+      {q:'Скільки коштує позашляховий самокат?',a:'Від 25 000 грн (KuKirin G3) до 150 000 грн (Dualtron Storm). На RideGO є б/в варіанти значно дешевше.'}
+    ]
+  },
+  // ─── USE-CASE: бюджетні ───
+  'elektrosamokat-biudzhetnyj': {
+    type:'filter', catFilter:'Електросамокати', priceMax:15000,
+    title:'Електросамокати до 15 000 грн — купити недорого | RideGO',
+    h1:'Електросамокати до 15 000 грн — купити в Україні',
+    metaDesc:'Недорогі електросамокати до 15 000 грн — нові та б/в. Xiaomi, KuKirin S1 Max та інші бюджетні моделі на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Бюджетні електросамокати до 15 000 грн</h2><p>Навіть за невеликий бюджет можна знайти гідний електросамокат. Нові моделі: <strong>KuKirin S1 Max</strong> (~14 000 грн), <strong>Xiaomi Scooter 4 Lite</strong>. А на RideGO є б/в варіанти від 5 000 грн — KuKirin G2, Ninebot, Xiaomi в хорошому стані.</p></div>',
+    faqItems:[
+      {q:'Який самокат купити до 15 000 грн?',a:'Новий — KuKirin S1 Max (~14 000 грн). Б/в — Xiaomi M365 або KuKirin G2 від 8 000 грн.'}
+    ]
+  },
+  // ─── GEO: Київ ───
+  'elektrosamokat-kyiv': {
+    type:'geo', catFilter:'Електросамокати', city:'Київ',
+    title:'Електросамокати Київ — купити та продати ⚡ | RideGO',
+    h1:'Електросамокати в Києві — купити та продати',
+    metaDesc:'Електросамокати в Києві — нові та б/в. Купити або продати на маркетплейсі RideGO. Оголошення від продавців Києва.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Електросамокати в Києві — купити та продати</h2><p>Київ — найбільший ринок електросамокатів в Україні. На RideGO зібрані оголошення від продавців з усіх районів: Оболонь, Подол, Лівий берег, Святошин, Голосіїв. Можна домовитись про зустріч і оглянути самокат особисто перед покупкою.</p><h3 style="font-size:17px;font-weight:700;margin-top:16px;margin-bottom:8px">Популярні райони для купівлі/продажу:</h3><ul style="padding-left:20px;color:#444"><li>Оболонь, Подол — багато продавців, зручне метро</li><li>Лівий берег (Позняки, Осокорки) — доступні ціни</li><li>Центр (Хрещатик, Бессарабка) — магазини та шоуруми</li></ul><p style="margin-top:12px"><strong>Доставка по Києву</strong> — більшість продавців на RideGO пропонують доставку Новою Поштою або самовивіз.</p></div>',
+    faqItems:[{q:'Де купити електросамокат в Києві?',a:'На RideGO зібрані оголошення від продавців Києва. Можна домовитись про зустріч і оглянути самокат особисто.'}]
+  },
+  // ─── GEO: Харків ───
+  'elektrosamokat-kharkiv': {
+    type:'geo', catFilter:'Електросамокати', city:'Харків',
+    title:'Електросамокати Харків — купити та продати ⚡ | RideGO',
+    h1:'Електросамокати в Харкові — купити та продати',
+    metaDesc:'Електросамокати в Харкові — нові та б/в на маркетплейсі RideGO. Оголошення від продавців Харкова.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Електросамокати в Харкові</h2><p>Харків — друге за величиною місто України з великим ринком електросамокатів. На RideGO оголошення від харківських продавців — як нові самокати від магазинів, так і б/в від приватних осіб. Популярні бренди в Харкові: KuKirin, Xiaomi, Ninebot.</p><p style="margin-top:12px">Доставка по Харкову через Нову Пошту або самовивіз. Багато продавців готові зробити тест-драйв перед покупкою.</p></div>',
+    faqItems:[{q:'Де купити електросамокат в Харкові?',a:'На RideGO є оголошення від продавців Харкова.'}]
+  },
+  // ─── GEO: Одеса ───
+  'elektrosamokat-odesa': {
+    type:'geo', catFilter:'Електросамокати', city:'Одеса',
+    title:'Електросамокати Одеса — купити та продати ⚡ | RideGO',
+    h1:'Електросамокати в Одесі — купити та продати',
+    metaDesc:'Електросамокати в Одесі на RideGO. Нові та б/в від продавців Одеси.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Електросамокати в Одесі</h2><p>Одеса — ідеальне місто для електросамоката: рівний рельєф, набережна, довгий теплий сезон. На RideGO оголошення від одеських продавців з можливістю зустрітись і оглянути самокат. Самокати з вологозахистом IP54+ особливо популярні через близькість моря.</p></div>',
+    faqItems:[]
+  },
+  // ─── GEO: Дніпро ───
+  'elektrosamokat-dnipro': {
+    type:'geo', catFilter:'Електросамокати', city:'Дніпро',
+    title:'Електросамокати Дніпро — купити та продати ⚡ | RideGO',
+    h1:'Електросамокати в Дніпрі — купити та продати',
+    metaDesc:'Електросамокати в Дніпрі на RideGO. Нові та б/в від продавців Дніпра.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Електросамокати в Дніпрі</h2><p>Дніпро — місто з розвиненою інфраструктурою для електросамокатів. Набережна, парки та нові велодоріжки роблять поїздки комфортними. На RideGO оголошення від дніпровських продавців — нові та вживані самокати від KuKirin, Xiaomi, Dualtron.</p></div>',
+    faqItems:[]
+  },
+  // ─── GEO: Львів ───
+  'elektrosamokat-lviv': {
+    type:'geo', catFilter:'Електросамокати', city:'Львів',
+    title:'Електросамокати Львів — купити та продати ⚡ | RideGO',
+    h1:'Електросамокати у Львові — купити та продати',
+    metaDesc:'Електросамокати у Львові на RideGO. Нові та б/в від продавців Львова.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Електросамокати у Львові</h2><p>Львів — компактне місто де електросамокат ідеально підходить для щоденних поїздок. Бруківка в центрі вимагає самокат з хорошою амортизацією (від 10-дюймових коліс). На RideGO оголошення від львівських продавців. Популярні моделі: KuKirin G2 (амортизація для бруківки), Ninebot MAX G30 (великий запас ходу).</p></div>',
+    faqItems:[]
+  },
+  // ─── COMPARISON ───
+  'kukirin-vs-ninebot': {
+    type:'compare', brands:['kukirin','ninebot'],
+    title:'KuKirin або Ninebot — що вибрати? Порівняння 2026 | RideGO',
+    h1:'KuKirin або Ninebot — що вибрати?',
+    metaDesc:'Порівняння KuKirin та Ninebot: ціни, характеристики, плюси та мінуси. Який електросамокат краще купити в Україні? Аналіз на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">KuKirin або Ninebot — детальне порівняння</h2><p>Два найпопулярніших бренди електросамокатів в Україні. <strong>KuKirin</strong> — потужніший та дешевший, <strong>Ninebot</strong> — надійніший та преміальніший.</p><table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:14px"><tr style="background:#e8f5e9"><th style="padding:10px;text-align:left;border:1px solid #ddd">Критерій</th><th style="padding:10px;border:1px solid #ddd">KuKirin</th><th style="padding:10px;border:1px solid #ddd">Ninebot</th></tr><tr><td style="padding:10px;border:1px solid #eee">Ціна</td><td style="padding:10px;border:1px solid #eee">14 000 – 40 000 грн</td><td style="padding:10px;border:1px solid #eee">18 000 – 80 000 грн</td></tr><tr><td style="padding:10px;border:1px solid #eee">Потужність</td><td style="padding:10px;border:1px solid #eee">350W – 2000W</td><td style="padding:10px;border:1px solid #eee">300W – 3000W</td></tr><tr><td style="padding:10px;border:1px solid #eee">Запас ходу</td><td style="padding:10px;border:1px solid #eee">40 – 100 км</td><td style="padding:10px;border:1px solid #eee">30 – 65 км</td></tr><tr><td style="padding:10px;border:1px solid #eee">Якість збірки</td><td style="padding:10px;border:1px solid #eee">⭐⭐⭐</td><td style="padding:10px;border:1px solid #eee">⭐⭐⭐⭐⭐</td></tr><tr><td style="padding:10px;border:1px solid #eee">Для кого</td><td style="padding:10px;border:1px solid #eee">Потужність за ціну</td><td style="padding:10px;border:1px solid #eee">Надійність і сервіс</td></tr></table></div>',
+    faqItems:[
+      {q:'KuKirin або Ninebot — що краще для міста?',a:'Ninebot (F2 Pro, MAX G30) — легший, надійніший, кращий для тротуарів. KuKirin (G2, S1 Max) — потужніший і дешевший.'},
+      {q:'Що дешевше — KuKirin чи Ninebot?',a:'KuKirin зазвичай на 20-40% дешевший за аналогічний по характеристикам Ninebot.'}
+    ]
+  },
+  'kukirin-vs-xiaomi': {
+    type:'compare', brands:['kukirin','xiaomi'],
+    title:'KuKirin або Xiaomi — що вибрати? Порівняння 2026 | RideGO',
+    h1:'KuKirin або Xiaomi — що вибрати?',
+    metaDesc:'Порівняння KuKirin та Xiaomi: ціни, потужність, запас ходу. Який електросамокат кращий для вас? Аналіз на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">KuKirin або Xiaomi — детальне порівняння</h2><p><strong>Xiaomi</strong> — найпопулярніший бренд для міста: легкий, надійний, з додатком. <strong>KuKirin</strong> — для тих хто хоче більше потужності та швидкості за ті ж гроші.</p><table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:14px"><tr style="background:#e8f5e9"><th style="padding:10px;text-align:left;border:1px solid #ddd">Критерій</th><th style="padding:10px;border:1px solid #ddd">KuKirin</th><th style="padding:10px;border:1px solid #ddd">Xiaomi</th></tr><tr><td style="padding:10px;border:1px solid #eee">Ціна</td><td style="padding:10px;border:1px solid #eee">14 000 – 40 000 грн</td><td style="padding:10px;border:1px solid #eee">12 000 – 30 000 грн</td></tr><tr><td style="padding:10px;border:1px solid #eee">Потужність</td><td style="padding:10px;border:1px solid #eee">350W – 2000W</td><td style="padding:10px;border:1px solid #eee">300W – 500W</td></tr><tr><td style="padding:10px;border:1px solid #eee">Швидкість</td><td style="padding:10px;border:1px solid #eee">до 69 км/год</td><td style="padding:10px;border:1px solid #eee">до 25 км/год</td></tr><tr><td style="padding:10px;border:1px solid #eee">Мобільний додаток</td><td style="padding:10px;border:1px solid #eee">Ні</td><td style="padding:10px;border:1px solid #eee">Так (Mi Home)</td></tr><tr><td style="padding:10px;border:1px solid #eee">Для кого</td><td style="padding:10px;border:1px solid #eee">Потужність, бездоріжжя</td><td style="padding:10px;border:1px solid #eee">Місто, щоденні поїздки</td></tr></table></div>',
+    faqItems:[
+      {q:'Xiaomi або KuKirin для міста?',a:'Xiaomi — легший, з додатком, обмежена швидкість 25 км/год. KuKirin — потужніший, без обмежень.'},
+      {q:'Що надійніше?',a:'Xiaomi має кращу якість збірки. KuKirin потужніший, але може потребувати більше обслуговування.'}
+    ]
+  },
+  'dualtron-vs-kaabo': {
+    type:'compare', brands:['dualtron','kaabo'],
+    title:'Dualtron або Kaabo — порівняння преміум самокатів 2026 | RideGO',
+    h1:'Dualtron або Kaabo — що вибрати?',
+    metaDesc:'Порівняння Dualtron та Kaabo: Thunder vs Wolf King, Victor vs Mantis. Який преміум-самокат кращий? Аналіз на RideGO.',
+    introHtml:'<div style="background:#f0fdf4;border-radius:16px;padding:24px 28px;margin-bottom:28px;line-height:1.8;font-size:15px;color:#333"><h2 style="font-size:20px;font-weight:800;margin-bottom:12px;color:#111">Dualtron або Kaabo — битва преміум-самокатів</h2><p>Два топових бренди для досвідчених райдерів. <strong>Dualtron</strong> — корейська якість та сервіс. <strong>Kaabo</strong> — аналогічна потужність за нижчу ціну.</p><table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:14px"><tr style="background:#e8f5e9"><th style="padding:10px;text-align:left;border:1px solid #ddd">Критерій</th><th style="padding:10px;border:1px solid #ddd">Dualtron</th><th style="padding:10px;border:1px solid #ddd">Kaabo</th></tr><tr><td style="padding:10px;border:1px solid #eee">Ціна</td><td style="padding:10px;border:1px solid #eee">40 000 – 150 000 грн</td><td style="padding:10px;border:1px solid #eee">35 000 – 120 000 грн</td></tr><tr><td style="padding:10px;border:1px solid #eee">Якість</td><td style="padding:10px;border:1px solid #eee">⭐⭐⭐⭐⭐</td><td style="padding:10px;border:1px solid #eee">⭐⭐⭐⭐</td></tr><tr><td style="padding:10px;border:1px solid #eee">Сервіс в Україні</td><td style="padding:10px;border:1px solid #eee">Кращий</td><td style="padding:10px;border:1px solid #eee">Обмежений</td></tr></table></div>',
+    faqItems:[
+      {q:'Dualtron або Kaabo — що краще?',a:'Dualtron — вища якість та сервіс. Kaabo — більше потужності за ті ж гроші.'}
+    ]
+  },
 };

@@ -228,28 +228,16 @@
       "destination": "/api/category?brand=:slug"
     },
     {
-      "source": "/kukirin",
-      "destination": "/api/category?brand=kukirin"
     },
     {
-      "source": "/dualtron",
-      "destination": "/api/category?brand=dualtron"
     },
     {
-      "source": "/xiaomi",
-      "destination": "/api/category?brand=xiaomi"
     },
     {
-      "source": "/ninebot",
-      "destination": "/api/category?brand=ninebot"
     },
     {
-      "source": "/kaabo",
-      "destination": "/api/category?brand=kaabo"
     },
     {
-      "source": "/vsett",
-      "destination": "/api/category?brand=vsett"
     },
     {
       "source": "/kukirin-:model",
@@ -276,6 +264,58 @@
       "destination": "/api/category?model=vsett-:model"
     },
     {
+      "source": "/prodaty-elektrosamokat",
+      "destination": "/api/category?page=prodaty-elektrosamokat"
+    },
+    {
+      "source": "/elektrosamokat-z-sydinniam",
+      "destination": "/api/category?page=elektrosamokat-z-sydinniam"
+    },
+    {
+      "source": "/elektrosamokat-dlya-mista",
+      "destination": "/api/category?page=elektrosamokat-dlya-mista"
+    },
+    {
+      "source": "/elektrosamokat-dlia-bezdorizhzhia",
+      "destination": "/api/category?page=elektrosamokat-dlia-bezdorizhzhia"
+    },
+    {
+      "source": "/elektrosamokat-biudzhetnyj",
+      "destination": "/api/category?page=elektrosamokat-biudzhetnyj"
+    },
+    {
+      "source": "/elektrosamokat-kyiv",
+      "destination": "/api/category?page=elektrosamokat-kyiv"
+    },
+    {
+      "source": "/elektrosamokat-kharkiv",
+      "destination": "/api/category?page=elektrosamokat-kharkiv"
+    },
+    {
+      "source": "/elektrosamokat-odesa",
+      "destination": "/api/category?page=elektrosamokat-odesa"
+    },
+    {
+      "source": "/elektrosamokat-dnipro",
+      "destination": "/api/category?page=elektrosamokat-dnipro"
+    },
+    {
+      "source": "/elektrosamokat-lviv",
+      "destination": "/api/category?page=elektrosamokat-lviv"
+    },
+    {
+      "source": "/kukirin-vs-ninebot",
+      "destination": "/api/category?page=kukirin-vs-ninebot"
+    },
+    {
+      "source": "/kukirin-vs-xiaomi",
+      "destination": "/api/category?page=kukirin-vs-xiaomi"
+    },
+    {
+      "source": "/dualtron-vs-kaabo",
+      "destination": "/api/category?page=dualtron-vs-kaabo"
+    },
+    {
       "source": "/seller/:uid",
       "destination": "/api/seller?uid=:uid"
     },
@@ -288,6 +328,36 @@
     {
       "source": "/home",
       "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/kukirin",
+      "destination": "/brand/kukirin",
+      "permanent": true
+    },
+    {
+      "source": "/dualtron",
+      "destination": "/brand/dualtron",
+      "permanent": true
+    },
+    {
+      "source": "/xiaomi",
+      "destination": "/brand/xiaomi",
+      "permanent": true
+    },
+    {
+      "source": "/ninebot",
+      "destination": "/brand/ninebot",
+      "permanent": true
+    },
+    {
+      "source": "/kaabo",
+      "destination": "/brand/kaabo",
+      "permanent": true
+    },
+    {
+      "source": "/vsett",
+      "destination": "/brand/vsett",
       "permanent": true
     },
     {

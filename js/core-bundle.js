@@ -612,12 +612,20 @@ function _parsePath(path) {
   var brandMatch = p.match(/^\/brand\/(.+)$/);
   if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
 
-  if (p === '/kukirin') return { page: 'catalog', brand: 'kukirin' };
-  if (p === '/dualtron') return { page: 'catalog', brand: 'dualtron' };
-  if (p === '/xiaomi') return { page: 'catalog', brand: 'xiaomi' };
-  if (p === '/ninebot') return { page: 'catalog', brand: 'ninebot' };
-  if (p === '/kaabo') return { page: 'catalog', brand: 'kaabo' };
-  if (p === '/vsett') return { page: 'catalog', brand: 'vsett' };
+  // SEO pages (selling, use-case, geo, comparisons) → catalog
+  if (p === '/prodaty-elektrosamokat') return { page: 'catalog' };
+  if (p === '/elektrosamokat-z-sydinniam') return { page: 'catalog' };
+  if (p === '/elektrosamokat-dlya-mista') return { page: 'catalog' };
+  if (p === '/elektrosamokat-dlia-bezdorizhzhia') return { page: 'catalog' };
+  if (p === '/elektrosamokat-biudzhetnyj') return { page: 'catalog' };
+  if (p === '/elektrosamokat-kyiv') return { page: 'catalog' };
+  if (p === '/elektrosamokat-kharkiv') return { page: 'catalog' };
+  if (p === '/elektrosamokat-odesa') return { page: 'catalog' };
+  if (p === '/elektrosamokat-dnipro') return { page: 'catalog' };
+  if (p === '/elektrosamokat-lviv') return { page: 'catalog' };
+  if (p === '/kukirin-vs-ninebot') return { page: 'catalog', brand: 'kukirin' };
+  if (p === '/kukirin-vs-xiaomi') return { page: 'catalog', brand: 'kukirin' };
+  if (p === '/dualtron-vs-kaabo') return { page: 'catalog', brand: 'dualtron' };
 
   var modelMatch = p.match(/^\/(kukirin|dualtron|xiaomi|ninebot|kaabo|vsett)-(.+)$/);
   if (modelMatch) return { page: 'catalog', brand: modelMatch[1], model: modelMatch[2] };
