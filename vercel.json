@@ -228,6 +228,10 @@
       "destination": "/api/category?brand=:slug"
     },
     {
+      "source": "/kukirin-:model",
+      "destination": "/api/category?model=kukirin-:model"
+    },
+    {
       "source": "/seller/:uid",
       "destination": "/api/seller?uid=:uid"
     },
@@ -281,6 +285,10 @@
     {
       "src": "^/brand/([a-zA-Z0-9_-]+)$",
       "dest": "/api/category?brand=$1"
+    },
+    {
+      "src": "^/(kukirin-[a-zA-Z0-9_-]+)$",
+      "dest": "/api/category?model=$1"
     },
     {
       "src": "^/seller/([a-zA-Z0-9_-]+)$",

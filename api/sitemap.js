@@ -14,6 +14,18 @@ const STATIC_PAGES = [
   { loc: '/category/elektroskutery',    priority: '0.8', changefreq: 'daily' },
   { loc: '/category/elektromotocykly',  priority: '0.7', changefreq: 'daily' },
   { loc: '/brand/kukirin',              priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-g2',                 priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-g2-pro',             priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-g2-max',             priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-g3',                 priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-g3-pro',             priority: '0.8', changefreq: 'daily' },
+  { loc: '/kukirin-g4',                 priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-g4-max',             priority: '0.8', changefreq: 'daily' },
+  { loc: '/kukirin-m4-pro',             priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin-m5-pro',             priority: '0.8', changefreq: 'daily' },
+  { loc: '/kukirin-s1-max',             priority: '0.8', changefreq: 'daily' },
+  { loc: '/kukirin-t3',                 priority: '0.8', changefreq: 'daily' },
+  { loc: '/kukirin-c1-pro',             priority: '0.8', changefreq: 'daily' },
 ];
 
 async function query(collection, filters, selectFields, limitN) {
