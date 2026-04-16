@@ -716,29 +716,30 @@ function _renderRoute(route, isBack) {
     // Якщо прийшли з /brand/kukirin або /kukirin-g4 — автоматично вибрати категорію, бренд і модель
     if (route.brand) {
       var _brandMap = {
-        'kukirin': { cat: 'Електросамокати', brand: 'Kukirin' },
+        'kukirin': { cat: 'Електросамокати', brand: 'KuKirin' },
         'kugoo':   { cat: 'Електросамокати', brand: 'Kugoo' },
         'ninebot': { cat: 'Електросамокати', brand: 'Ninebot' },
         'xiaomi':  { cat: 'Електросамокати', brand: 'Xiaomi' },
       };
       var _modelMap = {
-        'g2': 'Kirin G2', 'g2-pro': 'Kirin G2 Pro', 'g2-max': 'Kirin G2 Max',
-        'g3': 'Kirin G3', 'g3-pro': 'Kirin G3 Pro',
-        'g4': 'Kirin G4', 'g4-max': 'Kirin G4 Max',
-        'm4-pro': 'Kirin M4 Pro', 'm5-pro': 'Kirin M5 Pro',
-        's1-max': 'Kirin S1 Max', 't3': 'Kirin T3', 'c1-pro': 'Kirin C1 Pro'
+        'g2': 'G2', 'g2-pro': 'G2 Pro', 'g2-max': 'G2 Max',
+        'g3': 'G3', 'g3-pro': 'G3 Pro',
+        'g4': 'G4', 'g4-max': 'G4 Max',
+        'm4-pro': 'M4 Pro', 'm5-pro': 'M5 Pro',
+        's1-max': 'S1 Max', 't3': 'T3', 'c1-pro': 'C1 Pro'
       };
       var _bm = _brandMap[route.brand];
       var _modelName = route.model ? _modelMap[route.model] : null;
       if (_bm) {
         setTimeout(function() {
-          // Знайти і натиснути кнопку категорії
+          // Встановити категорію без зміни URL
           var catBtn = document.querySelector('.transport-btn[data-cat="' + _bm.cat + '"]');
-          if (catBtn && !catBtn.classList.contains('selected')) {
+          if (catBtn) {
+            document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); });
             catBtn.classList.add('selected');
-            selectedCat = _bm.cat;
-            if (typeof openFilterPanel === 'function') openFilterPanel(_bm.cat);
           }
+          selectedCat = _bm.cat;
+          if (typeof openFilterPanel === 'function') openFilterPanel(_bm.cat);
           // Встановити бренд у фільтрі
           setTimeout(function() {
             var brandSel = document.getElementById('fp-brand');
