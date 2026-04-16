@@ -1055,13 +1055,66 @@
   }
 
   .seller-header-wrap {
-    max-width: 860px; margin: 0 auto; padding: 0 24px;
+    max-width: 960px; margin: 0 auto; padding: 0 24px;
+  }
+
+  .seller-top-row {
+    display: flex; align-items: flex-start; gap: 20px;
+    margin-bottom: 20px;
+  }
+  .seller-top-row .seller-avatar-outer {
+    margin-top: -44px; position: relative; z-index: 3; flex-shrink: 0;
+  }
+  .seller-name-block {
+    padding-top: 12px; flex: 1; min-width: 0;
+  }
+  .seller-name-block h2 {
+    font-size: clamp(20px, 3vw, 28px); font-weight: 800; line-height: 1.15;
+  }
+
+  .seller-two-col {
+    display: grid; grid-template-columns: 1fr 280px; gap: 24px;
+    margin-bottom: 24px;
+  }
+  @media(max-width:768px) {
+    .seller-two-col { grid-template-columns: 1fr; }
+    .seller-top-row .seller-avatar-outer { margin-top: -40px; }
+  }
+  .seller-main-col { display: flex; flex-direction: column; gap: 16px; }
+  .seller-side-col { display: flex; flex-direction: column; gap: 12px; }
+
+  .seller-side-card {
+    background: var(--dark3); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px;
+  }
+  .seller-side-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--text-muted); margin-bottom: 10px;
+  }
+  .seller-side-list {
+    display: flex; flex-direction: column; gap: 8px; font-size: 13px;
+  }
+  .seller-side-list a, .seller-side-list span {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text); text-decoration: none;
+  }
+  .seller-side-list a:hover { color: var(--brand); }
+  .seller-side-list i { color: var(--brand); width: 16px; text-align: center; font-size: 13px; }
+
+  .seller-side-actions {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .seller-side-btn-primary {
+    width: 100%; padding: 12px 20px; border-radius: 12px;
+    font-size: 14px; font-weight: 700; justify-content: center;
+  }
+  .seller-side-btn {
+    flex: 1; padding: 10px 14px; border-radius: 12px;
+    font-size: 13px; justify-content: center;
   }
 
   .seller-avatar-outer {
-    display: flex; justify-content: center;
-    margin-top: -56px; position: relative; z-index: 3;
-    margin-bottom: 16px;
+    display: flex;
   }
   .seller-avatar-big {
     width: 112px; height: 112px; border-radius: 24px;
@@ -1076,25 +1129,17 @@
     background: linear-gradient(135deg, rgba(0,200,83,.3), rgba(0,168,70,.15));
   }
 
-  .seller-identity {
-    text-align: center; margin-bottom: 20px;
-  }
-  .seller-identity h1 {
-    font-size: clamp(22px, 3vw, 32px); font-weight: 800;
-    margin-bottom: 8px; line-height: 1.1;
-  }
-  .seller-identity .seller-meta {
-    display: flex; justify-content: center; align-items: center;
+  .seller-identity { margin-bottom: 20px; }
+  .seller-meta {
+    display: flex; align-items: center;
     gap: 16px; flex-wrap: wrap;
-    font-size: 13px; color: var(--text-muted); margin-top: 10px;
+    font-size: 13px; color: var(--text-muted);
   }
-  .seller-identity .seller-desc {
+  .seller-desc {
     font-size: 14px; color: var(--text-muted);
-    max-width: 640px; margin: 0 auto 12px; line-height: 1.75;
-    text-align: left; background: var(--dark3); border-radius: 16px;
-    padding: 16px 20px; border: 1px solid var(--border);
+    line-height: 1.75; white-space: pre-line;
   }
-  .seller-identity .seller-desc:empty { display: none; }
+  .seller-desc:empty { display: none; }
 
   .seller-rating-inline {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1119,14 +1164,12 @@
   }
 
   .seller-actions {
-    display: flex; justify-content: center; gap: 12px;
-    flex-wrap: wrap; margin-bottom: 28px;
+    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
   }
 
   .seller-stats-row {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 12px; margin-bottom: 0;
-    max-width: 640px; margin: 0 auto 28px;
+    gap: 8px; margin-bottom: 0;
   }
   @media(max-width:560px){ .seller-stats-row { grid-template-columns: repeat(2,1fr); } }
   .seller-stat-card {
@@ -3336,8 +3379,7 @@ body.light .mnav-item span {
   .seller-quick-info i { color: var(--brand); width: 16px; text-align: center; }
 
   .seller-trust-badges {
-    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
-    margin-bottom: 20px;
+    display: flex; gap: 8px; flex-wrap: wrap;
   }
   .seller-trust-badge {
     display: inline-flex; align-items: center; gap: 6px;
@@ -3348,7 +3390,7 @@ body.light .mnav-item span {
   .seller-trust-badge i { font-size: 11px; }
 
   .seller-socials-inline {
-    display: flex; justify-content: center; gap: 10px; margin-bottom: 16px;
+    display: flex; gap: 10px;
   }
   .seller-social-icon {
     width: 36px; height: 36px; border-radius: 10px;

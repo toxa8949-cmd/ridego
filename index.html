@@ -997,73 +997,86 @@
     <div class="seller-page-cover-inner"></div>
   </div>
 
-  <!-- ── Header card (white/dark bg, centered) ── -->
+  <!-- ── Header card — 2-column layout ── -->
   <div style="background:var(--card-bg);border-bottom:1px solid var(--border);padding-bottom:0">
     <div class="seller-header-wrap">
 
-      <!-- Avatar (overlaps cover) -->
-      <div class="seller-avatar-outer">
-        <div class="seller-avatar-big" id="seller-page-avatar"></div>
+      <!-- Top row: avatar + name + meta (left-aligned) -->
+      <div class="seller-top-row">
+        <div class="seller-avatar-outer">
+          <div class="seller-avatar-big" id="seller-page-avatar"></div>
+        </div>
+        <div class="seller-name-block">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+            <h2 id="seller-page-name"></h2>
+            <span id="seller-page-type-badge"></span>
+          </div>
+          <div class="seller-meta">
+            <span id="seller-page-city"></span>
+            <span id="seller-page-since"></span>
+            <span id="seller-page-rating"></span>
+          </div>
+        </div>
       </div>
 
-      <!-- Name + badge + desc + meta -->
-      <div class="seller-identity">
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-          <h2 id="seller-page-name"></h2>
-          <span id="seller-page-type-badge"></span>
+      <!-- 2-column grid: left=content, right=sidebar -->
+      <div class="seller-two-col">
+        <div class="seller-main-col">
+          <!-- Description -->
+          <div id="seller-page-desc" class="seller-desc"></div>
+
+          <!-- Trust badges -->
+          <div class="seller-trust-badges" id="seller-trust-badges"></div>
+
+          <!-- Stats -->
+          <div class="seller-stats-row">
+            <div class="seller-stat-card">
+              <span class="seller-stat-val" id="sp-stat-ads">0</span>
+              <div class="seller-stat-lbl">Оголошень</div>
+            </div>
+            <div class="seller-stat-card">
+              <span class="seller-stat-val" id="sp-stat-sold">0</span>
+              <div class="seller-stat-lbl">Продано</div>
+            </div>
+            <div class="seller-stat-card">
+              <span class="seller-stat-val" id="sp-stat-rating">—</span>
+              <div class="seller-stat-lbl">Рейтинг</div>
+            </div>
+            <div class="seller-stat-card">
+              <span class="seller-stat-val" id="sp-stat-response">—</span>
+              <div class="seller-stat-lbl">Підписників</div>
+            </div>
+          </div>
         </div>
 
-        <!-- Meta: city, since, rating -->
-        <div class="seller-meta">
-          <span id="seller-page-city"></span>
-          <span id="seller-page-since"></span>
-          <span id="seller-page-rating"></span>
-        </div>
+        <div class="seller-side-col">
+          <!-- Contacts -->
+          <div class="seller-side-card">
+            <div class="seller-side-label">Контакти</div>
+            <div id="seller-quick-info" class="seller-side-list"></div>
+          </div>
 
-        <!-- Quick info: phone, address, schedule -->
-        <div class="seller-quick-info" id="seller-quick-info"></div>
+          <!-- Socials -->
+          <div class="seller-side-card" id="seller-socials-wrap">
+            <div class="seller-side-label">Соцмережі</div>
+            <div id="seller-socials-inline" class="seller-socials-inline"></div>
+          </div>
 
-        <!-- Description card -->
-        <div id="seller-page-desc" class="seller-desc"></div>
-
-        <!-- Trust badges -->
-        <div class="seller-trust-badges" id="seller-trust-badges"></div>
-
-        <!-- Social icons inline -->
-        <div class="seller-socials-inline" id="seller-socials-inline"></div>
-      </div>
-
-      <!-- Action buttons -->
-      <div class="seller-actions">
-        <button id="seller-follow-btn" class="share-shop-btn" onclick="toggleFollowSeller()" style="display:none">
-          <i class="fa-regular fa-bell" id="seller-follow-icon"></i>
-          <span id="seller-follow-label">Підписатись</span>
-        </button>
-        <button class="share-shop-btn" onclick="copySellerLink()">
-          <i class="fa-solid fa-share-nodes"></i> Поділитись
-        </button>
-        <button class="btn-msg" style="padding:11px 24px;font-size:14px;border-radius:50px" onclick="openChat()">
-          <i class="fa-solid fa-comment" style="margin-right:7px"></i>Написати
-        </button>
-      </div>
-
-      <!-- Stats -->
-      <div class="seller-stats-row">
-        <div class="seller-stat-card">
-          <span class="seller-stat-val" id="sp-stat-ads">0</span>
-          <div class="seller-stat-lbl">Оголошень</div>
-        </div>
-        <div class="seller-stat-card">
-          <span class="seller-stat-val" id="sp-stat-sold">0</span>
-          <div class="seller-stat-lbl">Продано</div>
-        </div>
-        <div class="seller-stat-card">
-          <span class="seller-stat-val" id="sp-stat-rating">—</span>
-          <div class="seller-stat-lbl">Рейтинг</div>
-        </div>
-        <div class="seller-stat-card">
-          <span class="seller-stat-val" id="sp-stat-response">—</span>
-          <div class="seller-stat-lbl">Підписників</div>
+          <!-- Actions -->
+          <div class="seller-side-actions">
+            <button class="btn-msg seller-side-btn-primary" onclick="openChat()">
+              <i class="fa-solid fa-comment" style="margin-right:7px"></i>Написати
+            </button>
+            <div style="display:flex;gap:8px">
+              <button id="seller-follow-btn" class="share-shop-btn seller-side-btn" onclick="toggleFollowSeller()" style="display:none">
+                <i class="fa-regular fa-bell" id="seller-follow-icon"></i>
+                <span id="seller-follow-label">Підписатись</span>
+              </button>
+              <button class="share-shop-btn seller-side-btn" onclick="copySellerLink()">
+                <i class="fa-solid fa-share-nodes"></i> Поділитись
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
