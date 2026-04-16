@@ -1457,6 +1457,8 @@ function showDetail(id, _skipPush) {
     ? `<span class="tag ${l.badgeClass}" style="font-size:13px;padding:5px 12px">${l.badge}</span>` : '';
 
   galleryImgs = (l.imgs && l.imgs.length) ? l.imgs : (l.img ? [l.img] : []);
+  window.galleryImgs = galleryImgs;
+  window.galleryIdx = 0;
   galleryIdx = 0;
   renderGalleryImage(l);
 
@@ -1602,6 +1604,7 @@ function renderGalleryImage(l) {
 function galleryNav(dir) {
   if (!galleryImgs.length) return;
   galleryIdx = (galleryIdx + dir + galleryImgs.length) % galleryImgs.length;
+  window.galleryIdx = galleryIdx;
   const l = _allListings().find(x => x && x.id === currentDetailId);
   renderGalleryImage(l);
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,i) => t.classList.toggle('active', i===galleryIdx));
@@ -1609,6 +1612,7 @@ function galleryNav(dir) {
 
 function setGalleryIdx(i) {
   galleryIdx = i;
+  window.galleryIdx = i;
   const l = _allListings().find(x => x && x.id === currentDetailId);
   renderGalleryImage(l);
   document.querySelectorAll('#detail-thumbs .thumb').forEach((t,j) => t.classList.toggle('active', j===i));
