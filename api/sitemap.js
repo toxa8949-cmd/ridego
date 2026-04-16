@@ -14,6 +14,7 @@ const STATIC_PAGES = [
   { loc: '/category/elektroskutery',    priority: '0.8', changefreq: 'daily' },
   { loc: '/category/elektromotocykly',  priority: '0.7', changefreq: 'daily' },
   { loc: '/brand/kukirin',              priority: '0.9', changefreq: 'daily' },
+  { loc: '/kukirin',                    priority: '0.9', changefreq: 'daily' },
   { loc: '/kukirin-g2',                 priority: '0.9', changefreq: 'daily' },
   { loc: '/kukirin-g2-pro',             priority: '0.9', changefreq: 'daily' },
   { loc: '/kukirin-g2-max',             priority: '0.9', changefreq: 'daily' },

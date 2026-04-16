@@ -228,6 +228,10 @@
       "destination": "/api/category?brand=:slug"
     },
     {
+      "source": "/kukirin",
+      "destination": "/api/category?brand=kukirin"
+    },
+    {
       "source": "/kukirin-:model",
       "destination": "/api/category?model=kukirin-:model"
     },

@@ -612,6 +612,8 @@ function _parsePath(path) {
   var brandMatch = p.match(/^\/brand\/(.+)$/);
   if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
 
+  if (p === '/kukirin') return { page: 'catalog', brand: 'kukirin' };
+
   var modelMatch = p.match(/^\/kukirin-(.+)$/);
   if (modelMatch) return { page: 'catalog', brand: 'kukirin', model: modelMatch[1] };
 
