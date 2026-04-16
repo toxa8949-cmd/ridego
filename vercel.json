@@ -172,6 +172,10 @@
       "destination": "/api/catalog"
     },
     {
+      "source": "/brand/:slug",
+      "destination": "/api/brand?slug=:slug"
+    },
+    {
       "source": "/news-detail",
       "destination": "/index.html"
     },
