@@ -609,6 +609,9 @@ function _parsePath(path) {
   var catMatch = p.match(/^\/category\/(.+)$/);
   if (catMatch && CAT_SLUGS[catMatch[1]]) return { page: 'catalog', cat: CAT_SLUGS[catMatch[1]] };
 
+  var brandMatch = p.match(/^\/brand\/(.+)$/);
+  if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
+
   var newsMatch = p.match(/^\/news\/(.+)$/);
   if (newsMatch) return { page: 'news-detail', id: newsMatch[1] };
 
@@ -707,6 +710,28 @@ function _renderRoute(route, isBack) {
       var dv = document.getElementById('catalog-divider');
       if (dv) dv.style.display = 'none';
     }
+    // Якщо прийшли з /brand/kukirin — автоматично вибрати категорію і бренд
+    if (route.brand) {
+      var _brandMap = {
+        'kukirin': { cat: 'Електросамокати', brand: 'Kukirin' },
+        'kugoo':   { cat: 'Електросамокати', brand: 'Kugoo' },
+        'ninebot': { cat: 'Електросамокати', brand: 'Ninebot' },
+        'xiaomi':  { cat: 'Електросамокати', brand: 'Xiaomi' },
+      };
+      var _bm = _brandMap[route.brand];
+      if (_bm) {
+        setTimeout(function() {
+          // Вибрати категорію
+          if (typeof selectCategory === 'function') selectCategory(_bm.cat);
+          // Встановити бренд у фільтрі
+          setTimeout(function() {
+            var brandSel = document.getElementById('fp-brand');
+            if (brandSel) { brandSel.value = _bm.brand; if (typeof onFpBrandChange === 'function') onFpBrandChange(); }
+            setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
+          }, 300);
+        }, 200);
+      }
+    }
     setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150);
   }
   if (page === 'services')       renderServices();
@@ -771,13 +796,17 @@ function _renderRoute(route, isBack) {
     if (typeof loadMyFeedback === 'function') loadMyFeedback();
   }
 
-  document.title = _pageTitle(page, id);
+  document.title = _pageTitle(page, id, route);
   _routerLock = false;
 }
 
-function _pageTitle(page, id) {
+function _pageTitle(page, id, route) {
   const base = 'RideGO';
   if (page === 'home')     return base + ' — Маркетплейс електротранспорту';
+  if (page === 'catalog' && route && route.brand) {
+    var _brandTitles = { 'kukirin': 'KuKirin — купити електросамокат в Україні', 'kugoo': 'Kugoo — купити електросамокат', 'ninebot': 'Ninebot — купити електросамокат', 'xiaomi': 'Xiaomi — купити електросамокат' };
+    return base + ' — ' + (_brandTitles[route.brand] || route.brand);
+  }
   if (page === 'catalog')  return base + ' — Каталог';
   if (page === 'add')      return base + ' — Подати оголошення';
   if (page === 'services') return base + ' — Сервіси';

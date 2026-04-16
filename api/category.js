@@ -177,6 +177,13 @@ footer a{color:#1db954;text-decoration:none;margin:0 8px}
   <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">Інші категорії</h2>
   <div>${otherCats}</div>
 </section>
+${slug === 'elektrosamokaty' ? `
+<section style="margin-bottom:28px">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">Популярні бренди електросамокатів</h2>
+  <div>
+    <a href="${BASE}/brand/kukirin" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:#f0fdf4;border-radius:8px;text-decoration:none;color:#166534;font-size:13px;font-weight:600;margin:3px">⚡ KuKirin (Kugoo Kirin)</a>
+  </div>
+</section>` : ''}
 <footer>
   <span>© 2024–2026 RideGO</span>
   <a href="${BASE}">Головна</a>

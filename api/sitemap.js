@@ -13,6 +13,7 @@ const STATIC_PAGES = [
   { loc: '/category/elektrovelosypedy', priority: '0.8', changefreq: 'daily' },
   { loc: '/category/elektroskutery',    priority: '0.8', changefreq: 'daily' },
   { loc: '/category/elektromotocykly',  priority: '0.7', changefreq: 'daily' },
+  { loc: '/brand/kukirin',              priority: '0.9', changefreq: 'daily' },
 ];
 
 async function query(collection, filters, selectFields, limitN) {

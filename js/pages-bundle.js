@@ -20,6 +20,7 @@ const BRANDS = {
     'Kaabo',
     'KingSong',
     'Kugoo',
+    'KuKirin',
     'Lankeleisi',
     'Mantis',
     'Maxxter',

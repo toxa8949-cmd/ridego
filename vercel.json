@@ -255,6 +255,10 @@
       "dest": "/api/category?slug=$1"
     },
     {
+      "src": "^/brand/([a-zA-Z0-9_-]+)$",
+      "dest": "/api/brand?slug=$1"
+    },
+    {
       "src": "^/seller/([a-zA-Z0-9_-]+)$",
       "dest": "/api/seller?uid=$1"
     },

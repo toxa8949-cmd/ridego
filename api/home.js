@@ -324,6 +324,18 @@ ${itemListSchema ? `<script type="application/ld+json">${itemListSchema}</script
     <a href="${BASE}/add" style="display:inline-block;background:#1db954;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600">Подати оголошення →</a>
   </section>
 
+  <!-- Популярні бренди -->
+  <section style="margin-bottom:28px">
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:14px;color:#111">Популярні бренди електросамокатів</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <a href="${BASE}/brand/kukirin" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#f0fdf4;border-radius:10px;text-decoration:none;color:#111;font-weight:600;font-size:14px;border:1px solid #d1fae5">⚡ KuKirin</a>
+      <a href="${BASE}/category/elektrosamokaty" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#f5f5f5;border-radius:10px;text-decoration:none;color:#555;font-weight:600;font-size:14px">Ninebot</a>
+      <a href="${BASE}/category/elektrosamokaty" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#f5f5f5;border-radius:10px;text-decoration:none;color:#555;font-weight:600;font-size:14px">Xiaomi</a>
+      <a href="${BASE}/category/elektrosamokaty" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#f5f5f5;border-radius:10px;text-decoration:none;color:#555;font-weight:600;font-size:14px">Dualtron</a>
+      <a href="${BASE}/category/elektrosamokaty" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#f5f5f5;border-radius:10px;text-decoration:none;color:#555;font-weight:600;font-size:14px">Kaabo</a>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer style="padding:24px 0;border-top:1px solid #eee;font-size:13px;color:#888;text-align:center">
     <p>© 2024–2026 RideGO. Всі права захищено.</p>
