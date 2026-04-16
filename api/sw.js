@@ -1,7 +1,7 @@
 // RideGO Service Worker
-// BUILD_TIMESTAMP: 2026-04-10
-const CACHE_NAME = 'ridego-v7';
-const CACHE_STATIC = 'ridego-static-v7';
+// BUILD_TIMESTAMP: 2026-04-16
+const CACHE_NAME = 'ridego-v8';
+const CACHE_STATIC = 'ridego-static-v8';
 
 const STATIC_ASSETS = [
   '/',
