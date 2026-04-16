@@ -88,7 +88,7 @@ function loadUserSlots(profileData) {
   window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
     if (!snap.exists) return;
     _applySlots(snap.data());
-  }).catch(function(e){ console.log('slots load:', e.message); });
+  }).catch(function(e){ void('slots load:', e.message); });
 }
 
 function _applySlots(d) {
@@ -131,7 +131,7 @@ function _checkMonthlyFreeSlot() {
     _userSlots.lastFreeSlotAt = { seconds: Math.floor(Date.now() / 1000) };
     _renderSlotsUI();
     showToast('🎁 Нараховано 1 безкоштовний слот за цей місяць!');
-  }).catch(function(e){ console.log('monthly slot:', e.message); });
+  }).catch(function(e){ void('monthly slot:', e.message); });
 }
 
 function _initNewUserSlots(uid) {
@@ -144,7 +144,7 @@ function _initNewUserSlots(uid) {
     slotsWelcomeExpiry: firebase.firestore.Timestamp.fromDate(expiry),
     lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp(),
     totalListingsPublished: 0
-  }).catch(function(e){ console.log('init slots:', e.message); });
+  }).catch(function(e){ void('init slots:', e.message); });
   _userSlots.slots = 0;
   _userSlots.slotsWelcome = 10;
   _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
@@ -159,7 +159,7 @@ function _initNewUserSlots(uid) {
         to: currentUser.email,
         data: { name: currentUser.displayName || currentUser.email.split('@')[0] }
       })
-    }).catch(function(e){ console.log('welcome email error:', e.message); });
+    }).catch(function(e){ void('welcome email error:', e.message); });
   }
   _userSlots.loaded = true;
 }
@@ -208,7 +208,7 @@ function _consumeSlot() {
 
   return window._db.collection('users').doc(currentUser.uid).update(update)
     .then(function() { _renderSlotsUI(); return true; })
-    .catch(function(e) { console.log('consume slot:', e.message); return false; });
+    .catch(function(e) { void('consume slot:', e.message); return false; });
 }
 
 var SLOT_PACKAGES = [
@@ -612,7 +612,7 @@ function _parsePath(path) {
   var brandMatch = p.match(/^\/brand\/(.+)$/);
   if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
 
-  // SEO pages (selling, use-case, geo, comparisons) → catalog
+  // SEO pages
   if (p === '/prodaty-elektrosamokat') return { page: 'catalog' };
   if (p === '/elektrosamokat-z-sydinniam') return { page: 'catalog' };
   if (p === '/elektrosamokat-dlya-mista') return { page: 'catalog' };
@@ -728,7 +728,7 @@ function _renderRoute(route, isBack) {
       var dv = document.getElementById('catalog-divider');
       if (dv) dv.style.display = 'none';
     }
-    // Якщо прийшли з /brand/kukirin або /kukirin-g4 — автоматично вибрати категорію, бренд і модель
+    // Якщо прийшли з /brand/kukirin — автоматично вибрати категорію і бренд
     if (route.brand) {
       var _brandMap = {
         'kukirin': { cat: 'Електросамокати', brand: 'KuKirin' },
@@ -741,53 +741,45 @@ function _renderRoute(route, isBack) {
       };
       var _modelMap = {
         'g2': 'G2', 'g2-pro': 'G2 Pro', 'g2-max': 'G2 Max',
-        'g3': 'G3', 'g3-pro': 'G3 Pro',
-        'g4': 'G4', 'g4-max': 'G4 Max',
-        'm4-pro': 'M4 Pro', 'm5-pro': 'M5 Pro',
-        's1-max': 'S1 Max', 't3': 'T3', 'c1-pro': 'C1 Pro'
+        'g3': 'G3', 'g3-pro': 'G3 Pro', 'g4': 'G4', 'g4-max': 'G4 Max',
+        'm4-pro': 'M4 Pro', 'm5-pro': 'M5 Pro', 's1-max': 'S1 Max',
+        't3': 'T3', 'c1-pro': 'C1 Pro',
+        'thunder-2': 'Thunder 2', 'victor': 'Victor', 'storm': 'Storm',
+        'spider-2': 'Spider 2', 'eagle-pro': 'Eagle Pro',
+        'scooter-4': 'Mi Scooter 4', 'scooter-4-pro': 'Mi Scooter 4 Pro',
+        'scooter-4-ultra': 'Mi Scooter 4 Ultra', 'scooter-5': 'Mi Scooter 5',
+        'scooter-5-pro': 'Mi Scooter 5 Pro',
+        'max-g30': 'MAX G30', 'f2-pro': 'F2 Pro', 'gt3': 'GT3',
+        'mantis-10-pro': 'Mantis 10 Pro', 'wolf-warrior-11': 'Wolf Warrior 11',
+        'wolf-king-gt-pro': 'Wolf King GT Pro',
+        '10-plus': '10+', '11-plus': '11+', '9-plus': '9+'
       };
       var _bm = _brandMap[route.brand];
-      var _modelName = route.model ? _modelMap[route.model] : null;
       if (_bm) {
         setTimeout(function() {
+          // Вибрати категорію
           // Встановити категорію без зміни URL
           var catBtn = document.querySelector('.transport-btn[data-cat="' + _bm.cat + '"]');
-          if (catBtn) {
-            document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); });
-            catBtn.classList.add('selected');
-          }
+          if (catBtn) { document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); }); catBtn.classList.add('selected'); }
           selectedCat = _bm.cat;
           if (typeof openFilterPanel === 'function') openFilterPanel(_bm.cat);
           // Встановити бренд у фільтрі
           setTimeout(function() {
             var brandSel = document.getElementById('fp-brand');
             if (brandSel) { brandSel.value = _bm.brand; if (typeof onFpBrandChange === 'function') onFpBrandChange(); }
-            // Якщо є модель — встановити і її
+            // Модель
+            var _modelName = route.model ? (_modelMap[route.model] || null) : null;
             if (_modelName) {
               setTimeout(function() {
                 var modelSel = document.getElementById('fp-model');
-                if (modelSel) {
-                  for (var i = 0; i < modelSel.options.length; i++) {
-                    if (modelSel.options[i].value === _modelName) {
-                      modelSel.value = modelSel.options[i].value; break;
-                    }
-                  }
-                  if (!modelSel.value && route.model) {
-                    var shortName = route.model.toUpperCase().replace(/-/g, ' ');
-                    for (var i = 0; i < modelSel.options.length; i++) {
-                      if (modelSel.options[i].value.toUpperCase().indexOf(shortName) !== -1) {
-                        modelSel.value = modelSel.options[i].value; break;
-                      }
-                    }
-                  }
-                }
+                if (modelSel) { for (var i = 0; i < modelSel.options.length; i++) { if (modelSel.options[i].value === _modelName) { modelSel.value = modelSel.options[i].value; break; } } }
                 setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
               }, 300);
             } else {
               setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
             }
           }, 300);
-        }, 300);
+        }, 200);
       }
     }
     setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150);
@@ -855,6 +847,11 @@ function _renderRoute(route, isBack) {
   }
 
   document.title = _pageTitle(page, id, route);
+  // Dynamic canonical
+  var _canon = document.getElementById('dynamic-canonical');
+  if (_canon) _canon.href = 'https://www.ridego.com.ua' + (location.pathname === '/' ? '/' : location.pathname);
+  var _ogUrl = document.querySelector('meta[property="og:url"]');
+  if (_ogUrl) _ogUrl.content = 'https://www.ridego.com.ua' + (location.pathname === '/' ? '/' : location.pathname);
   _routerLock = false;
 }
 
@@ -863,9 +860,7 @@ function _pageTitle(page, id, route) {
   if (page === 'home')     return base + ' — Маркетплейс електротранспорту';
   if (page === 'catalog' && route && route.brand) {
     var _brandTitles = { 'kukirin': 'KuKirin — купити електросамокат в Україні', 'kugoo': 'Kugoo — купити електросамокат', 'ninebot': 'Ninebot — купити електросамокат', 'xiaomi': 'Xiaomi — купити електросамокат' };
-    if (route.model) {
-      return base + ' — KuKirin ' + route.model.toUpperCase().replace(/-/g, ' ') + ' — купити в Україні';
-    }
+    if (route.model) return base + ' — ' + (_brandTitles[route.brand]?.split(' —')[0] || route.brand) + ' ' + route.model.toUpperCase().replace(/-/g, ' ') + ' — купити в Україні';
     return base + ' — ' + (_brandTitles[route.brand] || route.brand);
   }
   if (page === 'catalog')  return base + ' — Каталог';
@@ -1015,7 +1010,7 @@ function createCard(l, backPage) {
   const eSellerUid  = _esc(l.uid || '');
   const eBargain    = _esc(l.bargain);
   const imgHtml  = l.img
-    ? `<div class="listing-img-wrap"><img class="listing-img lazy-img" src="${_cdnTiny(l.img)||thumbSrc}" data-src="${thumbSrc}" alt="${eTitle}" loading="lazy" decoding="async" onerror="this.style.display='none'" style="filter:blur(8px);transition:filter .4s ease"></div>`
+    ? `<div class="listing-img-wrap"><img class="listing-img lazy-img" src="${_cdnTiny(l.img)||thumbSrc}" data-src="${thumbSrc}" alt="${eTitle}" width="400" height="260" loading="lazy" decoding="async" onerror="this.style.display='none'" style="filter:blur(8px);transition:filter .4s ease"></div>`
     : `<div class="listing-img-placeholder">${l.icon || '📦'}</div>`;
   const badgeHtml = l.badge
     ? `<div class="tag ${l.badgeClass}" style="position:absolute;top:12px;left:12px;z-index:1">${l.badge}</div>`
@@ -1212,7 +1207,7 @@ function _loadUserServices(uid) {
         sessionStorage.setItem(_svcKeyAt, String(Date.now()));
       } catch(e) {}
       _applyUserServices(loaded);
-    }).catch(function(e){ console.log('services load:', e.message); });
+    }).catch(function(e){ void('services load:', e.message); });
 }
 
 var _fbDataLoadedAt = 0;
@@ -1268,7 +1263,7 @@ function loadMoreListings(callback) {
       if (callback) callback(true);
     }).catch(function(e) {
       _loadingMore = false;
-      console.log('loadMore:', e.message);
+      void('loadMore:', e.message);
       // Fallback без orderBy
       if (e.message && e.message.includes('index')) {
         window._db.collection('listings')
@@ -1346,16 +1341,16 @@ function _loadFirebaseFromNetwork(force) {
     .then(function(snap) {
       _applyListingsSnap(snap);
     }).catch(function(e){
-      console.log('listings (indexed):', e.message);
+      void('listings (indexed):', e.message);
       // Fallback — без orderBy (якщо composite index ще не створений)
       window._db.collection('listings')
         .where('status','==','active')
         .limit(50).get()
         .then(function(snap) {
-          console.log('listings (fallback): got', snap.docs.length);
+          void('listings (fallback): got', snap.docs.length);
           _applyListingsSnap(snap);
         }).catch(function(e2) {
-          console.log('listings (fallback2):', e2.message);
+          void('listings (fallback2):', e2.message);
           // Останній fallback — без фільтрів взагалі
           window._db.collection('listings').limit(50).get()
             .then(function(snap) {
@@ -1366,7 +1361,7 @@ function _loadFirebaseFromNetwork(force) {
               })};
               _applyListingsSnap(filtered);
             }).catch(function(e3) {
-              console.log('listings FAIL:', e3.message);
+              void('listings FAIL:', e3.message);
               if (!navigator.onLine) showToast('⚠️ Немає з\'єднання з інтернетом');
             });
         });
@@ -1393,7 +1388,7 @@ function _loadFirebaseFromNetwork(force) {
         if (typeof renderServices === 'function') renderServices();
         var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
         if (_svcPath) showServiceDetail(_svcPath[1]);
-      }).catch(function(e){ console.log('services:', e.message); });
+      }).catch(function(e){ void('services:', e.message); });
   });
 }
 
@@ -1530,7 +1525,7 @@ function loadUserChats() {
       });
       renderChats();
       if (typeof _updateChatBadge === "function") _updateChatBadge();
-    }).catch(function(e){ console.log('chats:', e.message); });
+    }).catch(function(e){ void('chats:', e.message); });
 }
 
 function renderHomeListings() {

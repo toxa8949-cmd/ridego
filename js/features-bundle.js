@@ -357,9 +357,9 @@ function submitListing() {
       .then(function(docRef) {
 
         _consumeSlot().then(function(ok) {
-          if (!ok) console.warn('consumeSlot failed after listing publish');
+          if (!ok) void('consumeSlot failed after listing publish');
           _renderSlotsUI();
-        }).catch(function(e) { console.warn('consumeSlot error:', e); });
+        }).catch(function(e) { void('consumeSlot error:', e); });
         newL.id = docRef.id;
         _fbListings.unshift(newL);
         if (document.getElementById('pstat-active')) {
@@ -462,7 +462,7 @@ function submitListing() {
       });
     } // end _doPublish
   } else {
-    console.warn('No db or uid, saving locally');
+    void('No db or uid, saving locally');
     _fbListings.unshift(newL);
     if (document.getElementById('pstat-active')) document.getElementById('pstat-active').textContent = _allListings().filter(function(l){ return l.uid === (currentUser && currentUser.uid) && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; }).length;
     if (typeof renderMyListings === 'function') renderMyListings();
@@ -3562,7 +3562,7 @@ function loadMyFeedback() {
       }).join('');
     })
     .catch(function(e) {
-      console.warn('loadMyFeedback:', e.message);
+      void('loadMyFeedback:', e.message);
       section.style.display = 'none';
     });
 }

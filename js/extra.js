@@ -688,7 +688,7 @@ function _subscribeChats() {
 
   _chatsSubscribedUid = currentUser.uid;
   window.__chatListenersCount++;
-  console.log('[RideGO] Chats subscribe for uid:', currentUser.uid, '| Active listeners:', window.__chatListenersCount);
+  void('[RideGO] Chats subscribe for uid:', currentUser.uid, '| Active listeners:', window.__chatListenersCount);
 
   var _prevUnreadTotal = 0;
 
@@ -726,7 +726,7 @@ function _subscribeChats() {
       renderChats();
       if (typeof _updateChatBadge === 'function') _updateChatBadge();
     }, function(e) {
-      console.log('chats listener:', e.message);
+      void('chats listener:', e.message);
       loadUserChats();
     });
 }
@@ -738,7 +738,7 @@ document.addEventListener('visibilitychange', function() {
     if (currentUser && currentUser.uid && window._db && !_chatsUnsubscribe) {
       _chatsSubscribedUid = null;
       _subscribeChats();
-      console.log('[RideGO] Chats resubscribed (tab visible)');
+      void('[RideGO] Chats resubscribed (tab visible)');
     }
   }
 });

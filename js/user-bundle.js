@@ -433,7 +433,7 @@ function saveProfileSettings() {
         });
         renderHomeListings();
       })
-      .catch(function(e){ console.log('batch sellerName:', e.message); });
+      .catch(function(e){ void('batch sellerName:', e.message); });
   }
 
   switchPTab('my', document.querySelector('.ptab'));
@@ -954,7 +954,7 @@ function sendMessage() {
               listingTitle: chat && chat.listingTitle ? chat.listingTitle : ''
             }
           })
-        }).catch(function(e){ console.log('chat email error:', e.message); });
+        }).catch(function(e){ void('chat email error:', e.message); });
       }
     }).catch(function(){});
   } else if (window._db) {

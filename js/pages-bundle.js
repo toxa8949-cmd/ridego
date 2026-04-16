@@ -1533,7 +1533,7 @@ function renderGalleryImage(l) {
   if (l && l.img) {
     var fallbackIcon = l.icon || '📦';
     var detailSrc = _cdnDetail(galleryImgs[galleryIdx]) || galleryImgs[galleryIdx];
-    wrap.innerHTML = `<img src="${detailSrc}" alt="${_esc(l.title || '')}" loading="lazy" decoding="async" class="detail-main-img" style="width:100%;height:100%;object-fit:contain;object-position:center;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${_esc(l.icon || '📦')}</div>`;
+    wrap.innerHTML = `<img src="${detailSrc}" alt="${_esc(l.title || '')}" width="800" height="500" loading="lazy" decoding="async" class="detail-main-img" style="width:100%;height:100%;object-fit:contain;object-position:center;background:var(--dark3);transition:opacity .3s" onerror="this.style.display='none';var fb=document.getElementById('detail-img-fallback');if(fb)fb.style.display='flex'"><div id="detail-img-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:80px;opacity:.4">${_esc(l.icon || '📦')}</div>`;
   } else {
     const icon = l ? (l.icon || '📦') : '📦';
     wrap.innerHTML = `<div style="font-size:100px;color:var(--brand);opacity:.5">${icon}</div>`;
