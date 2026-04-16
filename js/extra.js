@@ -363,6 +363,9 @@ function _renderSellerReviewsUI(revs) {
       });
       var avg = revs.length ? revs.reduce(function(s,r){ return s+r.rating; }, 0) / revs.length : 0;
       document.getElementById('rev-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
+      // Оновити рейтинг в stat card
+      var ratingStat = document.getElementById('sp-stat-rating');
+      if (ratingStat) ratingStat.textContent = avg > 0 ? avg.toFixed(1) : '—';
       document.getElementById('rev-stars').textContent = avg > 0
         ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg))) : '☆☆☆☆☆';
       document.getElementById('rev-count').textContent = revs.length

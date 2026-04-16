@@ -1079,7 +1079,7 @@ function createCard(l, backPage) {
     style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);
            display:inline-flex;align-items:center;gap:5px;padding:0;transition:color .15s;font-family:inherit"
     onmouseover="this.style.color='var(--brand)'" onmouseout="this.style.color='var(--text-muted)'">
-    <i class="fa-solid fa-user-circle" style="color:var(--brand)"></i>${eSellerName}
+    <span style="width:18px;height:18px;border-radius:50%;background:var(--brand-dim);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--brand);overflow:hidden;flex-shrink:0">${l.sellerPhoto ? '<img src="'+_esc(l.sellerPhoto)+'" style="width:100%;height:100%;object-fit:cover">' : (eSellerName[0]||'?')}</span>${eSellerName}
   </button>`;
 
   return `

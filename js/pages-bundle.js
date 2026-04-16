@@ -1127,10 +1127,8 @@ function renderSellerPage(id) {
     `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since || ''}`;
   const listings = _allListings().filter(l => l && l.seller === s.name && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive');
   const sellerSvc = _fbServices.concat(myServices).find(function(sv){ return sv.uid === s.uid; }) || null;
-  ['sp-stat-ads','sp-stat-sold','sp-stat-rating','sp-stat-response'].forEach(function(sid) {
-    var el = document.getElementById(sid);
-    if (el) el.textContent = sid==='sp-stat-ads' ? listings.length : (s[sid.replace('sp-stat-','')] || '—');
-  });
+  var adsEl2 = document.getElementById('sp-stat-ads'); if(adsEl2) adsEl2.textContent = listings.length;
+  var ratEl = document.getElementById('sp-stat-rating'); if(ratEl) ratEl.textContent = s.rating || '—';
   renderSellerListings(listings, s);
   document.getElementById('seller-about-text').textContent = s.about || s.desc || '';
   const catsEl = document.getElementById('seller-cats-list');
