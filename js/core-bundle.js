@@ -613,9 +613,14 @@ function _parsePath(path) {
   if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
 
   if (p === '/kukirin') return { page: 'catalog', brand: 'kukirin' };
+  if (p === '/dualtron') return { page: 'catalog', brand: 'dualtron' };
+  if (p === '/xiaomi') return { page: 'catalog', brand: 'xiaomi' };
+  if (p === '/ninebot') return { page: 'catalog', brand: 'ninebot' };
+  if (p === '/kaabo') return { page: 'catalog', brand: 'kaabo' };
+  if (p === '/vsett') return { page: 'catalog', brand: 'vsett' };
 
-  var modelMatch = p.match(/^\/kukirin-(.+)$/);
-  if (modelMatch) return { page: 'catalog', brand: 'kukirin', model: modelMatch[1] };
+  var modelMatch = p.match(/^\/(kukirin|dualtron|xiaomi|ninebot|kaabo|vsett)-(.+)$/);
+  if (modelMatch) return { page: 'catalog', brand: modelMatch[1], model: modelMatch[2] };
 
   var newsMatch = p.match(/^\/news\/(.+)$/);
   if (newsMatch) return { page: 'news-detail', id: newsMatch[1] };
@@ -719,9 +724,12 @@ function _renderRoute(route, isBack) {
     if (route.brand) {
       var _brandMap = {
         'kukirin': { cat: 'Електросамокати', brand: 'KuKirin' },
-        'kugoo':   { cat: 'Електросамокати', brand: 'Kugoo' },
+        'dualtron': { cat: 'Електросамокати', brand: 'Dualtron' },
+        'xiaomi': { cat: 'Електросамокати', brand: 'Xiaomi' },
         'ninebot': { cat: 'Електросамокати', brand: 'Ninebot' },
-        'xiaomi':  { cat: 'Електросамокати', brand: 'Xiaomi' },
+        'kaabo': { cat: 'Електросамокати', brand: 'Kaabo' },
+        'vsett': { cat: 'Електросамокати', brand: 'Vsett' },
+        'kugoo': { cat: 'Електросамокати', brand: 'Kugoo' },
       };
       var _modelMap = {
         'g2': 'G2', 'g2-pro': 'G2 Pro', 'g2-max': 'G2 Max',

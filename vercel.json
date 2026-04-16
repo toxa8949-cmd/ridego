@@ -232,8 +232,48 @@
       "destination": "/api/category?brand=kukirin"
     },
     {
+      "source": "/dualtron",
+      "destination": "/api/category?brand=dualtron"
+    },
+    {
+      "source": "/xiaomi",
+      "destination": "/api/category?brand=xiaomi"
+    },
+    {
+      "source": "/ninebot",
+      "destination": "/api/category?brand=ninebot"
+    },
+    {
+      "source": "/kaabo",
+      "destination": "/api/category?brand=kaabo"
+    },
+    {
+      "source": "/vsett",
+      "destination": "/api/category?brand=vsett"
+    },
+    {
       "source": "/kukirin-:model",
       "destination": "/api/category?model=kukirin-:model"
+    },
+    {
+      "source": "/dualtron-:model",
+      "destination": "/api/category?model=dualtron-:model"
+    },
+    {
+      "source": "/xiaomi-:model",
+      "destination": "/api/category?model=xiaomi-:model"
+    },
+    {
+      "source": "/ninebot-:model",
+      "destination": "/api/category?model=ninebot-:model"
+    },
+    {
+      "source": "/kaabo-:model",
+      "destination": "/api/category?model=kaabo-:model"
+    },
+    {
+      "source": "/vsett-:model",
+      "destination": "/api/category?model=vsett-:model"
     },
     {
       "source": "/seller/:uid",
@@ -291,7 +331,11 @@
       "dest": "/api/category?brand=$1"
     },
     {
-      "src": "^/(kukirin-[a-zA-Z0-9_-]+)$",
+      "src": "^/(kukirin|dualtron|xiaomi|ninebot|kaabo|vsett)$",
+      "dest": "/api/category?brand=$1"
+    },
+    {
+      "src": "^/((kukirin|dualtron|xiaomi|ninebot|kaabo|vsett)-[a-zA-Z0-9_+-]+)$",
       "dest": "/api/category?model=$1"
     },
     {
