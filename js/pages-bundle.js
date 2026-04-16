@@ -996,6 +996,41 @@ function _renderSellerByUid(uid) {
       var descEl = document.getElementById('seller-page-desc');
       if (descEl) descEl.textContent = d.desc || d.about || '';
 
+      // ── Quick info (phone, address, schedule) in header ──
+      var quickInfo = document.getElementById('seller-quick-info');
+      if (quickInfo) {
+        var qi = [];
+        if (d.phone) qi.push('<a href="tel:' + _esc(d.phone) + '"><i class="fa-solid fa-phone"></i>' + _esc(d.phone) + '</a>');
+        if (d.address) qi.push('<span><i class="fa-solid fa-map-pin"></i>' + _esc(d.address) + '</span>');
+        if (d.hours || d.schedule) qi.push('<span><i class="fa-solid fa-clock"></i>' + _esc(d.hours || d.schedule) + '</span>');
+        if (d.email) qi.push('<a href="mailto:' + _esc(d.email) + '"><i class="fa-solid fa-envelope"></i>' + _esc(d.email) + '</a>');
+        if (d.website) qi.push('<a href="' + _esc(d.website) + '" target="_blank"><i class="fa-solid fa-globe"></i>' + _esc(d.website).replace(/^https?:\/\//, '') + '</a>');
+        quickInfo.innerHTML = qi.join('');
+      }
+
+      // ── Trust badges ──
+      var trustEl = document.getElementById('seller-trust-badges');
+      if (trustEl) {
+        var badges = [];
+        if (d.type === 'business') badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-shield-halved"></i>Офіційний продавець</span>');
+        if (d.phoneVerified) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-phone"></i>Телефон верифікований</span>');
+        if (cached && cached.length > 5) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-bolt"></i>' + cached.length + '+ оголошень</span>');
+        if (year && (new Date().getFullYear() - year) >= 1) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-clock"></i>На сайті ' + (new Date().getFullYear() - year) + '+ років</span>');
+        trustEl.innerHTML = badges.join('');
+      }
+
+      // ── Social icons inline (compact) ──
+      var socInline = document.getElementById('seller-socials-inline');
+      if (socInline) {
+        var si = [];
+        if (d.telegram) si.push('<a href="https://t.me/' + _esc(d.telegram).replace('@','') + '" target="_blank" class="seller-social-icon tg" title="Telegram"><i class="fa-brands fa-telegram"></i></a>');
+        if (d.instagram) si.push('<a href="https://instagram.com/' + _esc(d.instagram).replace('@','') + '" target="_blank" class="seller-social-icon ig" title="Instagram"><i class="fa-brands fa-instagram"></i></a>');
+        if (d.youtube) si.push('<a href="' + _esc(d.youtube) + '" target="_blank" class="seller-social-icon yt" title="YouTube"><i class="fa-brands fa-youtube"></i></a>');
+        if (d.tiktok) si.push('<a href="https://tiktok.com/@' + _esc(d.tiktok).replace('@','') + '" target="_blank" class="seller-social-icon tt" title="TikTok"><i class="fa-brands fa-tiktok"></i></a>');
+        if (d.website) si.push('<a href="' + _esc(d.website) + '" target="_blank" class="seller-social-icon web" title="Сайт"><i class="fa-solid fa-globe"></i></a>');
+        socInline.innerHTML = si.join('');
+      }
+
     }).catch(function(){});
 
     var adsEl = document.getElementById('sp-stat-ads');

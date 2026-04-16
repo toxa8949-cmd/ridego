@@ -1090,8 +1090,11 @@
   }
   .seller-identity .seller-desc {
     font-size: 14px; color: var(--text-muted);
-    max-width: 540px; margin: 0 auto 12px; line-height: 1.6;
+    max-width: 640px; margin: 0 auto 12px; line-height: 1.75;
+    text-align: left; background: var(--dark3); border-radius: 16px;
+    padding: 16px 20px; border: 1px solid var(--border);
   }
+  .seller-identity .seller-desc:empty { display: none; }
 
   .seller-rating-inline {
     display: inline-flex; align-items: center; gap: 6px;
@@ -3318,3 +3321,43 @@ body.light .mnav-item span {
     overflow-x: hidden !important;
   }
 }
+
+
+  /* ── Seller page enhancements ── */
+  .seller-quick-info {
+    display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 20px; font-size: 13px;
+  }
+  .seller-quick-info a, .seller-quick-info span {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--text-muted); text-decoration: none;
+  }
+  .seller-quick-info a:hover { color: var(--brand); }
+  .seller-quick-info i { color: var(--brand); width: 16px; text-align: center; }
+
+  .seller-trust-badges {
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .seller-trust-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--brand-dim); border: 1px solid rgba(0,200,83,.2);
+    border-radius: 50px; padding: 6px 14px;
+    font-size: 12px; font-weight: 600; color: var(--brand);
+  }
+  .seller-trust-badge i { font-size: 11px; }
+
+  .seller-socials-inline {
+    display: flex; justify-content: center; gap: 10px; margin-bottom: 16px;
+  }
+  .seller-social-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; text-decoration: none; transition: transform .15s;
+  }
+  .seller-social-icon:hover { transform: scale(1.1); }
+  .seller-social-icon.tg { background: #2ca5e015; color: #2ca5e0; }
+  .seller-social-icon.ig { background: #e1306c15; color: #e1306c; }
+  .seller-social-icon.yt { background: #ff000015; color: #ff0000; }
+  .seller-social-icon.tt { background: #00000015; color: var(--text); }
+  .seller-social-icon.web { background: var(--brand-dim); color: var(--brand); }
