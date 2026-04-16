@@ -1492,6 +1492,12 @@ function showDetail(id, _skipPush) {
       var createdYear = _cachedSeller.createdAt ? new Date(_cachedSeller.createdAt.seconds * 1000).getFullYear() : '';
       if (ratingEl) ratingEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Новий продавець</span>';
       if (sinceEl && createdYear) sinceEl.innerHTML = 'На сайті з ' + createdYear;
+      // Показати фото продавця
+      var _avEl = document.getElementById('detail-avatar');
+      if (_avEl && _cachedSeller.photoUrl) {
+        _avEl.innerHTML = '<img src="' + _cachedSeller.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+      }
+      if (_cachedSeller.name) document.getElementById('detail-seller').textContent = _cachedSeller.name;
     } else {
       window._db.collection('users').doc(sellerUid).get().then(function(snap) {
         if (!snap.exists) return;
@@ -1500,6 +1506,12 @@ function showDetail(id, _skipPush) {
         var createdYear = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : '';
         if (ratingEl) ratingEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Новий продавець</span>';
         if (sinceEl && createdYear) sinceEl.innerHTML = 'На сайті з ' + createdYear;
+        // Показати фото продавця
+        var _avEl2 = document.getElementById('detail-avatar');
+        if (_avEl2 && d.photoUrl) {
+          _avEl2.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+        }
+        if (d.name) document.getElementById('detail-seller').textContent = d.name;
       }).catch(function(){});
     }
   }
