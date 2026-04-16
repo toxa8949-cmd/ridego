@@ -3403,3 +3403,31 @@ body.light .mnav-item span {
   .seller-social-icon.yt { background: #ff000015; color: #ff0000; }
   .seller-social-icon.tt { background: #00000015; color: var(--text); }
   .seller-social-icon.web { background: var(--brand-dim); color: var(--brand); }
+
+
+  /* ── Seller page mobile fixes ── */
+  @media(max-width:768px) {
+    .seller-top-row {
+      flex-direction: column; align-items: center; text-align: center; gap: 12px;
+    }
+    .seller-top-row .seller-avatar-outer { margin-top: -48px; }
+    .seller-name-block { padding-top: 0; text-align: center; }
+    .seller-name-block > div:first-child { justify-content: center; }
+    .seller-meta { justify-content: center; }
+    .seller-two-col { grid-template-columns: 1fr; gap: 16px; }
+    .seller-desc { font-size: 13px; line-height: 1.7; }
+    .seller-trust-badges { justify-content: center; }
+    .seller-stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .seller-side-col { gap: 10px; }
+    .seller-side-card { padding: 14px; }
+    .seller-side-list { gap: 10px; }
+    .seller-side-list a, .seller-side-list span {
+      gap: 10px; font-size: 14px; padding: 4px 0;
+    }
+    .seller-side-list i { width: 20px; font-size: 14px; }
+    .seller-socials-inline { justify-content: flex-start; gap: 12px; }
+    .seller-social-icon { width: 40px; height: 40px; font-size: 18px; }
+    .seller-side-actions { gap: 10px; }
+    .seller-side-btn-primary { padding: 14px 20px; font-size: 15px; }
+    .seller-side-btn { padding: 12px 14px; font-size: 14px; }
+  }
