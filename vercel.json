@@ -172,10 +172,6 @@
       "destination": "/api/catalog"
     },
     {
-      "source": "/brand/:slug",
-      "destination": "/api/brand?slug=:slug"
-    },
-    {
       "source": "/news-detail",
       "destination": "/index.html"
     },
@@ -214,6 +210,30 @@
     {
       "source": "/feedback",
       "destination": "/index.html"
+    },
+    {
+      "source": "/listing/:id",
+      "destination": "/api/listing?id=:id"
+    },
+    {
+      "source": "/news/:id",
+      "destination": "/api/news-item?id=:id"
+    },
+    {
+      "source": "/category/:slug",
+      "destination": "/api/category?slug=:slug"
+    },
+    {
+      "source": "/brand/:slug",
+      "destination": "/api/category?brand=:slug"
+    },
+    {
+      "source": "/seller/:uid",
+      "destination": "/api/seller?uid=:uid"
+    },
+    {
+      "source": "/service/:id",
+      "destination": "/api/service?id=:id"
     }
   ],
   "redirects": [
@@ -260,7 +280,7 @@
     },
     {
       "src": "^/brand/([a-zA-Z0-9_-]+)$",
-      "dest": "/api/brand?slug=$1"
+      "dest": "/api/category?brand=$1"
     },
     {
       "src": "^/seller/([a-zA-Z0-9_-]+)$",
