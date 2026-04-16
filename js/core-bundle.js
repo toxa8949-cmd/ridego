@@ -732,7 +732,14 @@ function _renderRoute(route, isBack) {
       var _modelName = route.model ? _modelMap[route.model] : null;
       if (_bm) {
         setTimeout(function() {
-          if (typeof selectCategory === 'function') selectCategory(_bm.cat);
+          // Знайти і натиснути кнопку категорії
+          var catBtn = document.querySelector('.transport-btn[data-cat="' + _bm.cat + '"]');
+          if (catBtn && !catBtn.classList.contains('selected')) {
+            catBtn.classList.add('selected');
+            selectedCat = _bm.cat;
+            if (typeof openFilterPanel === 'function') openFilterPanel(_bm.cat);
+          }
+          // Встановити бренд у фільтрі
           setTimeout(function() {
             var brandSel = document.getElementById('fp-brand');
             if (brandSel) { brandSel.value = _bm.brand; if (typeof onFpBrandChange === 'function') onFpBrandChange(); }
@@ -741,13 +748,11 @@ function _renderRoute(route, isBack) {
               setTimeout(function() {
                 var modelSel = document.getElementById('fp-model');
                 if (modelSel) {
-                  // Знайти опцію що містить назву моделі
                   for (var i = 0; i < modelSel.options.length; i++) {
-                    if (modelSel.options[i].value === _modelName || modelSel.options[i].text === _modelName) {
+                    if (modelSel.options[i].value === _modelName) {
                       modelSel.value = modelSel.options[i].value; break;
                     }
                   }
-                  // Якщо модель не знайдена в списку — шукаємо через G4, G2 Max etc
                   if (!modelSel.value && route.model) {
                     var shortName = route.model.toUpperCase().replace(/-/g, ' ');
                     for (var i = 0; i < modelSel.options.length; i++) {
@@ -763,7 +768,7 @@ function _renderRoute(route, isBack) {
               setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
             }
           }, 300);
-        }, 200);
+        }, 300);
       }
     }
     setTimeout(function(){ if(typeof runSearch==='function') runSearch(); }, 150);
