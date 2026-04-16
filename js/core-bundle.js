@@ -1334,10 +1334,10 @@ function _loadFirebaseFromNetwork(force) {
     return;
   }
 
-  // Завантажуємо 12 для першого рендеру
+  // Завантажуємо 50 для першого рендеру (було 12 — мало, оголошення зникали)
   window._db.collection('listings')
     .where('status','==','active')
-    .orderBy('createdAt','desc').limit(12).get()
+    .orderBy('createdAt','desc').limit(50).get()
     .then(function(snap) {
       _applyListingsSnap(snap);
     }).catch(function(e){
@@ -1393,10 +1393,24 @@ function _loadFirebaseFromNetwork(force) {
 }
 
 function _applyListingsSnap(snap) {
-  _fbListings = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+  var newDocs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
   _fbDataLoadedAt = Date.now();
   _lastListingDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
-  _allListingsLoaded = snap.docs.length < 12;
+  _allListingsLoaded = snap.docs.length < 50;
+
+  // MERGE замість заміни — зберігаємо існуючі лістинги з кешу
+  if (_fbListings.length > newDocs.length) {
+    // Оновлюємо існуючі і додаємо нові, але НЕ видаляємо ті що вже є
+    var existingById = {};
+    _fbListings.forEach(function(l){ if (l && l.id) existingById[l.id] = l; });
+    // Оновлюємо дані з нового запиту
+    newDocs.forEach(function(l){ if (l && l.id) existingById[l.id] = l; });
+    _fbListings = Object.values(existingById).filter(function(l){
+      return l && l.status !== 'deleted' && l.status !== 'inactive';
+    });
+  } else {
+    _fbListings = newDocs;
+  }
 
   _idbSet('listings', _fbListings);
 
@@ -1407,6 +1421,26 @@ function _applyListingsSnap(snap) {
   renderHomeListings();
   renderCatalog();
   if (typeof _updateActiveCount === 'function') _updateActiveCount();
+
+  // Автоматичне довантаження якщо є ще лістинги
+  if (!_allListingsLoaded) {
+    setTimeout(function() {
+      loadMoreListings(function(hasMore) {
+        if (hasMore) {
+          renderHomeListings();
+          renderCatalog();
+          // Продовжуємо довантажувати поки є
+          if (!_allListingsLoaded) {
+            setTimeout(function() {
+              loadMoreListings(function(more) {
+                if (more) { renderHomeListings(); renderCatalog(); }
+              });
+            }, 1000);
+          }
+        }
+      });
+    }, 500);
+  }
 
   setTimeout(function() {
     if (typeof _trackFavPrices === 'function') _trackFavPrices();
