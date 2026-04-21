@@ -63,6 +63,20 @@ const STATIC_PAGES = [
   { loc: '/kukirin-vs-ninebot',          priority: '0.8', changefreq: 'monthly' },
   { loc: '/kukirin-vs-xiaomi',           priority: '0.8', changefreq: 'monthly' },
   { loc: '/dualtron-vs-kaabo',           priority: '0.8', changefreq: 'monthly' },
+  { loc: '/brand/ausom',               priority: '0.9', changefreq: 'daily' },
+  { loc: '/ausom-l1',                   priority: '0.8', changefreq: 'daily' },
+  { loc: '/ausom-l2',                   priority: '0.8', changefreq: 'daily' },
+  { loc: '/ausom-l2-max',               priority: '0.8', changefreq: 'daily' },
+  { loc: '/ausom-dt2-pro',              priority: '0.8', changefreq: 'daily' },
+  { loc: '/kupyty-elektrovelo',         priority: '0.9', changefreq: 'daily' },
+  { loc: '/kupyty-elektroskuter',       priority: '0.9', changefreq: 'daily' },
+  { loc: '/kupyty-elektromotocykl',     priority: '0.8', changefreq: 'daily' },
+  { loc: '/elektrosamokat-vzhyvanyy',   priority: '0.8', changefreq: 'daily' },
+  { loc: '/prodaty-elektrovelo',        priority: '0.8', changefreq: 'daily' },
+  { loc: '/prodaty-elektroskuter',      priority: '0.8', changefreq: 'daily' },
+  { loc: '/ausom-elektrosamokaty',      priority: '0.8', changefreq: 'daily' },
+  { loc: '/elektrovelosyped-kyiv',      priority: '0.8', changefreq: 'daily' },
+  { loc: '/kukirin-g4-kupit',           priority: '0.9', changefreq: 'daily' },
 ];
 
 async function query(collection, filters, selectFields, limitN) {
