@@ -303,6 +303,17 @@
       "source": "/dualtron-vs-kaabo",
       "destination": "/api/category?page=dualtron-vs-kaabo"
     },
+        { "source": "/ausom-:model", "destination": "/api/category?model=ausom-:model" },
+    { "source": "/kupyty-elektrovelo", "destination": "/api/category?page=kupyty-elektrovelo" },
+    { "source": "/kupyty-elektroskuter", "destination": "/api/category?page=kupyty-elektroskuter" },
+    { "source": "/kupyty-elektromotocykl", "destination": "/api/category?page=kupyty-elektromotocykl" },
+    { "source": "/elektrosamokat-vzhyvanyy", "destination": "/api/category?page=elektrosamokat-vzhyvanyy" },
+    { "source": "/prodaty-elektrovelo", "destination": "/api/category?page=prodaty-elektrovelo" },
+    { "source": "/prodaty-elektroskuter", "destination": "/api/category?page=prodaty-elektroskuter" },
+    { "source": "/ausom-elektrosamokaty", "destination": "/api/category?page=ausom-elektrosamokaty" },
+    { "source": "/elektrovelosyped-kyiv", "destination": "/api/category?page=elektrovelosyped-kyiv" },
+    { "source": "/elektrosamokat-kyiv-city", "destination": "/api/category?page=elektrosamokat-kyiv" },
+    { "source": "/kukirin-g4-kupit", "destination": "/api/category?page=kukirin-g4-kupit" },
     {
       "source": "/seller/:uid",
       "destination": "/api/seller?uid=:uid"
@@ -348,6 +359,7 @@
       "destination": "/brand/vsett",
       "permanent": true
     },
+    { "source": "/ausom", "destination": "/brand/ausom", "permanent": true },
     {
       "source": "/(.*)",
       "has": [
@@ -389,11 +401,11 @@
       "dest": "/api/category?brand=$1"
     },
     {
-      "src": "^/(kukirin|dualtron|xiaomi|ninebot|kaabo|vsett)$",
+      "src": "^/(kukirin|dualtron|xiaomi|ninebot|kaabo|vsett|ausom)$",
       "dest": "/api/category?brand=$1"
     },
     {
-      "src": "^/((kukirin|dualtron|xiaomi|ninebot|kaabo|vsett)-[a-zA-Z0-9_+-]+)$",
+      "src": "^/((kukirin|dualtron|xiaomi|ninebot|kaabo|vsett|ausom)-[a-zA-Z0-9_+-]+)$",
       "dest": "/api/category?model=$1"
     },
     {
