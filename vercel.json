@@ -193,11 +193,11 @@
     },
     {
       "source": "/news",
-      "destination": "/index.html"
+      "destination": "/api/news"
     },
     {
       "source": "/faq",
-      "destination": "/index.html"
+      "destination": "/api/faq"
     },
     {
       "source": "/terms",
