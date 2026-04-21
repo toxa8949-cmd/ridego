@@ -884,6 +884,7 @@ function _pageTitle(page, id, route) {
     return l ? base + ' — ' + l.title : base + ' — Оголошення';
   }
   if (page === '404')      return base + ' — Сторінку не знайдено';
+  if (page === 'news') return base + ' — Новини та огляди електротранспорту';
   return base;
 }
 
