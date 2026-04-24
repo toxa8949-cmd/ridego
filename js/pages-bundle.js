@@ -1359,7 +1359,7 @@ function showDetail(id, _skipPush) {
     title: l.title,
     desc: l.desc ? l.desc.substring(0,160) : (l.title + ' — ' + (l.cat||'') + ' в ' + (l.city||'Україні')),
     img: _cdnOg(l.img) || l.img || '',
-    url: 'https://ridego.com.ua/listing/' + id
+    url: 'https://www.ridego.com.ua/listing/' + id
   });
   _setListingSchema(l);
 
@@ -1406,14 +1406,14 @@ function showDetail(id, _skipPush) {
   }
   // Canonical URL
   var _canonical = document.querySelector('link[rel="canonical"]');
-  if (_canonical) _canonical.setAttribute('href', 'https://ridego.com.ua/listing/' + l.id);
+  if (_canonical) _canonical.setAttribute('href', 'https://www.ridego.com.ua/listing/' + l.id);
   // OG теги
   var _ogTitle = document.querySelector('meta[property="og:title"]');
   if (_ogTitle) _ogTitle.setAttribute('content', l.title + ' — RideGO');
   var _ogImg = document.querySelector('meta[property="og:image"]');
   if (_ogImg && l.img) _ogImg.setAttribute('content', l.img);
   var _ogUrl = document.querySelector('meta[property="og:url"]');
-  if (_ogUrl) _ogUrl.setAttribute('content', 'https://ridego.com.ua/listing/' + l.id);
+  if (_ogUrl) _ogUrl.setAttribute('content', 'https://www.ridego.com.ua/listing/' + l.id);
 
   document.getElementById('detail-price').textContent = l.price.toLocaleString('uk') + ' грн';
   var _usdEl = document.getElementById('detail-price-usd');
