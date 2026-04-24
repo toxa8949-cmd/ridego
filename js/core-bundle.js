@@ -928,7 +928,7 @@ function showPage(page, sellerId) {
     feedback:{ title: 'Зворотний зв\'язок', desc: 'Залиште скаргу, пропозицію або питання команді RideGO.' },
   };
   if (pageSEO[page]) {
-    var _pageUrl = 'https://ridego.com.ua' + (page === 'home' ? '/' : '/' + page);
+    var _pageUrl = 'https://www.ridego.com.ua' + (page === 'home' ? '/' : '/' + page);
     _updateSEO({ title: pageSEO[page].title, desc: pageSEO[page].desc, url: _pageUrl });
     _setListingSchema(null);
     _setNewsSchema(null);
