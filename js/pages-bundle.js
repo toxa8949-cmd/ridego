@@ -1448,7 +1448,7 @@ function showDetail(id, _skipPush) {
     <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${condColor};display:inline-block"></span>${_esc(l.condition)}</span>
     <span style="display:flex;align-items:center;gap:5px"><i class="fa-regular fa-clock" style="color:var(--brand)"></i>${_esc(_timeAgo(l.createdAt) || l.time)}</span>
     <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-tag" style="color:var(--brand)"></i>${_esc(l.cat)}</span>
-    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-eye" style="color:var(--brand)"></i>${viewsCount} переглядів</span>
+    <span style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-eye" style="color:var(--brand)"></i>${viewsCount} ${(viewsCount%10===1&&viewsCount%100!==11)?'перегляд':((viewsCount%10>=2&&viewsCount%10<=4&&(viewsCount%100<10||viewsCount%100>=20))?'перегляди':'переглядів')}</span>
   `;
 
   renderDetailMap(l.city, l.fullLoc || `${l.city}, Україна`);
