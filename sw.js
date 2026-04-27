@@ -1,7 +1,7 @@
 // RideGO Service Worker
-// BUILD_TIMESTAMP: 2026-04-10
-const CACHE_NAME = 'ridego-v7';
-const CACHE_STATIC = 'ridego-static-v7';
+// BUILD_TIMESTAMP: 2026-04-27
+const CACHE_NAME   = 'ridego-v8';
+const CACHE_STATIC = 'ridego-static-v8';
 
 const STATIC_ASSETS = [
   '/',
@@ -11,6 +11,10 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/js/core-bundle.js',
   '/js/pages-bundle.js',
+  '/js/features-bundle.js',
+  '/js/user-bundle.js',
+  '/js/extra.js',
+  '/js/gallery-ux.js',
   '/css/main.css'
 ];
 
@@ -58,7 +62,8 @@ self.addEventListener('fetch', function(e) {
     'cloudinary.com', 'nominatim.openstreetmap.org',
     'identitytoolkit.googleapis.com', 'securetoken.googleapis.com',
     'api.qrserver.com', 'cdnjs.cloudflare.com',
-    'fonts.googleapis.com', 'fonts.gstatic.com', 'exchangerate-api.com'
+    'fonts.googleapis.com', 'fonts.gstatic.com',
+    'exchangerate-api.com'
   ];
   if (skipCache.some(function(d) { return url.hostname.includes(d); })) return;
 
@@ -70,7 +75,9 @@ self.addEventListener('fetch', function(e) {
           return fetch(req).then(function(resp) {
             if (resp && resp.status === 200) cache.put(req, resp.clone());
             return resp;
-          }).catch(function() { return cached || new Response('', { status: 408 }); });
+          }).catch(function() {
+            return cached || new Response('', { status: 408 });
+          });
         });
       })
     );
@@ -83,7 +90,9 @@ self.addEventListener('fetch', function(e) {
       fetch(req).then(function(resp) {
         if (resp && resp.status === 200) {
           var respClone = resp.clone();
-          caches.open(CACHE_NAME).then(function(cache) { cache.put(req, respClone); });
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(req, respClone);
+          });
         }
         return resp;
       }).catch(function() {
@@ -114,10 +123,14 @@ self.addEventListener('fetch', function(e) {
         if (cached) return cached;
         return fetch(req).then(function(resp) {
           if (resp && resp.status === 200) {
-            caches.open(CACHE_STATIC).then(function(cache) { cache.put(req, resp.clone()); });
+            caches.open(CACHE_STATIC).then(function(cache) {
+              cache.put(req, resp.clone());
+            });
           }
           return resp;
-        }).catch(function() { return cached || new Response('', { status: 408 }); });
+        }).catch(function() {
+          return cached || new Response('', { status: 408 });
+        });
       })
     );
     return;
@@ -131,8 +144,11 @@ self.addEventListener('push', function(e) {
   var data = e.data.json();
   e.waitUntil(
     self.registration.showNotification(data.title || 'RideGO', {
-      body: data.body || '', icon: '/favicon.svg', badge: '/favicon.svg',
-      tag: data.tag || 'ridego', data: { url: data.url || '/' }
+      body: data.body || '',
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
+      tag: data.tag || 'ridego',
+      data: { url: data.url || '/' }
     })
   );
 });
