@@ -982,7 +982,7 @@ function closeChatOnMobile() {
   renderChats();
 }
 
-function _startChat(sellerUid, listingId, listingTitle) {
+function _startChat(sellerUid, listingId, listingTitle) { if (!isLoggedIn) { showToast('\u26A0\uFE0F \u0423\u0432\u0456\u0439\u0434\u0456\u0442\u044C \u0449\u043E\u0431 \u043D\u0430\u043F\u0438\u0441\u0430\u0442\u0438'); showPage('profile'); return; } if (sellerUid === currentUser.uid) { showToast('\uD83D\uDCED \u0426\u0435 \u0432\u0430\u0448\u0435 \u043E\u0433\u043E\u043B\u043E\u0448\u0435\u043D\u043D\u044F'); return; } if (window._db && currentUser && currentUser.uid) { window._db.collection('chats').where('participants','array-contains',currentUser.uid).get().then(function(s){ var f=null; s.forEach(function(doc){ var d=doc.data(); if(!f && d && d.participants && d.participants.indexOf(sellerUid)>=0) f=Object.assign({id:doc.id},d); }); if(f){ var ex=false; for(var i=0;i<_fbChats.length;i++){ if(_fbChats[i].id===f.id){ex=true;break;} } if(!ex) _fbChats.unshift(f); if(listingId && f.listingId!==listingId){ f.listingId=listingId; f.listingTitle=listingTitle||''; window._db.collection('chats').doc(f.id).update({listingId:listingId,listingTitle:listingTitle||''}).catch(function(){}); } showPage('messages'); setTimeout(function(){openChatById(f.id);},200);} else { _startChatImpl(sellerUid, listingId, listingTitle); } }).catch(function(){_startChatImpl(sellerUid, listingId, listingTitle);}); return; } _startChatImpl(sellerUid, listingId, listingTitle); }function _startChatImpl(sellerUid, listingId, listingTitle) {
   if (!isLoggedIn) { showToast('⚠️ Увійдіть щоб написати'); showPage('profile'); return; }
   if (sellerUid === currentUser.uid) { showToast('ℹ️ Це ваше оголошення'); return; }
 
