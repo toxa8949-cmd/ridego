@@ -1553,7 +1553,7 @@ function loadUserChats() {
   if (!window._db || !currentUser || !currentUser.uid) return;
   window._db.collection('chats')
     .where('participants','array-contains', currentUser.uid)
-    .limit(10).get()
+    .get()
     .then(function(snap) {
       _fbChats = snap.docs.map(function(d){
         var data = Object.assign({id:d.id}, d.data());
