@@ -1145,7 +1145,7 @@ function createServiceCard(s){
   var rating=s.rating>0?s.rating+" \u00b7 "+s.reviews+" \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432":"\u041d\u043e\u0432\u0438\u0439";
   return "<div class=\"service-card\" onclick=\"showServiceDetail('"+s.id+"')\">"+
     (s.photoUrl
-      ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
+      ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img alt=\"Фото сервісу\" src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
       : "<div class=\"service-card-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><div class=\"service-card-cover-icon\">"+s.icon+"</div>"+badge+"</div>"
     )+
     "<div class=\"service-card-body\">"+
@@ -1178,7 +1178,7 @@ function _buildSvcDetailHeader(s){
   var coverHtml;
   if (s.photoUrl) {
     coverHtml = "<div class=\"service-detail-cover\" style=\"background:none;padding:0;overflow:hidden\">" +
-      "<img src=\"" + s.photoUrl + "\" style=\"width:100%;height:100%;object-fit:cover\">" +
+      "<img alt=\"Фото сервісу\" src=\"" + s.photoUrl + "\" style=\"width:100%;height:100%;object-fit:cover\">" +
       badge + "</div>";
   } else {
     coverHtml = "<div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><span>"+s.icon+"</span>"+badge+"</div>";
@@ -2515,7 +2515,7 @@ function _updateCompareBar() {
   var thumbs = listings.map(function(l) {
     var src = l.img || (l.photos && l.photos[0]) || '';
     return src
-      ? '<img src="' + src + '" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid var(--border)">'
+      ? '<img alt="Фото оголошення" src="' + src + '" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid var(--border)">'
       : '<div style="width:28px;height:28px;border-radius:6px;background:var(--brand-dim);display:flex;align-items:center;justify-content:center;font-size:14px">\uD83D\uDCF7</div>';
   }).join('');
 
@@ -2550,7 +2550,7 @@ function openCompareModal() {
   var cols = listings.map(function(l) {
     var img = l.img || (l.photos && l.photos[0]) || '';
     return '<div style="flex:1;min-width:0">'
-      + (img ? '<img src="' + img + '" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:12px">' : '')
+      + (img ? '<img alt="Фото оголошення" src="' + img + '" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:12px">' : '')
       + '<div style="font-weight:700;font-size:15px;margin-bottom:4px">' + (l.title||'') + '</div>'
       + '<div style="font-size:20px;font-weight:800;color:var(--brand);margin-bottom:12px">' + (l.price||0).toLocaleString('uk') + ' \u0433\u0440\u043d</div>'
       + '<button onclick="showDetail(\'' + l.id + '\');document.getElementById(\'compare-overlay\').remove()" '
@@ -3607,7 +3607,7 @@ function _openExchangeModal() {
 
   if (mine.length > 0) {
     myGrid.innerHTML = mine.map(function(m) {
-      var img = m.img ? '<img src="' + _cdnTiny(m.img) + '" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '<div style="width:48px;height:48px;border-radius:8px;background:var(--dark3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">' + (m.icon || '📦') + '</div>';
+      var img = m.img ? '<img alt="Зображення" src="' + _cdnTiny(m.img) + '" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '<div style="width:48px;height:48px;border-radius:8px;background:var(--dark3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">' + (m.icon || '📦') + '</div>';
       return '<div class="exch-my-item" data-id="' + m.id + '" onclick="_selectExchListing(\'' + m.id + '\',this)" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:2px solid var(--border);cursor:pointer;transition:all .2s">'
         + img
         + '<div style="flex:1;min-width:0">'
