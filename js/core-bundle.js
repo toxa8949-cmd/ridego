@@ -1110,7 +1110,7 @@ function createCard(l, backPage) {
     style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);
            display:inline-flex;align-items:center;gap:5px;padding:0;transition:color .15s;font-family:inherit"
     onmouseover="this.style.color='var(--brand)'" onmouseout="this.style.color='var(--text-muted)'">
-    <span style="width:18px;height:18px;border-radius:50%;background:var(--brand-dim);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--brand);overflow:hidden;flex-shrink:0">${l.sellerPhoto ? '<img src="'+_esc(l.sellerPhoto)+'" style="width:100%;height:100%;object-fit:cover">' : (eSellerName[0]||'?')}</span>${eSellerName}
+    <span style="width:18px;height:18px;border-radius:50%;background:var(--brand-dim);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--brand);overflow:hidden;flex-shrink:0">${l.sellerPhoto ? '<img alt="Аватар" src="'+_esc(l.sellerPhoto)+'" style="width:100%;height:100%;object-fit:cover">' : (eSellerName[0]||'?')}</span>${eSellerName}
   </button>`;
 
   return `
@@ -1749,7 +1749,7 @@ function createHomeSvcCard(s) {
   return "<div class=\"home-svc-card\" onclick=\"showServiceDetail('"+s.id+"')\">"
     +"<div class=\"home-svc-card-top\">"
     +(s.photoUrl
-      ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
+      ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img alt=\"Фото сервісу\" src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
       : "<div class=\"home-svc-icon\">"+s.icon+"</div>"
     )
     +"<div style=\"flex:1;min-width:0\">"
