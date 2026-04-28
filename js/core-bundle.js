@@ -1592,6 +1592,20 @@ function renderHomeListings() {
     if (el) el.textContent = cnt > 0 ? cnt + ' пропозицій' : 'Скоро буде';
   });
 
+  // RIDEGO: counts for catalog page category buttons (.transport-btn)
+  document.querySelectorAll('.transport-btn').forEach(function(btn) {
+    var c = btn.getAttribute('data-cat');
+    var sp = btn.querySelector('.tb-count');
+    if (!sp) return;
+    var n = all.filter(function(l){ return l.cat === c; }).length;
+    var m10 = n % 10, m100 = n % 100, txt;
+    if (n === 0) txt = 'Скоро буде';
+    else if (m10 === 1 && m100 !== 11) txt = n + ' оголошення';
+    else if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) txt = n + ' оголошення';
+    else txt = n + ' оголошень';
+    sp.textContent = txt;
+  });
+
   var topEl = document.getElementById('home-top-listings');
   var topEmpty = document.getElementById('home-top-empty');
   var topList = all.filter(function(l){ return _isPromoActive(l) && l.promo === 'top'; });
