@@ -731,6 +731,19 @@ function _renderRoute(route, isBack) {
       var dv = document.getElementById('catalog-divider');
       if (dv) dv.style.display = 'none';
     }
+    // Якщо прийшли з /category/elektrosamokaty — автоматично вибрати категорію
+    if (route.cat) {
+      setTimeout(function() {
+        var catBtn = document.querySelector('.transport-btn[data-cat="' + route.cat + '"]');
+        if (catBtn) {
+          document.querySelectorAll('.transport-btn').forEach(function(b){ b.classList.remove('selected'); });
+          catBtn.classList.add('selected');
+        }
+        selectedCat = route.cat;
+        if (typeof openFilterPanel === 'function') openFilterPanel(route.cat);
+        setTimeout(function(){ if (typeof runSearch === 'function') runSearch(); }, 200);
+      }, 150);
+    }
     // Якщо прийшли з /brand/kukirin — автоматично вибрати категорію і бренд
     if (route.brand) {
       var _brandMap = {
