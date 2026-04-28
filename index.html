@@ -120,9 +120,9 @@
 <!-- Leaflet JS — завантажується на вимогу через geo.js _loadLeaflet() -->
 <!-- QRCode — завантажується на вимогу через showListingQR() -->
 
-  <link rel="stylesheet" href="/css/main.css?v=20260505">
+  <link rel="stylesheet" href="/css/main.css?v=20260506">
   <!-- Preload критичних ресурсів -->
-  <link rel="preload" href="/css/main.css?v=20260505" as="style">
+  <link rel="preload" href="/css/main.css?v=20260506" as="style">
 <!-- Тема: виконується СИНХРОННО до рендеру body — усуває flash темної теми -->
 <script>
 (function(){
@@ -291,7 +291,7 @@
               ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
                 var el = document.getElementById(id);
                 if (!el) return;
-                el.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+                el.innerHTML = '<img alt="Аватар" src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
               });
             }
           } else {
@@ -2337,7 +2337,7 @@
       <div class="form-group" style="margin-top:18px">
         <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Скріншот (необов'язково)</label>
         <div id="feedback-img-preview" style="display:none;margin-bottom:8px">
-          <img id="feedback-img-el" style="max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--border)">
+          <img id="feedback-img-el" alt="Прев'ю фото" style="max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--border)">
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-outline" style="flex:1;padding:10px;font-size:13px" onclick="document.getElementById('feedback-img-input').click()">
@@ -2541,12 +2541,12 @@
 </div>
 
   <!-- RideGO JS bundles -->
-  <script src="/js/core-bundle.js?v=20260505" defer></script>
-  <script src="/js/pages-bundle.js?v=20260505" defer></script>
-  <script src="/js/user-bundle.js?v=20260505" defer></script>
-  <script src="/js/features-bundle.js?v=20260505" defer></script>
-  <script src="/js/extra.js?v=20260505" defer></script>
-  <script src="/js/gallery-ux.js?v=20260505" defer></script>
+  <script src="/js/core-bundle.js?v=20260506" defer></script>
+  <script src="/js/pages-bundle.js?v=20260506" defer></script>
+  <script src="/js/user-bundle.js?v=20260506" defer></script>
+  <script src="/js/features-bundle.js?v=20260506" defer></script>
+  <script src="/js/extra.js?v=20260506" defer></script>
+  <script src="/js/gallery-ux.js?v=20260506" defer></script>
   <!-- Географічні дані — завантажуються асинхронно -->
   <script src="/js/data_geo.js" defer></script>
   <!-- Специфікації форм — завантажуються асинхронно -->
@@ -2554,7 +2554,7 @@
 <!-- PWA Install Banner (Android/Desktop) -->
 <div id="pwa-install-banner" style="display:none;position:fixed;bottom:70px;left:0;right:0;z-index:8000;padding:0 16px">
   <div style="background:var(--card-bg);border:1px solid var(--brand);border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,200,83,.2);max-width:480px;margin:0 auto">
-    <img src="/favicon.svg" width="40" height="40" style="border-radius:8px;flex-shrink:0">
+    <img alt="RideGO" src="/favicon.svg" width="40" height="40" style="border-radius:8px;flex-shrink:0">
     <div style="flex:1;min-width:0">
       <div style="font-weight:700;font-size:14px">Встановити RideGO</div>
       <div style="font-size:12px;color:var(--text-muted)">Додайте на головний екран</div>
@@ -2569,7 +2569,7 @@
   <div style="background:var(--card-bg);border:1px solid var(--brand);border-radius:16px;padding:16px 18px;box-shadow:0 8px 32px rgba(0,200,83,.2);max-width:480px;margin:0 auto;position:relative">
     <button onclick="document.getElementById('pwa-ios-banner').style.display='none';localStorage.setItem('pwa-ios-dismissed','1')" style="position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0">&times;</button>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <img src="/favicon.svg" width="36" height="36" style="border-radius:8px">
+      <img alt="RideGO" src="/favicon.svg" width="36" height="36" style="border-radius:8px">
       <div>
         <div style="font-weight:700;font-size:14px">Встановити RideGO</div>
         <div style="font-size:12px;color:var(--text-muted)">Додайте на головний екран iPhone</div>
