@@ -1,3 +1,11 @@
+// ── UA PLURALIZATION HELPER ──────────────────────────────
+window.plUk = function(n, forms) {
+  var m10 = Math.abs(n) % 10, m100 = Math.abs(n) % 100;
+  if (m10 === 1 && m100 !== 11) return forms[0];
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return forms[1];
+  return forms[2];
+};
+
 // ── HERO ПОШУК ─────────────────────────────────────────────
 function heroSearch() {
   var q = (document.getElementById('hero-search-input') || {}).value || '';
@@ -1602,7 +1610,7 @@ function renderHomeListings() {
   Object.keys(cats).forEach(function(cat) {
     var el = document.getElementById(cats[cat]);
     var cnt = all.filter(function(l){ return l.cat === cat; }).length;
-    if (el) el.textContent = cnt > 0 ? cnt + ' пропозицій' : 'Скоро буде';
+    if (el) el.textContent = cnt > 0 ? cnt + ' ' + window.plUk(cnt, ['пропозиція','пропозиції','пропозицій']) : 'Скоро буде';
   });
 
   // RIDEGO: counts for catalog page category buttons (.transport-btn)
@@ -1611,11 +1619,7 @@ function renderHomeListings() {
     var sp = btn.querySelector('.tb-count');
     if (!sp) return;
     var n = all.filter(function(l){ return l.cat === c; }).length;
-    var m10 = n % 10, m100 = n % 100, txt;
-    if (n === 0) txt = 'Скоро буде';
-    else if (m10 === 1 && m100 !== 11) txt = n + ' оголошення';
-    else if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) txt = n + ' оголошення';
-    else txt = n + ' оголошень';
+    var txt = n === 0 ? 'Скоро буде' : (n + ' ' + window.plUk(n, ['оголошення','оголошення','оголошень']));
     sp.textContent = txt;
   });
 
