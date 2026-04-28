@@ -933,7 +933,7 @@ function _renderSellerByUid(uid) {
       var avEl = document.getElementById('seller-page-avatar');
       if (avEl) {
         if (d.photoUrl) {
-          avEl.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:14px">';
+          avEl.innerHTML = '<img alt="Аватар" src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:14px">';
         } else {
           avEl.textContent = (d.name || sellerName)[0].toUpperCase();
         }
@@ -1497,7 +1497,7 @@ function showDetail(id, _skipPush) {
       // Показати фото продавця
       var _avEl = document.getElementById('detail-avatar');
       if (_avEl && _cachedSeller.photoUrl) {
-        _avEl.innerHTML = '<img src="' + _cachedSeller.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+        _avEl.innerHTML = '<img alt="Аватар" src="' + _cachedSeller.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
       }
       if (_cachedSeller.name) document.getElementById('detail-seller').textContent = _cachedSeller.name;
     } else {
@@ -1511,7 +1511,7 @@ function showDetail(id, _skipPush) {
         // Показати фото продавця
         var _avEl2 = document.getElementById('detail-avatar');
         if (_avEl2 && d.photoUrl) {
-          _avEl2.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+          _avEl2.innerHTML = '<img alt="Аватар" src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
         }
         if (d.name) document.getElementById('detail-seller').textContent = d.name;
       }).catch(function(){});
