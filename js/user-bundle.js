@@ -193,7 +193,7 @@ function _applyProfileData(d) {
     profilePhotoUrl = d.photoUrl;
     ['profile-pic-el', 'settings-avatar-preview'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.innerHTML = '<img src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      if (el) el.innerHTML = '<img alt="Аватар" src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     });
     var lEl = document.getElementById('profile-pic-letter');
     if (lEl) lEl.style.display = 'none';
@@ -309,7 +309,7 @@ function onProfilePhotoChange(input) {
     ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
-      el.innerHTML = '<img src="' + localUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      el.innerHTML = '<img alt="Аватар" src="' + localUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     });
 
     var fd = new FormData();
@@ -326,7 +326,7 @@ function onProfilePhotoChange(input) {
         ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
           var el = document.getElementById(id);
           if (!el) return;
-          el.innerHTML = '<img src="' + profilePhotoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+          el.innerHTML = '<img alt="Аватар" src="' + profilePhotoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
         });
 
         if (window._db && currentUser && currentUser.uid) {
@@ -805,7 +805,7 @@ function _renderMessages(msgs, chat) {
   if (chat && chat.listingId && chat.listingTitle) {
     var listing = _allListings().find(function(l){ return l && l.id === chat.listingId; });
     var imgHtml = listing && listing.photos && listing.photos[0]
-      ? '<img src="' + listing.photos[0] + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0">'
+      ? '<img alt="Фото оголошення" src="' + listing.photos[0] + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0">'
       : '<div style="width:56px;height:56px;background:var(--dark3);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px">🛵</div>';
     var priceHtml = listing ? '<div style="color:var(--brand);font-weight:700;font-size:15px">' + listing.price.toLocaleString('uk') + ' грн</div>' : '';
     html += '<div style="margin-bottom:12px;display:flex;justify-content:center">'
@@ -840,7 +840,7 @@ function _renderMessages(msgs, chat) {
     if (m.exchangeOffer) {
       var ex = m.exchangeOffer;
       var exImg = ex.offerImg
-        ? '<img src="' + ex.offerImg + '" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">'
+        ? '<img alt="Фото обміну" src="' + ex.offerImg + '" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">'
         : '<div style="width:44px;height:44px;border-radius:8px;background:var(--dark3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + String.fromCodePoint(0x1F4E6) + '</div>';
       var surchargeHtml = '';
       if (ex.surchargeType === 'i-pay' && ex.surchargeAmount > 0) {
