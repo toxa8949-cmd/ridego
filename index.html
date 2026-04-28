@@ -120,9 +120,9 @@
 <!-- Leaflet JS — завантажується на вимогу через geo.js _loadLeaflet() -->
 <!-- QRCode — завантажується на вимогу через showListingQR() -->
 
-  <link rel="stylesheet" href="/css/main.css?v=20260503">
+  <link rel="stylesheet" href="/css/main.css?v=20260504">
   <!-- Preload критичних ресурсів -->
-  <link rel="preload" href="/css/main.css?v=20260503" as="style">
+  <link rel="preload" href="/css/main.css?v=20260504" as="style">
 <!-- Тема: виконується СИНХРОННО до рендеру body — усуває flash темної теми -->
 <script>
 (function(){
@@ -307,7 +307,7 @@
             }).then(function(){
               if(typeof _userSlots!=='undefined'){_userSlots.slots=0;_userSlots.slotsWelcome=10;_userSlots.loaded=true;if(typeof _renderSlotsUI==='function')_renderSlotsUI();}
               showToast('🎁 Вітаємо! 10 безкоштовних слотів на перший місяць!');
-            }).catch(function(e){ console.log('Firestore set:', e.message); });
+            }).catch(function(e){ console.warn('Firestore set:', e.message); });
           }
           if (typeof renderProfile === 'function') renderProfile();
           if (typeof _updateChatBadge === 'function') _updateChatBadge();
@@ -362,7 +362,7 @@
           } catch(e) {}
           if (typeof renderMyListings === 'function') renderMyListings();
           if (typeof renderProfile === 'function') renderProfile();
-        }).catch(function(e){ console.log('Firebase listings:', e.message); });
+        }).catch(function(e){ console.warn('Firebase listings:', e.message); });
         }; // кінець _applySnap
 
         if (_pcCached) {
@@ -377,7 +377,7 @@
               } catch(e) {}
             }
             _applySnap(snap);
-          }).catch(function(e){ console.log('Firebase profile:', e.message); });
+          }).catch(function(e){ console.warn('Firebase profile:', e.message); });
         }
       } else {
         window._authWasLoggedIn = false;
@@ -389,7 +389,7 @@
       window._authInitialized = true;
     });
 
-    console.log('✅ RideGO Firebase підключено!');
+    
 
     // Унікальні відвідувачі — рахувати 1 раз на день через sessionStorage
     var today = new Date().toISOString().slice(0,10);
@@ -407,7 +407,7 @@
     presenceRef.set({ t: Date.now() });
     presenceRef.onDisconnect().remove();
 
-    console.log('✅ RideGO Firebase async ready!');
+    
     // Notify waiting code
     window._firebaseReady = true;
     window._firebaseCallbacks.forEach(function(cb) { try { cb(); } catch(e) { console.warn('Firebase cb:', e); } });
@@ -2541,12 +2541,12 @@
 </div>
 
   <!-- RideGO JS bundles -->
-  <script src="/js/core-bundle.js?v=20260503" defer></script>
-  <script src="/js/pages-bundle.js?v=20260503" defer></script>
-  <script src="/js/user-bundle.js?v=20260503" defer></script>
-  <script src="/js/features-bundle.js?v=20260503" defer></script>
-  <script src="/js/extra.js?v=20260503" defer></script>
-  <script src="/js/gallery-ux.js?v=20260503" defer></script>
+  <script src="/js/core-bundle.js?v=20260504" defer></script>
+  <script src="/js/pages-bundle.js?v=20260504" defer></script>
+  <script src="/js/user-bundle.js?v=20260504" defer></script>
+  <script src="/js/features-bundle.js?v=20260504" defer></script>
+  <script src="/js/extra.js?v=20260504" defer></script>
+  <script src="/js/gallery-ux.js?v=20260504" defer></script>
   <!-- Географічні дані — завантажуються асинхронно -->
   <script src="/js/data_geo.js" defer></script>
   <!-- Специфікації форм — завантажуються асинхронно -->
@@ -2591,7 +2591,7 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('/sw.js').then(function(reg) {
-      console.log('[SW] Registered:', reg.scope);
+      
     }).catch(function(err) {
       console.warn('[SW] Registration failed:', err);
     });
