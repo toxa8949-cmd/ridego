@@ -1,5 +1,6 @@
 // ── UA PLURALIZATION HELPER ──────────────────────────────
 window.updateHomeStats = function(){ try { var L = (typeof _allListings === 'function') ? _allListings() : []; if (!L.length) return; var c={}, s={}; for (var i=0;i<L.length;i++){ var l=L[i]; if (l.city) c[l.city]=1; var u=l.uid||l.userId||l.sellerId; if (u) s[u]=1; } var nL=L.length, nC=Object.keys(c).length, nS=Object.keys(s).length; var st=function(id,v){ var e=document.getElementById(id); if (e) e.textContent=v; }; st('stat-listings',nL); st('stat-sellers',nS); st('stat-cities',nC); var h=document.getElementById('hero-count-text'); if (h) h.textContent='Більше '+nL+' '+(window.plUk?plUk(nL,['пропозиція','пропозиції','пропозицій']):'пропозицій'); } catch(e){} };
+[300, 1500, 4000, 8000].forEach(function(d){ setTimeout(function(){ if (window.updateHomeStats) window.updateHomeStats(); }, d); });
 window.plUk = function(n, forms) {
   var m10 = Math.abs(n) % 10, m100 = Math.abs(n) % 100;
   if (m10 === 1 && m100 !== 11) return forms[0];
