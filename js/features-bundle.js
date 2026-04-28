@@ -1150,7 +1150,7 @@ function createServiceCard(s){
     )+
     "<div class=\"service-card-body\">"+
     "<div class=\"service-card-cats\">"+cats+"</div>"+
-    "<div class=\"service-card-name\">"+s.name+"</div>"+
+    "<div class=\"service-card-name\">"+window.escHtml(s.name)+"</div>"+
     "<div class=\"service-card-city\"><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand)\"></i>"+s.city+addr+"</div>"+
     "<div class=\"service-card-desc\">"+s.desc+"</div>"+
     "<div class=\"service-card-services\">"+prev+"</div>"+
@@ -1164,7 +1164,7 @@ function createServiceCard(s){
 function _buildSvcDetailHeader(s){
   var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\" style=\"font-size:12px;padding:5px 14px\">"+s.badgeLabel+"</div>":"";
   var cats=s.cats.map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
-  var cityLine=s.city?"<span><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.city+(s.address?", "+s.address:"")+"</span>":"";
+  var cityLine=s.city?"<span><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.city)+(s.address?", "+window.escHtml(s.address):"")+"</span>":"";
   var hoursLine=s.hours?"<span><i class=\"fa-solid fa-clock\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.hours+"</span>":"";
   var phoneLine=s.phone?"<span><i class=\"fa-solid fa-phone\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.phone+"</span>":"";
   var btnPhone=s.phone?"<button class=\"btn-primary\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\u260e\ufe0f '+s.phone)\"><i class=\"fa-solid fa-phone\" style=\"margin-right:6px\"></i>\u0417\u0430\u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443\u0432\u0430\u0442\u0438</button>":"";
@@ -1172,7 +1172,7 @@ function _buildSvcDetailHeader(s){
   var btnShop=s.sellerId?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showSeller('"+s.sellerId+"')\"><i class=\"fa-solid fa-store\" style=\"margin-right:6px\"></i>Магазин</button>":"";
 
   var btnMsg = s.uid
-    ? "<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"_openSvcChat('"+s.uid+"','"+s.name+"')\"><i class=\"fa-solid fa-comment\" style=\"margin-right:6px\"></i>Написати</button>"
+    ? "<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" data-uid=\""+window.escAttr(s.uid)+"\" data-name=\""+window.escAttr(s.name||'')+"\" onclick=\"_openSvcChat(this.dataset.uid,this.dataset.name)\"><i class=\"fa-solid fa-comment\" style=\"margin-right:6px\"></i>Написати</button>"
     : "";
 
   var coverHtml;
@@ -1190,7 +1190,7 @@ function _buildSvcDetailHeader(s){
     : "";
   return "<div style=\"position:relative\">" + coverHtml + editPhotoBtn + "</div>"+
     "<div><div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">"+cats+"</div>"+
-    "<div class=\"service-detail-name\">"+s.name+"</div>"+
+    "<div class=\"service-detail-name\">"+window.escHtml(s.name)+"</div>"+
     "<div style=\"display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-muted);margin-bottom:16px\">"+cityLine+hoursLine+phoneLine+"</div>"+
     "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">"+btnPhone+btnMsg+btnTg+btnShop+"</div></div>";
 }
@@ -1281,7 +1281,7 @@ function _buildSvcDetailBody(s){
   return "<div style=\"display:flex;flex-direction:column;gap:20px\">"+
     "<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:24px\">"+
     "<div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-circle-info\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u0440\u043e \u0441\u0435\u0440\u0432\u0456\u0441</div>"+
-    "<p style=\"font-size:14px;line-height:1.8;color:var(--text-muted)\">"+s.desc+"</p></div>"+
+    "<p style=\"font-size:14px;line-height:1.8;color:var(--text-muted)\">"+window.escHtml(s.desc||'')+"</p></div>"+
     "<div><div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-list-check\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u043e\u0441\u043b\u0443\u0433\u0438 \u0442\u0430 \u0446\u0456\u043d\u0438</div>"+
     "<div class=\"service-services-list\">"+svcList+"</div></div></div>"+
     "<div style=\"display:flex;flex-direction:column;gap:16px\">"+
@@ -1577,8 +1577,8 @@ function _mysvcCard(s) {
     + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">'
     + '<div class="mysvc-hero-left">'
     + '<div class="mysvc-hero-icon">'+s.icon+'</div>'
-    + '<div><div class="mysvc-hero-title">'+s.name+'</div>'
-    + '<div class="mysvc-hero-meta"><i class="fa-solid fa-location-dot" style="margin-right:5px;color:var(--brand)"></i>'+s.city+(s.address?', '+s.address:'')+'</div>'
+    + '<div><div class="mysvc-hero-title">'+window.escHtml(s.name)+'</div>'
+    + '<div class="mysvc-hero-meta"><i class="fa-solid fa-location-dot" style="margin-right:5px;color:var(--brand)"></i>'+window.escHtml(s.city||'')+(s.address?', '+window.escHtml(s.address):'')+'</div>'
     + (s.hours?'<div class="mysvc-hero-meta"><i class="fa-solid fa-clock" style="margin-right:5px;color:var(--brand)"></i>'+s.hours+'</div>':'')
     + '</div></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
