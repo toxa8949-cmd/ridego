@@ -851,7 +851,7 @@ function _renderMessages(msgs, chat) {
         surchargeHtml = '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">\u0411\u0435\u0437 \u0434\u043e\u043f\u043b\u0430\u0442\u0438</div>';
       }
       var commentHtml = ex.comment
-        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">' + ex.comment + '</div>'
+        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">' + window.escHtml(ex.comment) + '</div>'
         : '';
       var viewBtn = ex.offerId
         ? '<div onclick="showDetail(\'' + ex.offerId + '\')" style="cursor:pointer;width:28px;height:28px;border-radius:7px;background:var(--dark3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;color:var(--brand)"></i></div>'
