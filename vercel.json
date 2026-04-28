@@ -23,7 +23,7 @@
         { "source": "/favicon.(.*)", "headers": [ { "key": "Cache-Control", "value": "public, max-age=86400" } ] },
         { "source": "/(.*).html", "headers": [ { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }, { "key": "X-Robots-Tag", "value": "index, follow" } ] },
         { "source": "/ridego-admin.html", "headers": [ { "key": "X-Robots-Tag", "value": "noindex, nofollow" }, { "key": "Cache-Control", "value": "no-store" } ] },
-        { "source": "/404.html", "headers": [ { "key": "X-Robots-Tag", "value": "noindex, nofollow" }, { "key": "Cache-Control", "value": "public, max-age=3600" } ] }
+        { "source": "/404.html", "headers": [ { "key": "X-Robots-Tag", "value": "noindex, nofollow" }, { "key": "Cache-Control", "value": "no-store, must-revalidate" } ] }
     ],
     "rewrites": [
         { "source": "/manifest.json", "destination": "/manifest.json" },
@@ -80,7 +80,7 @@
         { "source": "/kukirin-g4-kupit", "destination": "/api/category?page=kukirin-g4-kupit" },
         { "source": "/seller/:uid", "destination": "/api/seller?uid=:uid" },
         { "source": "/service/:id", "destination": "/api/service?id=:id" },
-        { "source": "/(.*)", "destination": "/index.html" }
+        { "source": "/:path*", "destination": "/index.html" }
     ],
     "redirects": [
         { "source": "/:path+/", "destination": "/:path+", "permanent": true },
