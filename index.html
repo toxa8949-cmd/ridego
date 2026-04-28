@@ -120,9 +120,9 @@
 <!-- Leaflet JS — завантажується на вимогу через geo.js _loadLeaflet() -->
 <!-- QRCode — завантажується на вимогу через showListingQR() -->
 
-  <link rel="stylesheet" href="/css/main.css?v=20260501">
+  <link rel="stylesheet" href="/css/main.css?v=20260502">
   <!-- Preload критичних ресурсів -->
-  <link rel="preload" href="/css/main.css?v=20260501" as="style">
+  <link rel="preload" href="/css/main.css?v=20260502" as="style">
 <!-- Тема: виконується СИНХРОННО до рендеру body — усуває flash темної теми -->
 <script>
 (function(){
@@ -498,15 +498,15 @@
     <div class="hero-content fade-up">
       <div class="hero-badge"><i class="fa-solid fa-bolt"></i> №1 маркетплейс електротранспорту</div>
       <h1>Рухайся в майбутнє<br><span>без заторів</span></h1>
-      <p>Купуй та продавай електросамокати, велосипеди та скутери. Більше 5 800 пропозицій по всій Україні.</p>
+      <p>Купуй та продавай електросамокати, велосипеди та скутери. <span id="hero-count-text">Більше 70 пропозицій</span> по всій Україні.</p>
       <div class="hero-btns">
         <button class="btn-primary" onclick="showPage('catalog')"><i class="fa-solid fa-search" style="margin-right:8px"></i>Переглянути оголошення</button>
         <button class="btn-outline" href="https://www.ridego.com.ua/add" onclick="event.preventDefault();showPage('add')"><i class="fa-solid fa-plus" style="margin-right:8px"></i>Подати оголошення</button>
       </div>
       <div class="hero-stats">
-        <div class="stat-item"><span class="stat-num">100+</span><div class="stat-label">Оголошень</div></div>
-        <div class="stat-item"><span class="stat-num">12 000+</span><div class="stat-label">Покупців</div></div>
-        <div class="stat-item"><span class="stat-num">24 міста</span><div class="stat-label">По Україні</div></div>
+        <div class="stat-item"><span class="stat-num" id="stat-listings">70</span><div class="stat-label">Оголошень</div></div>
+        <div class="stat-item"><span class="stat-num" id="stat-sellers">20</span><div class="stat-label">Продавців</div></div>
+        <div class="stat-item"><span class="stat-num" id="stat-cities">30</span><div class="stat-label">Міст України</div></div>
       </div>
     </div>
   </div>
@@ -2541,12 +2541,12 @@
 </div>
 
   <!-- RideGO JS bundles -->
-  <script src="/js/core-bundle.js?v=20260501" defer></script>
-  <script src="/js/pages-bundle.js?v=20260501" defer></script>
-  <script src="/js/user-bundle.js?v=20260501" defer></script>
-  <script src="/js/features-bundle.js?v=20260501" defer></script>
-  <script src="/js/extra.js?v=20260501" defer></script>
-  <script src="/js/gallery-ux.js?v=20260501" defer></script>
+  <script src="/js/core-bundle.js?v=20260502" defer></script>
+  <script src="/js/pages-bundle.js?v=20260502" defer></script>
+  <script src="/js/user-bundle.js?v=20260502" defer></script>
+  <script src="/js/features-bundle.js?v=20260502" defer></script>
+  <script src="/js/extra.js?v=20260502" defer></script>
+  <script src="/js/gallery-ux.js?v=20260502" defer></script>
   <!-- Географічні дані — завантажуються асинхронно -->
   <script src="/js/data_geo.js" defer></script>
   <!-- Специфікації форм — завантажуються асинхронно -->
