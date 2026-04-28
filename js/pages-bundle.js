@@ -836,7 +836,7 @@ function createShopBanner(s) {
         ${s.name}
         <span class="shop-banner-verified">✓ Верифіковано</span>
       </div>
-      <div class="shop-banner-desc">${s.desc || 'Офіційний магазин електротранспорту'}</div>
+      <div class="shop-banner-desc">${window.escHtml(s.desc || 'Офіційний магазин електротранспорту')}</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         ${(s.tags||[]).map(t=>`<span style="background:var(--brand-dim);color:var(--brand);font-size:11px;font-weight:600;padding:2px 9px;border-radius:50px">${t}</span>`).join('')}
       </div>
@@ -1122,7 +1122,7 @@ function renderSellerPage(id) {
     : '<span class="seller-verified-badge"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Перевірений</span>';
   document.getElementById('seller-page-desc').textContent = s.desc || '';
   document.getElementById('seller-page-city').innerHTML =
-    `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>${s.city || ''}`;
+    `<i class="fa-solid fa-location-dot" style="color:var(--brand);margin-right:5px"></i>${window.escHtml(s.city || '')}`;
   document.getElementById('seller-page-since').innerHTML =
     `<i class="fa-solid fa-calendar" style="color:var(--brand);margin-right:5px"></i>На сайті з ${s.since || ''}`;
   const listings = _allListings().filter(l => l && l.seller === s.name && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive');
@@ -1151,8 +1151,8 @@ function renderSellerPage(id) {
           <div style="display:flex;align-items:center;gap:16px">
             <div style="width:56px;height:56px;border-radius:14px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;font-size:24px">${sellerSvc.icon}</div>
             <div>
-              <div style="font-size:18px;font-weight:800;margin-bottom:4px">${sellerSvc.name}</div>
-              <div style="font-size:13px;color:var(--text-muted)">${sellerSvc.city} · ${sellerSvc.hours || ''}</div>
+              <div style="font-size:18px;font-weight:800;margin-bottom:4px">${window.escHtml(sellerSvc.name)}</div>
+              <div style="font-size:13px;color:var(--text-muted)">${window.escHtml(sellerSvc.city)} · ${window.escHtml(sellerSvc.hours || '')}</div>
             </div>
           </div>
           <button class="btn-primary" style="padding:11px 24px" onclick="showServiceDetail('${sellerSvc.id}')">
@@ -1160,7 +1160,7 @@ function renderSellerPage(id) {
           </button>
         </div>
         <div class="service-services-list">
-          ${sellerSvc.services.map(sv => `<div class="svc-list-item"><div><div class="svc-list-name">${sv.name}</div><div class="svc-list-desc">${sv.desc}</div></div><div class="svc-list-price">${sv.price}</div></div>`).join('')}
+          ${sellerSvc.services.map(sv => `<div class="svc-list-item"><div><div class="svc-list-name">${window.escHtml(sv.name)}</div><div class="svc-list-desc">${window.escHtml(sv.desc)}</div></div><div class="svc-list-price">${window.escHtml(sv.price)}</div></div>`).join('')}
         </div>`;
     }
   }
