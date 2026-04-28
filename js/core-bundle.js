@@ -1162,7 +1162,7 @@ function createCard(l, backPage) {
           </div>
         </div>
         <div style="display:flex;gap:4px;align-items:center">
-          <button class="fav-btn compare-btn-card" id="cmp-btn-${_esc(l.id)}"
+          <button class="fav-btn compare-btn-card"
             onclick="event.stopPropagation();toggleCompare('${_esc(l.id)}',this)"
             style="font-size:13px;opacity:.5" title="\u041f\u043e\u0440\u0456\u0432\u043d\u044f\u0442\u0438">
             <i class="fa-solid fa-scale-balanced"></i>
