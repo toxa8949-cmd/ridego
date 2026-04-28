@@ -1129,7 +1129,7 @@ function filterServices(){
   var cLbl=document.getElementById("svc-city-select")?document.getElementById("svc-city-select").value:"";
   var mLbl=currentServiceFilter||(cLbl?"\u041c\u0456\u0441\u0442\u043e: "+cLbl:"\u0412\u0441\u0456 \u0441\u0435\u0440\u0432\u0456\u0441\u0438");
   if(lbl)lbl.textContent=mLbl;
-  if(sub)sub.textContent="\u0417\u043d\u0430\u0439\u0434\u0435\u043d\u043e: "+filtered.length+" \u0441\u0435\u0440\u0432\u0456\u0441\u0456\u0432"+(cLbl?" \u2022 "+cLbl:"");
+  if(sub)sub.textContent="\u0417\u043d\u0430\u0439\u0434\u0435\u043d\u043e: "+filtered.length+" "+(window.plUk?window.plUk(filtered.length,["\u0441\u0435\u0440\u0432\u0456\u0441","\u0441\u0435\u0440\u0432\u0456\u0441\u0438","\u0441\u0435\u0440\u0432\u0456\u0441\u0456\u0432"]):"\u0441\u0435\u0440\u0432\u0456\u0441\u0456\u0432")+(cLbl?" \u2022 "+cLbl:"");
   if(!filtered.length){grid.innerHTML="";if(empty)empty.style.display="";return;}
   if(empty)empty.style.display="none";
   grid.innerHTML=filtered.map(function(s){return createServiceCard(s);}).join("");
