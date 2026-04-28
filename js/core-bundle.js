@@ -6,6 +6,13 @@ window.plUk = function(n, forms) {
   return forms[2];
 };
 
+// ── HTML ESCAPE HELPERS (XSS prevention) ────────────────
+window.escHtml = function(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+};
+window.escAttr = window.escHtml;
+
 // ── HERO ПОШУК ─────────────────────────────────────────────
 function heroSearch() {
   var q = (document.getElementById('hero-search-input') || {}).value || '';
@@ -542,8 +549,8 @@ function _renderCitySuggestions(results) {
   sugEl.innerHTML = results.map(function(r) {
     var safe = r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return '<div class="city-sug-item" onclick="selectCitySuggestion(\'' + safe + '\')">'
-      + '<div style="font-size:14px;font-weight:600">' + r.name + '</div>'
-      + (r.sub ? '<div style="font-size:12px;color:var(--text-muted)">' + r.sub + '</div>' : '')
+      + '<div style="font-size:14px;font-weight:600">' + window.escHtml(r.name) + '</div>'
+      + (r.sub ? '<div style="font-size:12px;color:var(--text-muted)">' + window.escHtml(r.sub) + '</div>' : '')
       + '</div>';
   }).join('');
   sugEl.style.display = '';
@@ -1698,8 +1705,8 @@ function _renderHomeShops() {
   shopsScroll.innerHTML = shops.slice(0, 8).map(function(s) {
     return '<div onclick="showServiceDetail(\'' + s.id + '\')" style="flex-shrink:0;width:160px;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:box-shadow .2s;text-align:center" onmouseover="this.style.boxShadow=\'0 4px 20px rgba(0,0,0,.15)\'" onmouseout="this.style.boxShadow=\'\'">'
       + '<div style="font-size:32px;margin-bottom:8px">' + (s.icon || '🔧') + '</div>'
-      + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s.name + '</div>'
-      + '<div style="font-size:11px;color:var(--text-muted)">' + (s.city || '') + '</div>'
+      + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + window.escHtml(s.name) + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted)">' + window.escHtml(s.city || '') + '</div>'
       + (s.badge ? '<div style="margin-top:6px;font-size:10px;background:var(--brand-dim);color:var(--brand);padding:2px 8px;border-radius:50px;font-weight:700">' + (s.badgeLabel || s.badge) + '</div>' : '')
       + '</div>';
   }).join('');
@@ -1745,7 +1752,7 @@ function createHomeSvcCard(s) {
     )
     +"<div style=\"flex:1;min-width:0\">"
     +"<div style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">"
-    +"<div class=\"home-svc-name\">"+s.name+"</div>"+badge+"</div>"
+    +"<div class=\"home-svc-name\">"+window.escHtml(s.name)+"</div>"+badge+"</div>"
     +"<div class=\"home-svc-city\">📍 "+(s.city||"")+(s.address?" \u00b7 "+s.address:"")+"</div>"
     +"</div></div>"
     +"<div class=\"home-svc-cats\">"+cats+"</div>"
