@@ -960,7 +960,7 @@ function showPage(page, sellerId) {
   if (pageSEO[page]) {
     var _pageUrl = 'https://www.ridego.com.ua' + (page === 'home' ? '/' : '/' + page);
     var _seoT=pageSEO[page].title,_seoD=pageSEO[page].desc,_seoI=null;if(page==='catalog'&&route){if(route.cat){var _slug=Object.keys(CAT_SLUGS||{}).find(function(k){return CAT_SLUGS[k]===route.cat;});if(_slug)_pageUrl='https://www.ridego.com.ua/category/'+_slug;try{var _L=(typeof _allListings==='function')?_allListings():[];var _nC=_L.filter(function(x){return x&&x.cat===route.cat;}).length;var _wC=(typeof window.plUk==='function'&&_nC>0)?(' — '+_nC+' '+window.plUk(_nC,['оголошення','оголошення','оголошень'])):'';_seoT=route.cat+_wC+' в Україні';_seoD='Купити '+route.cat.toLowerCase()+' в Україні. '+(_nC>0?_nC+' актуальних оголошень':'Актуальні оголошення')+' від перевірених продавців на RideGO.';}catch(e){}}else if(route.brand){_seoT=(route.brand.charAt(0).toUpperCase()+route.brand.slice(1))+(route.model?' '+route.model.toUpperCase().replace(/-/g,' '):'')+' — купити в Україні';_seoD='Купити '+route.brand+(route.model?' '+route.model:'')+' в Україні на маркетплейсі RideGO.';}}_updateSEO({title:_seoT,desc:_seoD,img:_seoI,url:_pageUrl});
-    _setListingSchema(null);
+    _setListingSchema(null); if (typeof _setBreadcrumb === 'function') { try { var _bcCat = (typeof route!=='undefined' && route && route.cat) ? route.cat : (typeof selectedCat!=='undefined' ? selectedCat : null); var _bcItems = [{name:'Головна',url:'https://www.ridego.com.ua/'},{name:'Каталог',url:'https://www.ridego.com.ua/catalog'}]; if(_bcCat) _bcItems.push({name:_bcCat}); _setBreadcrumb(_bcItems); } catch(e){} }
     _setNewsSchema(null); } else if (page === 'detail' && id) { try { var _l = (typeof _allListings==='function'?_allListings():[]).find(function(x){return x && x.id === id;}); if (_l) { var _ttl = (_l.title||'Оголошення') + (_l.price ? ' — ' + _l.price + ' грн' : '') + ' | RideGO'; var _dsc = (_l.title||'') + '. ' + (_l.cat||'') + (_l.brand?', '+_l.brand:'') + (_l.city?', '+_l.city:'') + '. Купити на маркетплейсі RideGO.'; var _img = (_l.photos && _l.photos[0]) || _l.img || 'https://ridego.com.ua/og-image.png'; _updateSEO({ title: _ttl, desc: _dsc, img: _img, url: 'https://www.ridego.com.ua/listing/' + id }); } } catch(e){} } else if (page === 'seller' && id) { try { var _sid = String(id).replace(/^uid:/,''); var _s = (window._fbSellers||[]).find(function(x){return x && (x.id === _sid || x.uid === _sid);}); if (_s) { _updateSEO({ title: (_s.name||'Продавець') + ' — продавець на RideGO', desc: 'Оголошення продавця ' + (_s.name||'') + ' на маркетплейсі електротранспорту RideGO.', img: _s.photoUrl || 'https://ridego.com.ua/og-image.png', url: 'https://www.ridego.com.ua/seller/' + _sid }); } } catch(e){}
   }
   if (page === 'seller' && sellerId) {
@@ -1607,7 +1607,7 @@ function renderHomeListings() {
   var all = _allListings().filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'inactive' && l.status !== 'sold'; });
   _cleanExpiredPromos(all);
 
-  if (typeof _setHomeBreadcrumbSchema === 'function') _setHomeBreadcrumbSchema();
+  if (typeof _setHomeBreadcrumbSchema === 'function') _setHomeBreadcrumbSchema(); if (typeof _setBreadcrumb === 'function') _setBreadcrumb([{name:'Головна',url:'https://www.ridego.com.ua/'}]);
 
   var cats = {
     'Електросамокати': 'cnt-scooters',
