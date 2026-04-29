@@ -760,7 +760,7 @@ function _updateSEO(opts) {
   _setOG('url', url);
   _setMeta('twitter:title', title);
   _setMeta('twitter:description', desc);
-  _setMeta('twitter:image', img);
+  _setMeta('twitter:image', img); _setMeta('twitter:card','summary_large_image'); _setOG('image:width','1200'); _setOG('image:height','630'); _setOG('image:alt', title); _setOG('type', opts.type||'website');
 
   var canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = url;
