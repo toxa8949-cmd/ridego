@@ -1361,7 +1361,7 @@ function showDetail(id, _skipPush) {
     img: _cdnOg(l.img) || l.img || '',
     url: 'https://www.ridego.com.ua/listing/' + id
   });
-  _setListingSchema(l);
+  _setListingSchema(l); if (typeof _setBreadcrumb === 'function') { try { _setBreadcrumb([{name:'Головна',url:'https://www.ridego.com.ua/'},{name:l.cat||'Каталог',url:'https://www.ridego.com.ua/catalog'+(l.cat?'?cat='+encodeURIComponent(l.cat):'')},{name:l.title||'Оголошення'}]); } catch(e){} }
 
   if (window._db && id && typeof id === 'string') {
     var today = new Date().toISOString().slice(0,10);
