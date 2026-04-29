@@ -934,7 +934,7 @@ window.addEventListener('popstate', function(e) {
   }
 });
 
-function showPage(page, sellerId) {
+function showPage(page, sellerId) { var route = (typeof _parsePath === 'function') ? _parsePath() : null;
   // Cleanup: відписуємось від messages listener коли покидаємо чат
   if (page !== 'messages' && typeof _chatUnsubscribe === 'function') {
     _chatUnsubscribe();
