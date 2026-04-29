@@ -39,7 +39,7 @@ function doSocialLogin(provider) {
             currentUser.type    = d.type || 'personal';
           } else {
             window._db.collection('users').doc(user.uid).set({
-              name: user.displayName, email: user.email, uid: user.uid,
+              name: user.displayName, email: user.email, uid: user.uid, termsAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(), marketingOptIn: (function(){var _c=document.getElementById('reg-marketing');return !!(_c && _c.checked);})(), marketingOptInAt: (function(){var _c=document.getElementById('reg-marketing');return (_c && _c.checked) ? firebase.firestore.FieldValue.serverTimestamp() : null;})(),
               type: 'personal', listings: 0, status: 'active',
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -99,12 +99,12 @@ function showRegister() {
     <div class="form-group"><label>Ім'я</label><input type="text" class="form-input" id="reg-name" placeholder="Ваше ім'я"></div>
     <div class="form-group"><label>Email</label><input type="email" class="form-input" id="reg-email" placeholder="your@email.com"></div>
     <div class="form-group"><label>Пароль</label><input type="password" class="form-input" id="reg-pass" placeholder="Мін. 8 символів"></div>
-    <button class="btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:8px" onclick="doRegister()">Зареєструватись</button>
+    <div class="form-group" style="margin-top:4px"><label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;color:var(--text-muted);font-weight:400"><input type="checkbox" id="reg-marketing" style="margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer"><span>Хочу отримувати інформацію про акції, новини та оновлення RideGO</span></label></div><div style="font-size:12px;line-height:1.45;color:var(--text-muted);margin-top:2px;margin-bottom:4px">Натискаючи «Зареєструватись» або «Продовжити з Google», ви приймаєте Угоду користувача та Політику конфіденційності.</div><button class="btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:8px" onclick="doRegister()">Зареєструватись</button>
   `;
   document.querySelector('.auth-switch').innerHTML = 'Вже є акаунт? <a onclick="resetAuthForm()">Увійти</a>';
 }
 function resetAuthForm() { showPage('profile'); }
-function doRegister() {
+function doRegister() { var _mkt = !!(document.getElementById('reg-marketing') && document.getElementById('reg-marketing').checked);
   var name  = (document.getElementById('reg-name')  || {}).value || '';
   var email = (document.getElementById('reg-email') || {}).value || '';
   var pass  = (document.getElementById('reg-pass')  || {}).value || '';
@@ -117,7 +117,7 @@ function doRegister() {
       .then(function(cred) {
         return cred.user.updateProfile({displayName: name}).then(function() {
           return window._db.collection('users').doc(cred.user.uid).set({
-            name: name, email: email, uid: cred.user.uid,
+            name: name, email: email, uid: cred.user.uid, termsAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(), marketingOptIn: _mkt, marketingOptInAt: _mkt ? firebase.firestore.FieldValue.serverTimestamp() : null,
             type: 'personal', listings: 0, status: 'active',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
