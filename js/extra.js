@@ -804,7 +804,7 @@ function _setListingSchema(l) {
   document.head.appendChild(s);
 }
 
-function _setNewsSchema(n) {
+function _setBreadcrumb(items){if(!Array.isArray(items)||items.length===0)return;var ex=document.getElementById('schema-breadcrumb-list');if(ex)ex.remove();var sc={'@context':'https://schema.org','@type':'BreadcrumbList','itemListElement':items.map(function(it,idx){var el={'@type':'ListItem','position':idx+1,'name':it.name};if(it.url)el.item=it.url;return el;})};var s=document.createElement('script');s.type='application/ld+json';s.id='schema-breadcrumb-list';s.textContent=JSON.stringify(sc);document.head.appendChild(s);} function _setNewsSchema(n) {
   var existing = document.getElementById('schema-news');
   if (existing) existing.remove();
   if (!n) return;
