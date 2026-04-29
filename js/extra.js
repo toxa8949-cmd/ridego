@@ -795,7 +795,7 @@ function _setListingSchema(l) {
       'availability': 'https://schema.org/InStock',
       'seller': { '@type': 'Person', 'name': l.sellerName || l.seller || '' }
     },
-    'brand': { '@type': 'Brand', 'name': l.brand || 'RideGO' }
+    'brand': { '@type': 'Brand', 'name': l.brand || 'RideGO' }, 'category': l.cat || undefined, 'sku': l.id || undefined, 'url': l.id ? ('https://www.ridego.com.ua/listing/'+l.id) : undefined, 'itemCondition': (l.condition && /[Нн]ов/.test(l.condition)) ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition'
   };
   var s = document.createElement('script');
   s.type = 'application/ld+json';
