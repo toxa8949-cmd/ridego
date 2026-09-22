@@ -1,16 +1,31 @@
-// build-min.js — мінімізація JS і CSS ПРЯМО НА МІСЦі, під час збірки на Vercel.
+// build-min.js — збірка для Vercel: мінімізація JS/CSS + статика в public/.
 //
-// Навіщо на місці, а не в dist/:
-//   Старий build.js збирав окрему теку dist/ зі списками файлів для копіювання.
-//   У цих списках бракувало api/faq.js, api/news.js, og-image.png та PWA-іконок —
-//   тобто після збірки /faq, /news і картинки для соцмереж віддавали б 404.
-//   Мінімізація на місці не має списків копіювання взагалі, тож і забути нічого не можна.
+// ЯК ЦЕ ПРАЦЮЄ
+//   1. Мінімізуємо js/*.js і css/main.css прямо на місці.
+//   2. Рахуємо хеш вмісту кожного файлу і підставляємо в index.html як ?v=<хеш>.
+//   3. Піднімаємо версію кешу в sw.js.
+//   4. Копіюємо статику в public/ — саме звідти Vercel її роздає.
 //
-// У Git залишається звичайний, читабельний код. Мінімізується лише та копія,
-// яку Vercel розгортає. Локально нічого запускати не треба.
+//   Тека api/ у public/ НЕ потрапляє: серверні функції Vercel бере з кореневої
+//   api/, а якби їхній код опинився в статиці — його можна було б просто
+//   відкрити в браузері як текст.
 //
-// Якщо деплой колись впаде на цьому кроці — приберіть "buildCommand" з vercel.json
-// і видаліть package.json. Сайт повернеться до роботи без мінімізації.
+//   Копіюємо за принципом «усе, крім переліченого» (EXCLUDE нижче), а не за
+//   списком потрібних файлів. Старий build.js робив навпаки — і в його списку
+//   бракувало api/faq.js, api/news.js, og-image.png та PWA-іконок, тобто після
+//   збірки /faq, /news і прев'ю для соцмереж віддавали б 404.
+//
+//   index.html у корені теж лишається мінімізованим і з хешами — його читає
+//   api/_shell.js під час рендеру сторінок, тож версії ресурсів збігаються
+//   з тим, що віддається зі статики.
+//
+// У Git залишається звичайний, читабельний код: змінюється тільки та копія,
+// яку Vercel збирає в себе. Локально нічого запускати не треба.
+//
+// ЯКЩО ДЕПЛОЙ ВПАДЕ НА ЦЬОМУ КРОЦІ
+//   Приберіть з vercel.json рядки "buildCommand", "installCommand" і
+//   "outputDirectory", і видаліть package.json. Сайт повернеться до роботи
+//   без мінімізації — так, як було до цих змін.
 
 const fs     = require('fs');
 const path   = require('path');
@@ -143,6 +158,59 @@ async function run() {
     fs.writeFileSync(swPath, sw);
     console.log(`  ✓ sw.js: версія кешу → ridego-v${buildTag}`);
   }
+
+  // ── Статика → public/ ────────────────────────────────────────
+  // Vercel із buildCommand вимагає теку з результатом збірки.
+  console.log('\n── public/: статика для роздачі ───────────────');
+  const OUT = path.join(ROOT, 'public');
+
+  // Усе, що НЕ має потрапити в публічну роздачу.
+  const EXCLUDE = new Set([
+    'api',             // серверні функції — Vercel бере їх з кореня
+    'public',          // сама тека призначення
+    'node_modules',
+    '.git', '.github', '.vercel',
+    'package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock',
+    'build-min.js',    // скрипти збірки
+    'build.js',
+    'vercel.json',
+    '.vercelignore', '.gitignore',
+  ]);
+
+  fs.rmSync(OUT, { recursive: true, force: true });
+  fs.mkdirSync(OUT, { recursive: true });
+
+  let copied = 0;
+  function copyDir(from, to) {
+    for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+      if (from === ROOT && EXCLUDE.has(entry.name)) continue;
+      const src = path.join(from, entry.name);
+      const dst = path.join(to, entry.name);
+      if (entry.isDirectory()) {
+        fs.mkdirSync(dst, { recursive: true });
+        copyDir(src, dst);
+      } else {
+        fs.copyFileSync(src, dst);
+        copied++;
+      }
+    }
+  }
+  copyDir(ROOT, OUT);
+  console.log(`  ✓ скопійовано файлів: ${copied}`);
+
+  // Страхування: якщо серверний код раптом опинився у статиці — зупиняємо
+  // збірку, а не викладаємо його в публічний доступ.
+  if (fs.existsSync(path.join(OUT, 'api'))) {
+    console.error('✗ api/ потрапила в public/ — це виклало б серверний код назовні.');
+    process.exit(1);
+  }
+  for (const must of ['index.html', 'js/core-bundle.js', 'css/main.css', 'og-image.png', 'manifest.json', 'sw.js', 'robots.txt']) {
+    if (!fs.existsSync(path.join(OUT, must))) {
+      console.error(`✗ у public/ немає обов'язкового файлу: ${must}`);
+      process.exit(1);
+    }
+  }
+  console.log('  ✓ перевірка вмісту public/ пройдена');
 
   const saved = before - after;
   console.log('\n───────────────────────────────────────────────');
