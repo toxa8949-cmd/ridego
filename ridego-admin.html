@@ -1115,6 +1115,23 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
             <div class="form-group"><label class="form-label">Безк. слотів/місяць</label><input class="form-input" type="number" id="set-monthly-free" value="1"></div>
           </div>
           <div class="chart-card">
+            <div class="card-title" style="margin-bottom:8px">🏷️ Бренди в оголошеннях</div>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px">
+              До вересня 2026 форма подачі не зберігала бренд окремим полем — він потрапляв
+              лише в таблицю характеристик. Через це сторінки брендів і моделей не знаходили
+              такі оголошення. Ця кнопка визначає бренд із заголовка і дописує його тим
+              оголошенням, де поле порожнє. Уже заповнені значення не чіпаються.
+            </p>
+            <button class="btn btn-outline" style="width:100%;margin-bottom:8px" onclick="backfillBrands(true)">
+              <i class="fa-solid fa-magnifying-glass"></i> Спершу показати, що зміниться
+            </button>
+            <button class="btn" style="width:100%" id="backfill-apply-btn" onclick="backfillBrands(false)" disabled>
+              <i class="fa-solid fa-check"></i> Записати в базу
+            </button>
+            <div id="backfill-result" style="margin-top:14px;font-size:13px;line-height:1.7"></div>
+          </div>
+
+          <div class="chart-card">
             <div class="card-title" style="margin-bottom:20px">🔐 Безпека</div>
             <div class="form-group"><label class="form-label">Новий пароль</label><input class="form-input" type="password" id="set-new-pass" placeholder="••••••••"></div>
             <div class="form-group"><label class="form-label">Підтвердити</label><input class="form-input" type="password" id="set-new-pass2" placeholder="••••••••"></div>
@@ -2256,6 +2273,111 @@ function saveSettings(){
     .then(function(){showToast('Налаштування збережено','success');logAction('save_settings','');})
     .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
+
+// ═══ ЗАПОВНЕННЯ ПОЛЯ brand У СТАРИХ ОГОЛОШЕННЯХ ═══
+// Навіщо: до вересня 2026 форма подачі клала бренд лише в таблицю
+// характеристик, а окремого поля brand у документі не було. Сторінки
+// /brand/:slug і моделей шукають саме це поле, тому не знаходили
+// більшість оголошень. Тут визначаємо бренд із заголовка.
+
+var BACKFILL_BRANDS = [
+  'Kukirin','KuKirin','Kugoo','Ninebot','Segway','Dualtron','Minimotors',
+  'Xiaomi','Kaabo','Vsett','Ausom','Ardis','Yume','Acer','Ado','Aima',
+  'Apollo','Crosser','Likebike','Maxxter','Hiper','Bambi','Forte','Spark',
+  'Musstang','Viper','Lifan','Geon','Bajaj','Honda','Yamaha','Suzuki'
+];
+
+var _backfillPlan = null;
+
+function _detectBrand(title) {
+  var t = String(title || '').toLowerCase();
+  // Найдовші назви перевіряємо першими, щоб "Ninebot (Segway)"
+  // не перетворився на "Segway".
+  var sorted = BACKFILL_BRANDS.slice().sort(function(a, b) { return b.length - a.length; });
+  for (var i = 0; i < sorted.length; i++) {
+    if (t.indexOf(sorted[i].toLowerCase()) !== -1) return sorted[i];
+  }
+  return '';
+}
+
+function backfillBrands(dryRun) {
+  var out = document.getElementById('backfill-result');
+  var applyBtn = document.getElementById('backfill-apply-btn');
+  if (!out) return;
+
+  if (!dryRun && !_backfillPlan) {
+    out.innerHTML = '<span style="color:#f59e0b">Спершу натисніть «показати, що зміниться».</span>';
+    return;
+  }
+  if (!dryRun && !confirm('Записати бренд у ' + _backfillPlan.length + ' оголошень? Наявні значення не змінюються.')) {
+    return;
+  }
+
+  out.innerHTML = dryRun ? 'Читаю оголошення…' : 'Записую…';
+
+  if (dryRun) {
+    _db.collection('listings').where('status', '==', 'active').get().then(function(snap) {
+      var plan = [], skipped = 0, nomatch = 0;
+      snap.forEach(function(doc) {
+        var d = doc.data() || {};
+        if (d.brand && String(d.brand).trim()) { skipped++; return; }
+        var b = _detectBrand(d.title);
+        if (!b) { nomatch++; return; }
+        plan.push({ id: doc.id, title: d.title || '', brand: b });
+      });
+      _backfillPlan = plan;
+      if (applyBtn) applyBtn.disabled = plan.length === 0;
+
+      var counts = {};
+      plan.forEach(function(x) { counts[x.brand] = (counts[x.brand] || 0) + 1; });
+      var rows = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; })
+        .map(function(k) { return '<div>' + _esc(k) + ' — <b>' + counts[k] + '</b></div>'; }).join('');
+
+      out.innerHTML =
+        '<div style="margin-bottom:8px"><b style="color:var(--brand)">' + plan.length + '</b> оголошень отримають бренд</div>' +
+        rows +
+        '<div style="margin-top:8px;color:var(--text-muted)">Уже мають бренд: ' + skipped +
+        ' · бренд у заголовку не впізнано: ' + nomatch + '</div>' +
+        (plan.length ? '<div style="margin-top:8px;color:var(--text-muted)">Приклади: ' +
+          plan.slice(0, 3).map(function(x) { return _esc(x.title.slice(0, 40)) + ' → ' + _esc(x.brand); }).join('; ') + '</div>' : '');
+    }).catch(function(e) {
+      out.innerHTML = '<span style="color:#ef4444">Помилка читання: ' + _esc(e.message) + '</span>';
+    });
+    return;
+  }
+
+  // Запис пачками по 400 — ліміт batch у Firestore 500 операцій.
+  var plan = _backfillPlan, done = 0, failed = 0;
+  var chunks = [];
+  for (var i = 0; i < plan.length; i += 400) chunks.push(plan.slice(i, i + 400));
+
+  var runChunk = function(idx) {
+    if (idx >= chunks.length) {
+      out.innerHTML = '<span style="color:var(--brand)">Готово: записано ' + done +
+        (failed ? ', помилок ' + failed : '') + '.</span>';
+      _backfillPlan = null;
+      if (applyBtn) applyBtn.disabled = true;
+      if (typeof logAction === 'function') logAction('backfill_brands', 'записано брендів: ' + done);
+      return;
+    }
+    var batch = _db.batch();
+    chunks[idx].forEach(function(x) {
+      batch.update(_db.collection('listings').doc(x.id), { brand: x.brand });
+    });
+    batch.commit().then(function() {
+      done += chunks[idx].length;
+      out.innerHTML = 'Записано ' + done + ' з ' + plan.length + '…';
+      runChunk(idx + 1);
+    }).catch(function(e) {
+      failed += chunks[idx].length;
+      out.innerHTML = '<span style="color:#ef4444">Помилка запису: ' + _esc(e.message) + '</span>';
+      runChunk(idx + 1);
+    });
+  };
+  runChunk(0);
+}
+
+
 function changeAdminPass(){
   var p1=document.getElementById('set-new-pass').value;
   var p2=document.getElementById('set-new-pass2').value;

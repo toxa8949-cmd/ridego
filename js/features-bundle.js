@@ -312,6 +312,13 @@ function submitListing() {
       desc: (newL.desc || '').substring(0, 2000),
       time: new Date().toLocaleDateString('uk-UA'),
       seller: (currentUser.name || '').substring(0, 100),
+      // Бренд, модель і рік форма збирала й раніше, але клала лише
+      // в specs.general — як рядок таблиці характеристик. Окремих полів
+      // у документі не було, тож SEO-сторінки брендів і моделей
+      // (api/category.js) не знаходили ці оголошення взагалі.
+      brand: (brand || '').substring(0, 60),
+      model: (model || '').substring(0, 60),
+      year:  (year  || '').substring(0, 10),
       specs: safeSpecs || {},
       img: '',
       imgs: [],
