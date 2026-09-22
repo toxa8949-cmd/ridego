@@ -1,0 +1,13 @@
+{
+  "name": "ridego",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RideGO — маркетплейс електротранспорту України",
+  "scripts": {
+    "build": "node build-min.js"
+  },
+  "devDependencies": {
+    "terser": "^5.31.0",
+    "csso": "^5.0.5"
+  }
+}
