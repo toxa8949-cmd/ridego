@@ -1,3 +1,4 @@
+const { renderShell, adaptLegacyDocument } = require('./_shell');
 // api/home.js — SSR для головної сторінки (боти отримують повний контент)
 const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
@@ -125,19 +126,8 @@ module.exports = async (req, res) => {
   const isBot = BOTS.test(ua);
 
   // Звичайні юзери — віддаємо SPA
-  if (!isBot) {
-    const fs = require('fs');
-    const path = require('path');
-    try {
-      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      return res.status(200).send(html);
-    } catch(e) {
-      res.setHeader('Location', BASE + '/');
-      return res.status(302).end();
-    }
-  }
+  // Гілку «не бот → порожній SPA» прибрано: сторінка тепер одна для всіх.
+
 
   // Боти — SSR
   const [listings, news] = await Promise.all([
@@ -352,5 +342,5 @@ ${itemListSchema ? `<script type="application/ld+json">${itemListSchema}</script
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
-  res.status(200).send(html);
+  res.status(200).send(renderShell(adaptLegacyDocument(html)));
 };

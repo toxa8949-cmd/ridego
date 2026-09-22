@@ -1,3 +1,4 @@
+const { renderShell, adaptLegacyDocument } = require('./_shell');
 const PROJECT = 'ridego-6f981';
 const BASE = 'https://www.ridego.com.ua';
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool|google-structured-data-testing|storebot|developers\.google/i;
@@ -74,15 +75,8 @@ module.exports = async (req, res) => {
 
   const id = getParam(req, 'id').replace(/[^a-zA-Z0-9_-]/g, '');
 
-  if (!isBot) {
-    const fs = require('fs'); const path = require('path');
-    try {
-      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      return res.status(200).send(html);
-    } catch(e) { res.setHeader('Location', `${BASE}/news/${id}`); return res.status(302).end(); }
-  }
+  // Гілку «не бот → порожній SPA» прибрано: сторінка тепер одна для всіх.
+
 
   const [news, related] = await Promise.all([
     getNewsFromFirestore(id),
@@ -241,5 +235,5 @@ ${related.length ? `<div class="related"><h2>Читайте також</h2>${rel
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=86400');
-  res.status(200).send(html);
+  res.status(200).send(renderShell(adaptLegacyDocument(html)));
 };

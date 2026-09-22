@@ -747,6 +747,9 @@ document.addEventListener('visibilitychange', function() {
 });
 
 function _updateSEO(opts) {
+  // Сюди потрапляють уже реальні дані сторінки, тож серверний title
+  // більше не потрібен — знімаємо прапорець і далі працюємо як завжди.
+  window.__SSR_SEO__ = false;
   var title = opts.title ? opts.title + ' — RideGO' : 'RideGO — Маркетплейс електротранспорту України';
   var desc = opts.desc || 'Купуй та продавай електросамокати, велосипеди, скутери. Понад 5800 оголошень по всій Україні.';
   var img = opts.img || 'https://ridego.com.ua/og-image.png';

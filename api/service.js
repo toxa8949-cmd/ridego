@@ -1,3 +1,4 @@
+const { renderShell, adaptLegacyDocument } = require('./_shell');
 const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
@@ -52,18 +53,8 @@ module.exports = async (req, res) => {
 
   const id = getParam(req, 'id').replace(/[^a-zA-Z0-9_-]/g, '');
 
-  if (!isBot) {
-    const fs = require('fs'); const path = require('path');
-    try {
-      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      return res.status(200).send(html);
-    } catch(e) {
-      res.setHeader('Location', `${BASE}/service/${id}`);
-      return res.status(302).end();
-    }
-  }
+  // Гілку «не бот → порожній SPA» прибрано: сторінка тепер одна для всіх.
+
 
   const svc = await getService(id);
   if (!svc) return res.status(404).send('<h1>Сервіс не знайдено</h1>');
@@ -178,5 +169,5 @@ ${svc.services.length ? `
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=86400');
-  res.status(200).send(html);
+  res.status(200).send(renderShell(adaptLegacyDocument(html)));
 };

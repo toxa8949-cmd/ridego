@@ -1,3 +1,4 @@
+const { renderShell, adaptLegacyDocument } = require('./_shell');
 const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 
@@ -81,18 +82,8 @@ module.exports = async (req, res) => {
 
   const uid = getParam(req, 'uid').replace(/[^a-zA-Z0-9_-]/g, '');
 
-  if (!isBot) {
-    const fs = require('fs'); const path = require('path');
-    try {
-      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      return res.status(200).send(html);
-    } catch(e) {
-      res.setHeader('Location', `${BASE}/seller/${uid}`);
-      return res.status(302).end();
-    }
-  }
+  // Гілку «не бот → порожній SPA» прибрано: сторінка тепер одна для всіх.
+
 
   const [seller, listings] = await Promise.all([getSeller(uid), getSellerListings(uid)]);
   if (!seller) return res.status(404).send('<h1>Продавця не знайдено</h1>');
@@ -206,5 +197,5 @@ footer a{color:#1db954;text-decoration:none;margin:0 8px}
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-  res.status(200).send(html);
+  res.status(200).send(renderShell(adaptLegacyDocument(html)));
 };

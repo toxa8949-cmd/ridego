@@ -1,3 +1,4 @@
+const { renderShell, adaptLegacyDocument } = require('./_shell');
 // api/faq.js — SSR для сторінки FAQ
 const BASE = 'https://www.ridego.com.ua';
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool/i;
@@ -47,17 +48,8 @@ const FAQS = [
 
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
-  if (!BOTS.test(ua)) {
-    const fs = require('fs'), path = require('path');
-    try {
-      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-      return res.status(200).send(html);
-    } catch(e) {}
-    res.setHeader('Location', BASE + '/faq');
-    return res.status(302).end();
-  }
+  // Гілку «не бот → порожній SPA» прибрано: сторінка тепер одна для всіх.
+
 
   const faqItems = FAQS.map((f, i) =>
     '<div style="border:1px solid #eee;border-radius:12px;padding:20px 24px;margin-bottom:12px">' +
@@ -122,5 +114,5 @@ module.exports = async (req, res) => {
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
-  res.status(200).send(html);
+  res.status(200).send(renderShell(adaptLegacyDocument(html)));
 };
