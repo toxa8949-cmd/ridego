@@ -115,17 +115,57 @@ async function getListingsByCategory(catName) {
   } catch(e) { return []; }
 }
 
+// Один запит на всі активні оголошення + кеш у пам'яті лямбди.
+// Раніше на кожну назву бренду йшов окремий запит до Firestore
+// (для kukirin — три: Kukirin, KuKirin, Kugoo). Тепер один на всіх.
+let _activeCache = null, _activeCacheAt = 0;
+async function getActiveListings() {
+  if (_activeCache && Date.now() - _activeCacheAt < 60000) return _activeCache;
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`;
+  const body = { structuredQuery: {
+    from:[{collectionId:'listings'}],
+    where:{fieldFilter:{field:{fieldPath:'status'},op:'EQUAL',value:{stringValue:'active'}}},
+    limit:300
+  } };
+  try {
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if (!res.ok) return _activeCache || [];
+    const data = await res.json();
+    _activeCache = data.filter(d=>d.document).map(d=>{
+      const f=d.document.fields||{};
+      return {
+        id: d.document.name.split('/').pop(),
+        title: f.title?.stringValue||'',
+        price: f.price?.integerValue||f.price?.doubleValue||'',
+        city: f.city?.stringValue||'',
+        cat: f.cat?.stringValue||'',
+        condition: f.condition?.stringValue||'',
+        img: f.img?.stringValue||'',
+        brand: f.brand?.stringValue||''
+      };
+    });
+    _activeCacheAt = Date.now();
+    return _activeCache;
+  } catch(e) { return _activeCache || []; }
+}
+
+// ЧОМУ НЕ ЛИШЕ ПО ПОЛЮ brand
+//   У формі додавання оголошення поля «бренд» немає взагалі, тож його
+//   заповнено лише в чотирнадцяти оголошень зі 120 активних. Фільтр
+//   виключно по цьому полю робив бренд-сторінки майже порожніми, хоча
+//   в каталозі такі самокати є. Тому як запасний варіант шукаємо назву
+//   бренду в заголовку оголошення.
 async function getListingsByBrand(brandNames, limit) {
-  const all=[]; const seen=new Set();
-  for (const bn of brandNames) {
-    try {
-      const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`;
-      const body = { structuredQuery: { from:[{collectionId:'listings'}], where:{compositeFilter:{op:'AND',filters:[{fieldFilter:{field:{fieldPath:'status'},op:'EQUAL',value:{stringValue:'active'}}},{fieldFilter:{field:{fieldPath:'brand'},op:'EQUAL',value:{stringValue:bn}}}]}}, limit:limit||30 } };
-      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-      if (res.ok) { const data=await res.json(); data.filter(d=>d.document).forEach(d=>{ const id=d.document.name.split('/').pop(); if(!seen.has(id)){seen.add(id); const f=d.document.fields||{}; all.push({id,title:f.title?.stringValue||'',price:f.price?.integerValue||f.price?.doubleValue||'',city:f.city?.stringValue||'',condition:f.condition?.stringValue||'',img:f.img?.stringValue||''});} }); }
-    } catch(e) {}
-  }
-  return all.slice(0,limit||30);
+  const all = await getActiveListings();
+  const names = (brandNames || []).map(n => String(n).toLowerCase()).filter(Boolean);
+  if (!names.length) return [];
+  const out = all.filter(l => {
+    const b = (l.brand || '').toLowerCase();
+    if (b && names.some(n => b === n)) return true;
+    const t = (l.title || '').toLowerCase();
+    return names.some(n => t.includes(n));
+  });
+  return out.slice(0, limit || 30);
 }
 
 async function getListingsByModel(brandNames, searchTerms, limit) {
@@ -491,7 +531,8 @@ module.exports = async (req, res) => {
     const prodSchema=JSON.stringify({"@context":"https://schema.org","@type":"Product","name":`${br.name||''} ${model.model}`,"description":model.metaDesc,"brand":{"@type":"Brand","name":br.name||''},"offers":{"@type":"AggregateOffer","priceCurrency":"UAH","offerCount":listings.length,"availability":"https://schema.org/InStock","url":`${BASE}/${modelSlug}`}});
     const faqSchema=JSON.stringify({"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":`Скільки коштує ${br.name} ${model.model}?`,"acceptedAnswer":{"@type":"Answer","text":`Ціни на ${br.name} ${model.model} в Україні можна порівняти на маркетплейсі RideGO. Дивіться актуальні оголошення від продавців.`}},{"@type":"Question","name":`Де купити ${br.name} ${model.model} в Україні?`,"acceptedAnswer":{"@type":"Answer","text":`На маркетплейсі RideGO зібрані оголошення ${br.name} ${model.model} від продавців по всій Україні — Київ, Харків, Одеса, Дніпро, Львів та інші міста.`}},{"@type":"Question","name":`Які характеристики ${br.name} ${model.model}?`,"acceptedAnswer":{"@type":"Answer","text":`${br.name} ${model.model}: двигун ${model.power||'—'}, батарея ${model.battery||'—'}, запас ходу ${model.range||'—'}, макс. швидкість ${model.speed||'—'}.`}}]});
 
-    const head=`<title>${escHtml(model.title)}</title><meta name="description" content="${escHtml(model.metaDesc)}"><meta name="keywords" content="${escHtml(br.name)} ${escHtml(model.model)} купити, ${escHtml(br.name)} ${escHtml(model.model)} ціна, ${escHtml(br.name)} ${escHtml(model.model)} Україна, електросамокат ${escHtml(br.name)} ${escHtml(model.model)}, ${escHtml(br.name)} ${escHtml(model.model)} характеристики, ${escHtml(br.name)} ${escHtml(model.model)} відгуки"><meta name="robots" content="index, follow"><link rel="canonical" href="${BASE}/${modelSlug}"><meta property="og:type" content="product"><meta property="og:title" content="${escHtml(br.name)} ${escHtml(model.model)} — купити в Україні | RideGO"><meta property="og:description" content="${escHtml(model.metaDesc)}"><meta property="og:url" content="${BASE}/${modelSlug}"><meta property="og:site_name" content="RideGO"><meta property="og:image" content="${BASE}/og-image.png"><meta property="og:locale" content="uk_UA"><script type="application/ld+json">${bcs}</script><script type="application/ld+json">${prodSchema}</script><script type="application/ld+json">${faqSchema}</script>`;
+    const robotsTag = listings.length ? 'index, follow' : 'noindex, follow';
+    const head=`<title>${escHtml(model.title)}</title><meta name="description" content="${escHtml(model.metaDesc)}"><meta name="keywords" content="${escHtml(br.name)} ${escHtml(model.model)} купити, ${escHtml(br.name)} ${escHtml(model.model)} ціна, ${escHtml(br.name)} ${escHtml(model.model)} Україна, електросамокат ${escHtml(br.name)} ${escHtml(model.model)}, ${escHtml(br.name)} ${escHtml(model.model)} характеристики, ${escHtml(br.name)} ${escHtml(model.model)} відгуки"><meta name="robots" content="${robotsTag}"><link rel="canonical" href="${BASE}/${modelSlug}"><meta property="og:type" content="product"><meta property="og:title" content="${escHtml(br.name)} ${escHtml(model.model)} — купити в Україні | RideGO"><meta property="og:description" content="${escHtml(model.metaDesc)}"><meta property="og:url" content="${BASE}/${modelSlug}"><meta property="og:site_name" content="RideGO"><meta property="og:image" content="${BASE}/og-image.png"><meta property="og:locale" content="uk_UA"><script type="application/ld+json">${bcs}</script><script type="application/ld+json">${prodSchema}</script><script type="application/ld+json">${faqSchema}</script>`;
 
     const body=`<nav class="bc" aria-label="Breadcrumb"><a href="${BASE}">RideGO</a><span>›</span><a href="${BASE}/category/elektrosamokaty">Електросамокати</a><span>›</span><a href="${BASE}/brand/${model.brand}">${escHtml(br.name||'')}</a><span>›</span><span>${escHtml(br.name||'')} ${escHtml(model.model)}</span></nav>
 <h1>⚡ ${escHtml(model.h1)}</h1>
@@ -518,7 +559,8 @@ ${otherModels?`<section style="margin-bottom:28px"><h2 style="font-size:16px;fon
     const faqs=brand.faqItems?JSON.stringify({"@context":"https://schema.org","@type":"FAQPage","mainEntity":brand.faqItems.map(f=>({"@type":"Question","name":f.q,"acceptedAnswer":{"@type":"Answer","text":f.a}}))}):''
     const faqH=brand.faqItems?`<section style="margin-bottom:32px"><h2 style="font-size:19px;font-weight:800;margin-bottom:16px;color:#111">Часті питання про ${escHtml(brand.name)}</h2>${brand.faqItems.map(f=>`<details style="margin-bottom:10px;border:1px solid #eee;border-radius:10px;overflow:hidden"><summary style="padding:14px 18px;font-weight:700;font-size:15px;cursor:pointer;background:#fafafa;color:#111">${escHtml(f.q)}</summary><div style="padding:14px 18px;font-size:14px;color:#555;line-height:1.7">${escHtml(f.a)}</div></details>`).join('')}</section>`:'';
     const relH=brand.relatedSearches?`<section style="margin-bottom:32px"><h2 style="font-size:16px;font-weight:700;margin-bottom:12px;color:#111">Популярні запити</h2><div style="display:flex;flex-wrap:wrap;gap:8px">${brand.relatedSearches.map(q=>`<span style="display:inline-block;padding:8px 14px;background:#f5f5f5;border-radius:20px;font-size:13px;color:#555">${escHtml(q)}</span>`).join('')}</div></section>`:'';
-    const head=`<title>${escHtml(brand.title)}</title><meta name="description" content="${escHtml(brand.metaDesc)}"><meta name="keywords" content="${escHtml(brand.keywords||'')}"><meta name="robots" content="index, follow"><link rel="canonical" href="${BASE}/brand/${brandSlug}"><meta property="og:type" content="website"><meta property="og:title" content="${escHtml(brand.name)} — купити електросамокат | RideGO"><meta property="og:description" content="${escHtml(brand.metaDesc)}"><meta property="og:url" content="${BASE}/brand/${brandSlug}"><meta property="og:site_name" content="RideGO"><meta property="og:image" content="${BASE}/og-image.png"><meta property="og:locale" content="uk_UA"><script type="application/ld+json">${bcs}</script><script type="application/ld+json">${ils}</script>${faqs?`<script type="application/ld+json">${faqs}</script>`:''}`;
+    const robotsTag = listings.length ? 'index, follow' : 'noindex, follow';
+    const head=`<title>${escHtml(brand.title)}</title><meta name="description" content="${escHtml(brand.metaDesc)}"><meta name="keywords" content="${escHtml(brand.keywords||'')}"><meta name="robots" content="${robotsTag}"><link rel="canonical" href="${BASE}/brand/${brandSlug}"><meta property="og:type" content="website"><meta property="og:title" content="${escHtml(brand.name)} — купити електросамокат | RideGO"><meta property="og:description" content="${escHtml(brand.metaDesc)}"><meta property="og:url" content="${BASE}/brand/${brandSlug}"><meta property="og:site_name" content="RideGO"><meta property="og:image" content="${BASE}/og-image.png"><meta property="og:locale" content="uk_UA"><script type="application/ld+json">${bcs}</script><script type="application/ld+json">${ils}</script>${faqs?`<script type="application/ld+json">${faqs}</script>`:''}`;
     const body=`<nav class="bc" aria-label="Breadcrumb"><a href="${BASE}">RideGO</a><span>›</span><a href="${BASE}/catalog">Каталог</a><span>›</span><a href="${BASE}/category/${brand.catSlug}">${escHtml(brand.category)}</a><span>›</span><span>${escHtml(brand.name)}</span></nav><h1>${escHtml(brand.icon)} ${escHtml(brand.h1)}</h1><p style="color:#666;margin-bottom:24px;font-size:15px">Знайдено <strong>${listings.length}</strong> оголошень ${escHtml(brand.name)} на маркетплейсі RideGO</p>${brand.introHtml||''}${modelsHtml}<section><h2 style="font-size:17px;font-weight:700;margin-bottom:16px;color:#111">Оголошення ${escHtml(brand.name)} <span style="color:#888;font-weight:400;font-size:14px">(${listings.length})</span></h2><div class="grid">${lHtml}</div></section>${faqH}${relH}<section style="padding:28px;background:#f0fdf4;border-radius:16px;text-align:center;margin-bottom:32px"><h2 style="font-size:19px;font-weight:700;margin-bottom:8px">Продаєте ${escHtml(brand.name)}?</h2><p style="color:#555;margin-bottom:16px">Розмістіть оголошення безкоштовно на RideGO</p><a href="${BASE}/add" style="display:inline-block;background:#1db954;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700">Подати оголошення →</a></section>`;
     res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','s-maxage=1800, stale-while-revalidate=3600');return res.status(200).send(renderShell(adaptLegacyDocument(shell(head,body))));
   }

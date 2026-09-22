@@ -98,6 +98,13 @@ function renderShell(o) {
   html = replaceOne(html, /<link rel="canonical"[^>]*>/,
     `<link rel="canonical" id="dynamic-canonical" href="${escHtml(url)}">`, 'canonical', warnings);
 
+  // robots підставляємо лише якщо сторінка його задала —
+  // інакше лишається index, follow з index.html.
+  if (o.robots) {
+    html = replaceOne(html, /<meta name="robots" content="[^"]*">/,
+      `<meta name="robots" content="${escHtml(o.robots)}">`, 'robots', warnings);
+  }
+
   html = replaceOne(html, /<meta property="og:type" content="[^"]*">/,
     `<meta property="og:type" content="${escHtml(type)}">`, 'og:type', warnings);
   html = replaceOne(html, /<meta property="og:title" content="[^"]*">/,
@@ -191,6 +198,9 @@ function adaptLegacyDocument(legacyHtml, extra) {
   const canonical = pick(/<link rel="canonical"[^>]*href="([^"]*)"/);
   const ogImage   = pick(/<meta property="og:image" content="([^"]*)"/);
   const ogType    = pick(/<meta property="og:type" content="([^"]*)"/);
+  // Без цього noindex зі старого шаблону губився б, і порожні
+  // посадкові сторінки далі потрапляли б в індекс.
+  const robots    = pick(/<meta name="robots" content="([^"]*)"/);
 
   // JSON-LD лишаємо рядками як є — вони вже валідний JSON,
   // повторно серіалізувати немає сенсу.
@@ -221,6 +231,7 @@ function adaptLegacyDocument(legacyHtml, extra) {
     canonical,
     ogImage,
     ogType,
+    robots,
     jsonLdRaw,
     bodyHtml
   }, extra || {});
