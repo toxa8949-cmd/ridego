@@ -113,6 +113,37 @@ async function getPublishedNews() {
   }
 }
 
+// Реальна статистика майданчика.
+// Раніше цифри на головній рахувались із масиву, який клієнт завантажує
+// з лімітом 50 — тому «Більше 70 пропозицій» при більшій кількості
+// активних оголошень. Рахуємо на сервері по всій колекції.
+async function getStats() {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`;
+  const body = { structuredQuery: {
+    from: [{ collectionId: 'listings' }],
+    where: { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } } },
+    // Тягнемо лише два поля — це дешевше за повні документи.
+    select: { fields: [{ fieldPath: 'city' }, { fieldPath: 'uid' }] },
+    limit: 3000
+  } };
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const cities = new Set(), sellers = new Set();
+    let n = 0;
+    data.forEach(d => {
+      if (!d.document) return;
+      n++;
+      const f = d.document.fields || {};
+      const c = f.city?.stringValue; if (c) cities.add(c);
+      const u = f.uid?.stringValue;  if (u) sellers.add(u);
+    });
+    if (!n) return null;
+    return { listings: n, sellers: sellers.size, cities: cities.size };
+  } catch (e) { return null; }
+}
+
 const CATEGORIES = [
   { name: 'Електросамокати', slug: 'elektrosamokaty', icon: '⚡' },
   { name: 'Велосипеди', slug: 'velosypedy', icon: '🚲' },
@@ -130,9 +161,10 @@ module.exports = async (req, res) => {
 
 
   // Боти — SSR
-  const [listings, news] = await Promise.all([
+  const [listings, news, stats] = await Promise.all([
     getActiveListings(),
-    getPublishedNews()
+    getPublishedNews(),
+    getStats()
   ]);
 
   // Категорії HTML
@@ -342,5 +374,5 @@ ${itemListSchema ? `<script type="application/ld+json">${itemListSchema}</script
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
-  res.status(200).send(renderShell(adaptLegacyDocument(html)));
+  res.status(200).send(renderShell(adaptLegacyDocument(html, { stats })));
 };

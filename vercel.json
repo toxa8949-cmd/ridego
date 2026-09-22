@@ -37,7 +37,6 @@
         { "source": "/sitemap.xml", "destination": "/api/sitemap" },
         { "source": "/", "destination": "/api/home" },
         { "source": "/catalog", "destination": "/api/catalog" },
-        { "source": "/news-detail", "destination": "/index" },
         { "source": "/add", "destination": "/index" },
         { "source": "/services", "destination": "/index" },
         { "source": "/messages", "destination": "/index" },

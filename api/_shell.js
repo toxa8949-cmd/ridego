@@ -142,7 +142,16 @@ function renderShell(o) {
 
   // Позначка для SPA: цю сторінку вже наповнив сервер, тож не треба
   // перезатирати добрий <title> загальною заглушкою, поки не приїхали дані.
-  html = html.replace('<body>', '<body>\n<script>window.__SSR_SEO__=true;</script>');
+  let boot = '<script>window.__SSR_SEO__=true;';
+
+  // Реальна статистика майданчика, порахована на сервері по всій колекції.
+  // Клієнт вантажить лише перші 50 оголошень, тому його власний підрахунок
+  // завжди занижений — на головній було «Більше 70» замість фактичної цифри.
+  if (o.stats && o.stats.listings) {
+    boot += 'window.__RIDEGO_STATS__=' + safeJsonLd(o.stats) + ';';
+  }
+  boot += '</script>';
+  html = html.replace('<body>', '<body>\n' + boot);
 
   // Контент першого екрана.
   if (o.bodyHtml) {
