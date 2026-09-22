@@ -170,15 +170,20 @@ function _initNewUserSlots(uid) {
   _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
 
   // Відправити вітальний email
-  if (currentUser && currentUser.email) {
-    fetch('/api/send-email', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        type: 'welcome',
-        to: currentUser.email,
-        data: { name: currentUser.displayName || currentUser.email.split('@')[0] }
-      })
+  if (currentUser && currentUser.email && window._auth && window._auth.currentUser) {
+    // Адресу сервер бере з ID-токена — поле "to" більше не передаємо
+    window._auth.currentUser.getIdToken().then(function(tok) {
+      return fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + tok
+        },
+        body: JSON.stringify({
+          type: 'welcome',
+          data: { name: currentUser.displayName || currentUser.email.split('@')[0] }
+        })
+      });
     }).catch(function(e){ void('welcome email error:', e.message); });
   }
   _userSlots.loaded = true;

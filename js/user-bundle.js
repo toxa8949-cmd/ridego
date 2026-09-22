@@ -193,7 +193,7 @@ function _applyProfileData(d) {
     profilePhotoUrl = d.photoUrl;
     ['profile-pic-el', 'settings-avatar-preview'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.innerHTML = '<img alt="Аватар" src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      if (el) el.innerHTML = '<img alt="Аватар" src="' + _esc(d.photoUrl) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     });
     var lEl = document.getElementById('profile-pic-letter');
     if (lEl) lEl.style.display = 'none';
@@ -939,24 +939,29 @@ function sendMessage() {
     window._db.collection('chats').doc(_activeChatId).update(upd).catch(function(){});
 
     // Відправити email отримувачу якщо є email в Firestore
-    window._db.collection('users').doc(receiverUid).get().then(function(doc) {
-      if (doc.exists && doc.data().email) {
-        var chat = _fbChats.find(function(c){ return c.id === _activeChatId; });
-        fetch('/api/send-email', {
+    // Email отримувача клієнт більше не читає — сервер сам знайде
+    // його за uid і перевірить наш ID-токен.
+    if (window._auth && window._auth.currentUser) {
+      var chat = _fbChats.find(function(c){ return c.id === _activeChatId; });
+      window._auth.currentUser.getIdToken().then(function(tok) {
+        return fetch('/api/send-email', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + tok
+          },
           body: JSON.stringify({
             type: 'new_message',
-            to: doc.data().email,
+            toUid: receiverUid,
             data: {
               senderName: currentUser.name || currentUser.email || 'Користувач',
               message: text,
               listingTitle: chat && chat.listingTitle ? chat.listingTitle : ''
             }
           })
-        }).catch(function(e){ void('chat email error:', e.message); });
-      }
-    }).catch(function(){});
+        });
+      }).catch(function(e){ void('chat email error:', e.message); });
+    }
   } else if (window._db) {
     window._db.collection('chats').doc(_activeChatId).update({
       lastMessage: text,

@@ -5,8 +5,66 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── Простий ліміт у пам'яті інстансу лямбди ──────────────────
+// Не є повноцінним rate-limit (у Vercel кілька інстансів), але
+// відсікає найгрубіше зловживання. Головний захист — ID-токен нижче.
+const _rate = new Map();
+function rateLimited(uid) {
+  const now = Date.now();
+  const WINDOW = 60 * 60 * 1000;   // 1 година
+  const MAX    = 20;               // не більше 20 листів на годину з акаунта
+  const rec = _rate.get(uid);
+  if (!rec || now - rec.start > WINDOW) {
+    _rate.set(uid, { start: now, count: 1 });
+    return false;
+  }
+  rec.count++;
+  if (_rate.size > 5000) _rate.clear();
+  return rec.count > MAX;
+}
+
+// ── Перевірка Firebase ID-токена без firebase-admin ──────────
+// Ідентифікація через Identity Toolkit REST: якщо токен підроблений
+// або протермінований — Google поверне помилку.
+async function verifyIdToken(idToken) {
+  const key = process.env.FIREBASE_API_KEY;
+  if (!key || !idToken) return null;
+  try {
+    const r = await fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + key,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      }
+    );
+    if (!r.ok) return null;
+    const j = await r.json();
+    const u = j.users && j.users[0];
+    if (!u || !u.localId) return null;
+    return { uid: u.localId, email: u.email || '' };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── Email отримувача беремо з Firestore за uid, а не з тіла ──
+const PROJECT = 'ridego-6f981';
+async function getUserEmail(uid) {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid || '')) return '';
+  try {
+    const r = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/users/${uid}`
+    );
+    if (!r.ok) return '';
+    const j = await r.json();
+    return (j.fields && j.fields.email && j.fields.email.stringValue) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
 export default async function handler(req, res) {
-  // Тільки POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -16,29 +74,49 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
   }
 
-  const { type, to, data } = req.body;
+  const { type, toUid, data } = req.body || {};
 
-  if (!type || !to) {
-    return res.status(400).json({ error: 'Missing type or to' });
-  }
-
-  // Базова валідація email
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-    return res.status(400).json({ error: 'Invalid email address' });
-  }
-
-  // Перевірка Origin — тільки з наших доменів
-  const origin = req.headers.origin || req.headers.referer || '';
-  const ALLOWED = ['ridego.com.ua', 'ridego-sigma.vercel.app', 'localhost'];
-  const isAllowed = ALLOWED.some(d => origin.includes(d));
-  if (!isAllowed && origin) {
-    return res.status(403).json({ error: 'Forbidden origin' });
-  }
-
-  // Обмеження типів email
+  // ── 1. Тільки відомі типи ───────────────────────────────────
   if (!['welcome', 'new_message'].includes(type)) {
     return res.status(400).json({ error: 'Unknown email type' });
   }
+
+  // ── 2. Обов'язковий Firebase ID-токен ───────────────────────
+  // Раніше тут була перевірка Origin, яка пропускала будь-який
+  // запит без заголовка Origin (звичайний curl) — відкритий релей.
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const caller = await verifyIdToken(idToken);
+  if (!caller) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // ── 3. Ліміт на акаунт ──────────────────────────────────────
+  if (rateLimited(caller.uid)) {
+    return res.status(429).json({ error: 'Too many emails' });
+  }
+
+  // ── 4. Адресу визначає СЕРВЕР, а не клієнт ──────────────────
+  let to = '';
+  if (type === 'welcome') {
+    // вітальний лист — тільки на власну адресу з токена
+    to = caller.email;
+  } else {
+    // лист про повідомлення — на адресу співрозмовника за його uid
+    to = await getUserEmail(toUid);
+  }
+
+  if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return res.status(400).json({ error: 'Recipient not resolved' });
+  }
+
+  // ── 5. Обрізаємо поля, що потрапляють у лист ────────────────
+  const safe = {
+    name:         String((data && data.name) || '').slice(0, 80),
+    senderName:   String((data && data.senderName) || '').slice(0, 80),
+    message:      String((data && data.message) || '').slice(0, 500),
+    listingTitle: String((data && data.listingTitle) || '').slice(0, 120)
+  };
 
   let subject = '';
   let html = '';
@@ -59,7 +137,7 @@ export default async function handler(req, res) {
     </div>
     <!-- Body -->
     <div style="padding:40px">
-      <h2 style="margin:0 0 16px;font-size:22px;color:#111">Ласкаво просимо, ${escHtml(data?.name || 'друже')}! 🎉</h2>
+      <h2 style="margin:0 0 16px;font-size:22px;color:#111">Ласкаво просимо, ${escHtml(safe.name || 'друже')}! 🎉</h2>
       <p style="margin:0 0 20px;color:#444;line-height:1.6;font-size:15px">
         Ваш акаунт на <strong>RideGO</strong> успішно створений. Тепер ви можете купувати, продавати та обмінюватись електросамокатами, велосипедами та іншим транспортом.
       </p>
@@ -82,7 +160,7 @@ export default async function handler(req, res) {
 
   // ── НОВЕ ПОВІДОМЛЕННЯ В ЧАТІ ───────────────────────────────
   else if (type === 'new_message') {
-    subject = `💬 Нове повідомлення від ${escHtml(data?.senderName || 'користувача')} — RideGO`;
+    subject = `💬 Нове повідомлення від ${escHtml(safe.senderName || 'користувача')} — RideGO`;
     html = `
 <!DOCTYPE html>
 <html>
@@ -98,10 +176,10 @@ export default async function handler(req, res) {
     <div style="padding:40px">
       <h2 style="margin:0 0 16px;font-size:20px;color:#111">У вас нове повідомлення 💬</h2>
       <p style="margin:0 0 20px;color:#444;line-height:1.6;font-size:15px">
-        <strong>${escHtml(data?.senderName || 'Користувач')}</strong> написав вам повідомлення${data?.listingTitle ? ` щодо оголошення <strong>"${escHtml(data.listingTitle)}"</strong>` : ''}:
+        <strong>${escHtml(safe.senderName || 'Користувач')}</strong> написав вам повідомлення${safe.listingTitle ? ` щодо оголошення <strong>"${escHtml(safe.listingTitle)}"</strong>` : ''}:
       </p>
       <div style="background:#f8f8f8;border-left:4px solid #1db954;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 24px">
-        <p style="margin:0;color:#333;font-size:15px;line-height:1.6;font-style:italic">"${escHtml(data?.message || '')}"</p>
+        <p style="margin:0;color:#333;font-size:15px;line-height:1.6;font-style:italic">"${escHtml(safe.message)}"</p>
       </div>
       <a href="https://ridego.com.ua/messages" style="display:inline-block;background:#1db954;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px">
         Відповісти →
