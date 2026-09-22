@@ -3308,25 +3308,43 @@ function _submitImport() {
       status:     'active'
     };
 
-    window._db.collection('listings').add(fbListing)
-      .then(function(ref) {
-        done++;
-        fbListing.id = ref.id;
-        _fbListings.unshift(fbListing);
-        // Списуємо слот і чекаємо завершення перед наступним
-        return _consumeSlot();
-      })
-      .then(function() {
-        // Оновити прогрес
-        var btn2 = document.getElementById('import-submit-btn');
-        if (btn2) btn2.textContent = 'Імпортуємо... ' + (i+1) + '/' + total;
-        setTimeout(function(){ _next(i+1); }, 300); // 300ms між записами щоб не перевантажити
-      })
-      .catch(function(e) {
-        failed++;
-        console.error('Import error row ' + (i+1) + ':', e.message);
-        setTimeout(function(){ _next(i+1); }, 300);
-      });
+    // Слот списуємо ДО створення, як і при звичайній публікації.
+    // Раніше рядок імпортувався першим, а списання йшло після і його
+    // результат ніхто не перевіряв — через це масовий імпорт був
+    // обхідним шляхом повз ліміт розміщень.
+    _consumeSlot().then(function(ok) {
+      if (!ok) {
+        // Слоти скінчились — зупиняємось, решту рядків не чіпаємо.
+        showToast('⚠️ Розміщення закінчились. Імпортовано ' + done + ' із ' + total + '.');
+        var ov = document.getElementById('import-modal-overlay');
+        if (ov) ov.remove();
+        if (typeof renderMyListings === 'function') renderMyListings();
+        renderHomeListings();
+        renderCatalog();
+        if (typeof openBuySlots === 'function') openBuySlots();
+        return;
+      }
+      _renderSlotsUI();
+
+      window._db.collection('listings').add(fbListing)
+        .then(function(ref) {
+          done++;
+          fbListing.id = ref.id;
+          _fbListings.unshift(fbListing);
+          var btn2 = document.getElementById('import-submit-btn');
+          if (btn2) btn2.textContent = 'Імпортуємо... ' + (i+1) + '/' + total;
+          setTimeout(function(){ _next(i+1); }, 300); // 300ms між записами щоб не перевантажити
+        })
+        .catch(function(e) {
+          failed++;
+          console.error('Import error row ' + (i+1) + ':', e.message);
+          setTimeout(function(){ _next(i+1); }, 300);
+        });
+    }).catch(function(e) {
+      failed++;
+      console.error('Import slot error row ' + (i+1) + ':', e.message);
+      setTimeout(function(){ _next(i+1); }, 300);
+    });
   }
   _next(0);
 }
