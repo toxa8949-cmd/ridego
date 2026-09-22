@@ -906,9 +906,8 @@ function _renderSellerByUid(uid) {
     document.getElementById('seller-page-desc').textContent = '';
     document.getElementById('seller-page-city').innerHTML = '';
 
-    window._db.collection('users').doc(uid).get().then(function(snap) {
-      if (!snap.exists) return;
-      var d = snap.data();
+    _readPublicProfile(uid).then(function(d) {
+      if (!d) return;
       var year = d.createdAt ? new Date(d.createdAt.seconds*1000).getFullYear() : '';
 
       document.getElementById('seller-page-name').textContent = d.name || sellerName;
@@ -1501,9 +1500,8 @@ function showDetail(id, _skipPush) {
       }
       if (_cachedSeller.name) document.getElementById('detail-seller').textContent = _cachedSeller.name;
     } else {
-      window._db.collection('users').doc(sellerUid).get().then(function(snap) {
-        if (!snap.exists) return;
-        var d = snap.data();
+      _readPublicProfile(sellerUid).then(function(d) {
+        if (!d) return;
         window._sellersCache[sellerUid] = d;
         var createdYear = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : '';
         if (ratingEl) ratingEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Новий продавець</span>';
@@ -1764,8 +1762,8 @@ function revealPhone() {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Завантаження...';
   btn.disabled = true;
 
-  window._db.collection('users').doc(l.uid).get().then(function(snap) {
-    var phone = snap.exists ? snap.data().phone : '';
+  _readPublicProfile(l.uid).then(function(d) {
+    var phone = d ? d.phone : '';
     if (phone) {
       phoneEl.href = 'tel:' + phone.replace(/\s/g, '');
       phoneEl.textContent = phone;

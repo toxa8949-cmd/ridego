@@ -2709,9 +2709,10 @@ function toggleFollowSeller() {
           if (_followingCache) _followingCache.delete(sellerUid);
           _renderFollowBtn(false);
           showToast('\u0412\u0456\u0434\u043f\u0438\u0441\u0430\u043d\u043e');
-          window._db.collection('users').doc(sellerUid).update({
-            followers: firebase.firestore.FieldValue.increment(-1)
-          }).catch(function(){});
+          // Лічильник більше не зберігаємо в чужому документі users —
+          // правила Firestore це забороняють, тож запис завжди падав
+          // (помилка ковталась у .catch). Тепер рахуємо з follows.
+          _renderFollowersCount(sellerUid);
         });
     } else {
       window._db.collection('follows').add({
@@ -2724,37 +2725,31 @@ function toggleFollowSeller() {
         if (_followingCache) _followingCache.add(sellerUid);
         _renderFollowBtn(true);
         showToast('\u2705 \u041f\u0456\u0434\u043f\u0438\u0441\u0430\u043b\u0438\u0441\u044c! \u0411\u0443\u0434\u0435\u043c\u043e \u0441\u0441\u043f\u043e\u0432\u0456\u0449\u0430\u0442\u0438 \u043f\u0440\u043e \u043d\u043e\u0432\u0456 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f');
-        window._db.collection('users').doc(sellerUid).update({
-          followers: firebase.firestore.FieldValue.increment(1)
-        }).catch(function(){});
+        _renderFollowersCount(sellerUid);
       });
     }
   });
 }
 
 function _renderFollowersCount(sellerUid) {
-  // Спочатку беремо з вже завантажених даних — без Firestore запиту
-  var cached = _fbListings && _fbListings.find(function(l) { return l && l.uid === sellerUid; });
   var el = document.getElementById('sp-stat-response');
-  if (!el) return;
+  if (!el || !window._db || !sellerUid) return;
 
-  if (cached && typeof cached.followers !== 'undefined') {
-    el.textContent = cached.followers || 0;
-    var lbl = el.nextElementSibling;
-    if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
-    return;
-  }
-
-  // Якщо немає в кеші — читаємо з Firestore (fallback)
-  if (!window._db) return;
-  window._db.collection('users').doc(sellerUid).get().then(function(snap) {
-    if (!snap.exists) return;
-    var followers = snap.data().followers || 0;
-    el.textContent = followers;
-    var lbl = el.nextElementSibling;
-    if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
-  }).catch(function(){});
+  // Рахуємо прямо з колекції follows. Раніше тут було поле followers
+  // у документі продавця, але оновити його клієнт не міг — правила
+  // не дозволяють писати в чужий users. Тому лічильник завжди показував
+  // те, що було записано колись давно, або нуль.
+  window._db.collection('follows')
+    .where('sellerUid', '==', sellerUid)
+    .get()
+    .then(function(snap) {
+      el.textContent = snap.size;
+      var lbl = el.nextElementSibling;
+      if (lbl) lbl.textContent = '\u041f\u0456\u0434\u043f\u0438\u0441\u043d\u0438\u043a\u0456\u0432';
+    })
+    .catch(function(){});
 }
+
 
 
 function _setListingSchema(l) {

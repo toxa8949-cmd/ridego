@@ -1115,6 +1115,23 @@ input:checked + .status-slider::before { background: var(--brand); transform: tr
             <div class="form-group"><label class="form-label">Безк. слотів/місяць</label><input class="form-input" type="number" id="set-monthly-free" value="1"></div>
           </div>
           <div class="chart-card">
+            <div class="card-title" style="margin-bottom:8px">🔒 Публічні профілі</div>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px">
+              Документ користувача містить email, і його можна прочитати, знаючи uid —
+              а uid є в кожному публічному оголошенні. Ця кнопка копіює лише публічні поля
+              (ім'я, місто, фото, опис, телефон) в окрему колекцію publicProfiles.
+              Після цього сторінки продавців читатимуть її, а users можна буде закрити.
+            </p>
+            <button class="btn btn-outline" style="width:100%;margin-bottom:8px" onclick="backfillProfiles(true)">
+              <i class="fa-solid fa-magnifying-glass"></i> Спершу показати, що зміниться
+            </button>
+            <button class="btn" style="width:100%" id="profiles-apply-btn" onclick="backfillProfiles(false)" disabled>
+              <i class="fa-solid fa-check"></i> Створити публічні профілі
+            </button>
+            <div id="profiles-result" style="margin-top:14px;font-size:13px;line-height:1.7"></div>
+          </div>
+
+          <div class="chart-card">
             <div class="card-title" style="margin-bottom:8px">🏷️ Бренди в оголошеннях</div>
             <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px">
               До вересня 2026 форма подачі не зберігала бренд окремим полем — він потрапляв
@@ -2273,6 +2290,88 @@ function saveSettings(){
     .then(function(){showToast('Налаштування збережено','success');logAction('save_settings','');})
     .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
+
+
+// ═══ СТВОРЕННЯ ПУБЛІЧНИХ ПРОФІЛІВ ═══
+// Навіщо: users/{uid} читається будь-ким, хто знає uid, а uid лежить
+// у кожному оголошенні. Разом з іменем звідти віддається email.
+// Копіюємо в publicProfiles лише те, що і так показується на сайті.
+
+var PUBLIC_FIELDS = ['name','city','oblast','raion','photoUrl','about','desc',
+                     'type','verified','followers','phone','company','website',
+                     'telegram','instagram','hours','cats','listings','createdAt'];
+
+var _profilesPlan = null;
+
+function backfillProfiles(dryRun) {
+  var out = document.getElementById('profiles-result');
+  var applyBtn = document.getElementById('profiles-apply-btn');
+  if (!out) return;
+
+  if (!dryRun && !_profilesPlan) {
+    out.innerHTML = '<span style="color:#f59e0b">Спершу натисніть «показати, що зміниться».</span>';
+    return;
+  }
+  if (!dryRun && !confirm('Створити ' + _profilesPlan.length + ' публічних профілів?')) return;
+
+  out.innerHTML = dryRun ? 'Читаю користувачів…' : 'Записую…';
+
+  if (dryRun) {
+    _db.collection('users').get().then(function(snap) {
+      var plan = [], withEmail = 0;
+      snap.forEach(function(doc) {
+        var d = doc.data() || {};
+        if (d.email) withEmail++;
+        var pub = { uid: doc.id };
+        PUBLIC_FIELDS.forEach(function(k) {
+          if (d[k] !== undefined && d[k] !== null) pub[k] = d[k];
+        });
+        plan.push(pub);
+      });
+      _profilesPlan = plan;
+      if (applyBtn) applyBtn.disabled = plan.length === 0;
+
+      var shops = plan.filter(function(p){ return p.type === 'business'; }).length;
+      var withPhoto = plan.filter(function(p){ return p.photoUrl; }).length;
+      out.innerHTML =
+        '<div><b style="color:var(--brand)">' + plan.length + '</b> профілів буде створено</div>' +
+        '<div>з них магазинів: <b>' + shops + '</b>, з фото: <b>' + withPhoto + '</b></div>' +
+        '<div style="margin-top:8px;color:var(--text-muted)">Email не копіюється. Зараз він читається у ' +
+        withEmail + ' користувачів.</div>';
+    }).catch(function(e) {
+      out.innerHTML = '<span style="color:#ef4444">Помилка читання: ' + _esc(e.message) + '</span>';
+    });
+    return;
+  }
+
+  var plan = _profilesPlan, done = 0;
+  var chunks = [];
+  for (var i = 0; i < plan.length; i += 400) chunks.push(plan.slice(i, i + 400));
+
+  var runChunk = function(idx) {
+    if (idx >= chunks.length) {
+      out.innerHTML = '<span style="color:var(--brand)">Готово: створено ' + done + ' профілів.</span>' +
+        '<div style="margin-top:8px;color:var(--text-muted)">Тепер можна закрити users у правилах Firestore.</div>';
+      _profilesPlan = null;
+      if (applyBtn) applyBtn.disabled = true;
+      if (typeof logAction === 'function') logAction('backfill_profiles', 'створено профілів: ' + done);
+      return;
+    }
+    var batch = _db.batch();
+    chunks[idx].forEach(function(p) {
+      batch.set(_db.collection('publicProfiles').doc(p.uid), p, { merge: true });
+    });
+    batch.commit().then(function() {
+      done += chunks[idx].length;
+      out.innerHTML = 'Записано ' + done + ' з ' + plan.length + '…';
+      runChunk(idx + 1);
+    }).catch(function(e) {
+      out.innerHTML = '<span style="color:#ef4444">Помилка запису: ' + _esc(e.message) + '</span>';
+    });
+  };
+  runChunk(0);
+}
+
 
 // ═══ ЗАПОВНЕННЯ ПОЛЯ brand У СТАРИХ ОГОЛОШЕННЯХ ═══
 // Навіщо: до вересня 2026 форма подачі клала бренд лише в таблицю

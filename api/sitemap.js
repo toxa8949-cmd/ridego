@@ -129,7 +129,7 @@ module.exports = async (req, res) => {
 
   try {
     // Всі запити паралельно
-    const [listings, news, services] = await Promise.all([
+    const [listings, news, services, sellers] = await Promise.all([
       query(
         'listings',
         [{ field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } }],
@@ -147,6 +147,14 @@ module.exports = async (req, res) => {
         [{ field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } }],
         ['createdAt', 'updatedAt'],
         1000
+      ),
+      // Продавці — з publicProfiles: там немає email і телефонів,
+      // тому колекцію можна читати списком без ризику злити базу.
+      query(
+        'publicProfiles',
+        [{ field: { fieldPath: 'type' }, op: 'EQUAL', value: { stringValue: 'business' } }],
+        ['createdAt', 'updatedAt'],
+        2000
       ),
     ]);
 
@@ -180,14 +188,15 @@ module.exports = async (req, res) => {
       urls.push({ loc: `/service/${id}`, priority: '0.6', changefreq: 'monthly', lastmod: date });
     });
 
-    // Сторінки продавців у sitemap більше не потрапляють.
-    // Щоб їх перелічити, потрібен запит списку по колекції users, а він
-    // тепер дозволений лише адміну — інакше цим запитом можна було
-    // вивантажити email і телефони всіх користувачів.
-    // Щоб повернути продавців у sitemap, потрібна окрема колекція
-    // publicProfiles лише з безпечними полями (ім'я, місто, фото).
-    // Самі сторінки /seller/:uid працюють як раніше: вони читають
-    // один документ за відомим uid, а це дозволено.
+    // Продавці-магазини. Беремо з publicProfiles, а не з users:
+    // у users є email, і запит списку по ньому дозволений лише адміну.
+    sellers.forEach(item => {
+      if (!item.document) return;
+      const f = item.document.fields || {};
+      const uid = item.document.name.split('/').pop();
+      const date = getDate(f, 'updatedAt') || getDate(f, 'createdAt');
+      urls.push({ loc: `/seller/${uid}`, priority: '0.6', changefreq: 'weekly', lastmod: date });
+    });
 
     console.log(`[sitemap] TOTAL URLs: ${urls.length}`);
 

@@ -50,6 +50,51 @@ function heroFilter(type, value) {
   }, 100);
 }
 
+// ── ПУБЛІЧНИЙ ПРОФІЛЬ ПРОДАВЦЯ ──────────────────────────────
+// Документ users/{uid} містить email (а також слоти і статус), і його
+// можна прочитати, знаючи uid. А uid лежить у кожному публічному
+// оголошенні — тобто всі email продавців збиралися в один прохід.
+//
+// Тому публічні дані винесені в окрему колекцію publicProfiles:
+// там лише те, що і так видно на сторінці продавця — ім'я, місто,
+// фото, опис, телефон, кількість підписників, дата реєстрації.
+//
+// Поки колекція не заповнена для всіх (кнопка backfill в адмінці),
+// читаємо зі старого місця як запасний варіант. Коли backfill
+// пройде і правила закриють users, залишиться тільки перша гілка.
+function _readPublicProfile(uid) {
+  if (!window._db || !uid) return Promise.resolve(null);
+  return window._db.collection('publicProfiles').doc(uid).get()
+    .then(function(snap) {
+      if (snap.exists) return snap.data();
+      return window._db.collection('users').doc(uid).get()
+        .then(function(u) { return u.exists ? u.data() : null; })
+        .catch(function() { return null; });
+    })
+    .catch(function() {
+      return window._db.collection('users').doc(uid).get()
+        .then(function(u) { return u.exists ? u.data() : null; })
+        .catch(function() { return null; });
+    });
+}
+window._readPublicProfile = _readPublicProfile;
+
+// Поля, які можна показувати будь-кому. email сюди НЕ входить.
+var PUBLIC_PROFILE_FIELDS = ['name','city','oblast','raion','photoUrl','about','desc',
+                             'type','verified','followers','phone','company','website',
+                             'telegram','instagram','hours','cats','listings','createdAt'];
+window.PUBLIC_PROFILE_FIELDS = PUBLIC_PROFILE_FIELDS;
+
+function _publicProfileFrom(d) {
+  var out = {};
+  if (!d) return out;
+  PUBLIC_PROFILE_FIELDS.forEach(function(k) {
+    if (d[k] !== undefined && d[k] !== null) out[k] = d[k];
+  });
+  return out;
+}
+window._publicProfileFrom = _publicProfileFrom;
+
 function _esc(str) {
   if (!str) return '';
   return String(str)

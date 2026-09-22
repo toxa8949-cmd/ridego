@@ -8,13 +8,23 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Спершу пробуємо publicProfiles — там лише публічні поля, без email.
+// users лишається запасним варіантом, поки колекція не заповнена для всіх
+// (кнопка в адмінці). Коли backfill пройде, правила закриють users,
+// і працюватиме тільки перша гілка.
+async function fetchDoc(collection, uid) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/${collection}/${uid}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.fields || null;
+  } catch (e) { return null; }
+}
+
 async function getSeller(uid) {
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/users/${uid}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!data.fields) return null;
-  const f = data.fields;
+  const f = (await fetchDoc('publicProfiles', uid)) || (await fetchDoc('users', uid));
+  if (!f) return null;
   return {
     name:     f.name?.stringValue || '',
     type:     f.type?.stringValue || 'personal',

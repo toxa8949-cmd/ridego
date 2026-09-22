@@ -326,13 +326,19 @@ function onProfilePhotoChange(input) {
         ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
           var el = document.getElementById(id);
           if (!el) return;
-          el.innerHTML = '<img alt="Аватар" src="' + profilePhotoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+          el.innerHTML = '<img alt="Аватар" src="' + _esc(profilePhotoUrl) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
         });
 
         if (window._db && currentUser && currentUser.uid) {
           window._db.collection('users').doc(currentUser.uid).update({
             photoUrl: profilePhotoUrl
           }).catch(function(e){ console.error('photo save:', e); });
+          // Те саме в публічний профіль — інакше на сторінці продавця
+          // фото лишиться старим.
+          window._db.collection('publicProfiles').doc(currentUser.uid).set({
+            photoUrl: profilePhotoUrl,
+            uid: currentUser.uid
+          }, { merge: true }).catch(function(e){ console.error('publicProfile photo:', e.message); });
         }
         showToast('✅ Фото оновлено!');
       } else {
@@ -415,6 +421,18 @@ function saveProfileSettings() {
     window._db.collection('users').doc(currentUser.uid).update(profileData)
       .then(function(){ showToast('✅ Профіль збережено!'); })
       .catch(function(e){ console.error('profile save:', e); showToast('⚠️ Помилка: ' + e.message); });
+
+    // Дзеркалимо безпечні поля в publicProfiles — саме звідти сторінка
+    // продавця бере ім'я, місто й фото. У users лишається email, і цей
+    // документ поступово закриється від сторонніх.
+    if (typeof _publicProfileFrom === 'function') {
+      var _pub = _publicProfileFrom(profileData);
+      _pub.uid = currentUser.uid;
+      _pub.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      window._db.collection('publicProfiles').doc(currentUser.uid)
+        .set(_pub, { merge: true })
+        .catch(function(e){ console.error('publicProfile save:', e.message); });
+    }
 
     window._db.collection('listings')
       .where('uid', '==', currentUser.uid)
@@ -1032,9 +1050,9 @@ function _startChat(sellerUid, listingId, listingTitle) { if (!isLoggedIn) { sho
     showPage('messages');
     setTimeout(function(){ openChatById(ref.id); }, 200);
 
-    window._db.collection('users').doc(sellerUid).get().then(function(snap) {
-      if (snap.exists) {
-        var sellerName = snap.data().name || '';
+    _readPublicProfile(sellerUid).then(function(pd) {
+      if (pd) {
+        var sellerName = pd.name || '';
         var upd = { otherName: sellerName };
         upd[sellerUid + '_name'] = sellerName;
         window._db.collection('chats').doc(ref.id).update(upd);
