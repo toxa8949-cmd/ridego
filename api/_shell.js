@@ -58,6 +58,15 @@ function safeJsonLd(obj) {
     .replace(/\u2029/g, '\\u2029');
 }
 
+
+// Українська множина: 1 пропозиція, 2 пропозиції, 5 пропозицій.
+function plUk(n, forms) {
+  var n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return forms[0];
+  if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
+  return forms[2];
+}
+
 function replaceOne(html, re, replacement, label, warnings) {
   const matches = html.match(re);
   if (!matches) {
@@ -138,6 +147,20 @@ function renderShell(o) {
   if (ld.length) {
     const blocks = ld.map(s => `<script type="application/ld+json">${s}</script>`).join('\n');
     html = html.replace('</head>', blocks + '\n</head>');
+  }
+
+  // Справжні цифри — одразу в розмітку, а не лише в JS-змінну.
+  // У index.html вони зашиті як 70 / 20 / 30, і без виконання JS
+  // (а так сторінку бачать частина краулерів і читалки) там лишались
+  // би саме ці числа.
+  if (o.stats && o.stats.listings) {
+    const nL = o.stats.listings, nS = o.stats.sellers || 0, nC = o.stats.cities || 0;
+    html = html.replace(
+      /(<span id="hero-count-text">)[^<]*(<\/span>)/,
+      `$1Більше ${nL} ${plUk(nL, ['пропозиція', 'пропозиції', 'пропозицій'])}$2`);
+    html = html.replace(/(<span class="stat-num" id="stat-listings">)[^<]*(<)/, `$1${nL}$2`);
+    html = html.replace(/(<span class="stat-num" id="stat-sellers">)[^<]*(<)/,  `$1${nS}$2`);
+    html = html.replace(/(<span class="stat-num" id="stat-cities">)[^<]*(<)/,   `$1${nC}$2`);
   }
 
   // Позначка для SPA: цю сторінку вже наповнив сервер, тож не треба
