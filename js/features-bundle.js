@@ -360,13 +360,29 @@ function submitListing() {
       }).catch(function(){ _doPublish(); });
 
     function _doPublish() {
+    // Слот списуємо ДО створення оголошення.
+    // Раніше було навпаки: оголошення додавалось, потім викликався
+    // _consumeSlot(), а його невдача лише писалась у консоль. Тобто
+    // якщо списання не проходило — оголошення все одно публікувалось,
+    // і ліміт на 10 розміщень не діяв узагалі.
+    _consumeSlot().then(function(ok) {
+      if (!ok) {
+        showToast('⚠️ Не вдалося списати розміщення. Спробуйте ще раз.');
+        _unlockBtn();
+        return;
+      }
+      _renderSlotsUI();
+      _createListingDoc();
+    }).catch(function(e) {
+      void('consumeSlot error:', e);
+      showToast('⚠️ Не вдалося списати розміщення. Спробуйте ще раз.');
+      _unlockBtn();
+    });
+    }
+
+    function _createListingDoc() {
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
-
-        _consumeSlot().then(function(ok) {
-          if (!ok) void('consumeSlot failed after listing publish');
-          _renderSlotsUI();
-        }).catch(function(e) { void('consumeSlot error:', e); });
         newL.id = docRef.id;
         _fbListings.unshift(newL);
         if (document.getElementById('pstat-active')) {

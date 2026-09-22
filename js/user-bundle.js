@@ -41,8 +41,12 @@ function doSocialLogin(provider) {
             window._db.collection('users').doc(user.uid).set({
               name: user.displayName, email: user.email, uid: user.uid, termsAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(), marketingOptIn: (function(){var _c=document.getElementById('reg-marketing');return !!(_c && _c.checked);})(), marketingOptInAt: (function(){var _c=document.getElementById('reg-marketing');return (_c && _c.checked) ? firebase.firestore.FieldValue.serverTimestamp() : null;})(),
               type: 'personal', listings: 0, status: 'active',
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              // Стартові слоти — у тому ж записі, що й створення документа.
+              ...( typeof _newUserSlotFields === 'function' ? _newUserSlotFields() : {} )
+            }).then(function() {
+              if (typeof _afterUserCreated === 'function') _afterUserCreated(user.displayName);
+            }).catch(function(e){ console.error('create user doc:', e.message); });
           }
           showToast('✅ Вхід через Google!');
           showPage('profile');
@@ -119,11 +123,15 @@ function doRegister() { var _mkt = !!(document.getElementById('reg-marketing') &
           return window._db.collection('users').doc(cred.user.uid).set({
             name: name, email: email, uid: cred.user.uid, termsAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(), marketingOptIn: _mkt, marketingOptInAt: _mkt ? firebase.firestore.FieldValue.serverTimestamp() : null,
             type: 'personal', listings: 0, status: 'active',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            ...( typeof _newUserSlotFields === 'function' ? _newUserSlotFields() : {} )
           });
         });
       })
-      .then(function() { showToast('✅ Акаунт створено!'); showPage('profile'); })
+      .then(function() {
+        if (typeof _afterUserCreated === 'function') _afterUserCreated(name);
+        showToast('✅ Акаунт створено!'); showPage('profile');
+      })
       .catch(function(e) {
         if (e.code === 'auth/email-already-in-use') showToast('⚠️ Цей email вже використовується');
         else if (e.code === 'auth/weak-password') showToast('⚠️ Пароль мінімум 6 символів');

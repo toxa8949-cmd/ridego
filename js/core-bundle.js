@@ -221,40 +221,59 @@ function _checkMonthlyFreeSlot() {
   }).catch(function(e){ void('monthly slot:', e.message); });
 }
 
-function _initNewUserSlots(uid) {
-  if (!window._db || !uid) return;
+// ── СТАРТОВІ СЛОТИ НОВОГО КОРИСТУВАЧА ───────────────────────
+// Раніше тут була функція _initNewUserSlots(), яка окремим запитом
+// дописувала слоти вже після створення документа. Її не викликали
+// ніде — ні у вихідниках, ні в задеплоєному бандлі, я перевірив обидва.
+// Через це новий продавець отримував нуль слотів, не міг нічого
+// опублікувати і не отримував вітального листа.
+//
+// Тепер слоти пишуться ОДРАЗУ в тому ж set(), яким створюється
+// документ користувача. Так надійніше ще й тому, що правила Firestore
+// забороняють змінювати slots окремим update — а в межах create
+// вони явно дозволені (slots >= 0 && slotsWelcome >= 0).
+var WELCOME_SLOTS = 10;
+var WELCOME_DAYS  = 30;
+
+function _newUserSlotFields() {
   var expiry = new Date();
-  expiry.setDate(expiry.getDate() + 30);
-  window._db.collection('users').doc(uid).update({
+  expiry.setDate(expiry.getDate() + WELCOME_DAYS);
+  return {
     slots: 0,
-    slotsWelcome: 10,
+    slotsWelcome: WELCOME_SLOTS,
     slotsWelcomeExpiry: firebase.firestore.Timestamp.fromDate(expiry),
     lastFreeSlotAt: firebase.firestore.FieldValue.serverTimestamp(),
     totalListingsPublished: 0
-  }).catch(function(e){ void('init slots:', e.message); });
-  _userSlots.slots = 0;
-  _userSlots.slotsWelcome = 10;
-  _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
+  };
+}
+window._newUserSlotFields = _newUserSlotFields;
 
-  // Відправити вітальний email
-  if (currentUser && currentUser.email && window._auth && window._auth.currentUser) {
-    // Адресу сервер бере з ID-токена — поле "to" більше не передаємо
+// Викликається після успішного створення документа: оновлює локальний
+// стан, малює лічильник і шле вітальний лист.
+function _afterUserCreated(displayName) {
+  var expiry = new Date();
+  expiry.setDate(expiry.getDate() + WELCOME_DAYS);
+  _userSlots.slots = 0;
+  _userSlots.slotsWelcome = WELCOME_SLOTS;
+  _userSlots.slotsWelcomeExpiry = { seconds: Math.floor(expiry.getTime() / 1000) };
+  _userSlots.lastFreeSlotAt = { seconds: Math.floor(Date.now() / 1000) };
+  _userSlots.loaded = true;
+  if (typeof _renderSlotsUI === 'function') _renderSlotsUI();
+
+  if (window._auth && window._auth.currentUser && currentUser && currentUser.email) {
     window._auth.currentUser.getIdToken().then(function(tok) {
       return fetch('/api/send-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + tok
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
         body: JSON.stringify({
           type: 'welcome',
-          data: { name: currentUser.displayName || currentUser.email.split('@')[0] }
+          data: { name: displayName || currentUser.email.split('@')[0] }
         })
       });
     }).catch(function(e){ void('welcome email error:', e.message); });
   }
-  _userSlots.loaded = true;
 }
+window._afterUserCreated = _afterUserCreated;
 
 function _consumeSlot() {
   if (!window._db || !currentUser || !currentUser.uid) return Promise.resolve(false);
