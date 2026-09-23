@@ -1153,7 +1153,7 @@ function createServiceCard(s){
   var prev=_renderSvcPreview(s.services);
       var cats=s.cats.map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
   var addr=s.address?" \u00b7 "+s.address:"";
-  var rating=s.rating>0?s.rating+" \u00b7 "+s.reviews+" \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432":"\u041d\u043e\u0432\u0438\u0439";
+  var rating=s.rating>0?s.rating+" \u00b7 "+s.reviews+" "+(window.plUk?plUk(s.reviews,["\u0432\u0456\u0434\u0433\u0443\u043a","\u0432\u0456\u0434\u0433\u0443\u043a\u0438","\u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432"]):"\u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432"):"\u041d\u043e\u0432\u0438\u0439";
   return "<div class=\"service-card\" onclick=\"showServiceDetail('"+s.id+"')\">"+
     (s.photoUrl
       ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img alt=\"Фото сервісу\" src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
@@ -1359,7 +1359,7 @@ function submitSvcReview(uid) {
   window._db.collection('reviews').add({
     sellerUid:    uid,
     reviewerUid:  currentUser.uid,
-    reviewerName: currentUser.name || currentUser.email || '',
+    reviewerName: currentUser.name || (currentUser.email ? String(currentUser.email).split('@')[0] : 'Користувач'),
     rating:  stars,
     text:    text,
     type:    'service',
@@ -1392,7 +1392,7 @@ function _refreshSvcRating(uid, newStars) {
         ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg)))
         : '☆☆☆☆☆';
       var reviewsTxt = total > 0
-        ? 'на основі ' + total + ' відгук' + (total===1?'а':total<5?'ів':'ів')
+        ? 'на основі ' + total + ' ' + (window.plUk ? plUk(total, ['відгуку', 'відгуків', 'відгуків']) : 'відгуків')
         : 'Поки немає відгуків';
 
       var form = document.getElementById('svc-review-form-' + uid);
@@ -1412,6 +1412,36 @@ function _refreshSvcRating(uid, newStars) {
       var svc = _fbServices.concat(myServices).find(function(x){ return x.uid === uid; });
       if (svc) { svc.rating = avg; svc.reviews = total; }
     }).catch(function(){});
+}
+
+// Рейтинг сервісу в списку. Поле rating у документі сервісу може змінити лише
+// власник, тому відгуки інших людей туди не потрапляли і картка показувала
+// «Новий» навіть з відгуками. Рахуємо з колекції reviews.
+var _svcRatingsAt = 0;
+function _svcFillRatings(list) {
+  if (!window._db || !list || !list.length) return;
+  if (Date.now() - _svcRatingsAt < 5 * 60 * 1000) return;
+  _svcRatingsAt = Date.now();
+  var uids = {};
+  list.forEach(function(s){ if (s && s.uid) uids[s.uid] = 1; });
+  Promise.all(Object.keys(uids).slice(0, 30).map(function(uid) {
+    return window._db.collection('reviews').where('sellerUid', '==', uid).limit(100).get().then(function(snap) {
+      var r = snap.docs.map(function(d){ return Number(d.data().rating) || 0; }).filter(Boolean);
+      return { uid: uid, n: r.length, avg: r.length ? Math.round(r.reduce(function(a, b){ return a + b; }, 0) / r.length * 10) / 10 : 0 };
+    }).catch(function(){ return null; });
+  })).then(function(res) {
+    var changed = false;
+    res.forEach(function(x) {
+      if (!x) return;
+      _fbServices.concat(myServices).forEach(function(s) {
+        if (s.uid === x.uid && (s.rating !== x.avg || s.reviews !== x.n)) { s.rating = x.avg; s.reviews = x.n; changed = true; }
+      });
+    });
+    if (changed) {
+      if (typeof renderHomeServices === 'function') renderHomeServices();
+      if (typeof renderServices === 'function') renderServices();
+    }
+  });
 }
 
 function showServiceDetail(id){
@@ -1435,7 +1465,7 @@ function showServiceDetail(id){
         var avg = revs.reduce(function(sum, r){ return sum + (r.rating||0); }, 0) / total;
         var avgStr = avg.toFixed(1);
         var starsStr = '★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg));
-        var reviewsTxt = 'на основі ' + total + ' відгук' + (total===1?'а':total<5?'ів':'ів');
+        var reviewsTxt = 'на основі ' + total + ' ' + (window.plUk ? plUk(total, ['відгуку', 'відгуків', 'відгуків']) : 'відгуків');
 
         var form = document.getElementById('svc-review-form-' + s.uid);
         if (form) {
@@ -2087,11 +2117,31 @@ function deleteMysvc(id) {
 }
 
 
+// ── Статистика переглядів моїх оголошень ──────────────────
+// Раніше кнопки «7 днів / 30 днів» нічого не змінювали: рахувалась
+// тільки загальна сума views, до того ж зі старого кешу (до 30 хв).
+// Тепер кожен перегляд пишеться ще й у viewsByDay.{РРРРММДД}, тож
+// період рахується по-справжньому, а дані беруться свіжі з бази.
+var _viewsStatsCache = null; // { at, uid, listings }
+
+function _viewsDayKey(daysAgo) {
+  var d = new Date(Date.now() - (daysAgo || 0) * 86400000);
+  return d.toISOString().slice(0, 10).replace(/-/g, '');
+}
+function _viewsInPeriod(l, days) {
+  var m = l && l.viewsByDay;
+  if (!m || typeof m !== 'object') return 0;
+  var from = _viewsDayKey(days - 1), sum = 0;
+  Object.keys(m).forEach(function(k) { if (k >= from) sum += Number(m[k]) || 0; });
+  return sum;
+}
+
 function loadViewsStats(days) {
   if (!isLoggedIn || !currentUser || !currentUser.uid || !window._db) return;
+  var numDays = parseInt(days, 10) || 7;
 
   document.querySelectorAll('.vstab').forEach(function(b) {
-    var isActive = b.id === 'vstab-' + days;
+    var isActive = b.id === 'vstab-' + numDays;
     b.style.background = isActive ? 'var(--brand)' : 'transparent';
     b.style.color = isActive ? '#000' : 'var(--text-muted)';
     b.style.borderColor = isActive ? 'var(--brand)' : 'var(--border)';
@@ -2101,101 +2151,70 @@ function loadViewsStats(days) {
   var content = document.getElementById('views-stats-content');
   if (!panel || !content) return;
   panel.style.display = '';
-  content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i> Завантаження...</div>';
 
   var uid = currentUser.uid;
-  var numDays = parseInt(days) || 7;
+  var esc = typeof _esc === 'function' ? _esc : function(s) { return String(s || '').replace(/[&<>"']/g, function(c) { return '&#' + c.charCodeAt(0) + ';'; }); };
 
-  // Використовуємо кеш замість Firestore запиту
-  function _runStats(listings) {
-      if (!listings.length) {
-        content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Немає оголошень для статистики</div>';
-        return;
-      }
-
-      var totalViews = listings.reduce(function(s, l) { return s + (l.views || 0); }, 0);
-
-      var sorted = listings.slice().sort(function(a, b) { return (b.views || 0) - (a.views || 0); });
-      var top3 = sorted.slice(0, 3);
-
-      var avgViews = listings.length ? Math.round(totalViews / listings.length) : 0;
-
-      var noViews = listings.filter(function(l) { return !l.views || l.views === 0; }).length;
-
-      var html = '';
-
-      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">';
-      html += _statBox('<i class="fa-solid fa-eye"></i>', totalViews.toLocaleString('uk'), '\u0417\u0430\u0433\u0430\u043b\u044c\u043d\u043e \u043f\u0435\u0440\u0435\u0433\u043b\u044f\u0434\u0456\u0432', 'var(--brand)');
-      html += _statBox('<i class="fa-solid fa-chart-simple"></i>', avgViews, '\u0421\u0435\u0440\u0435\u0434\u043d\u0454 \u043d\u0430 \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u043d\u044f', '#6366f1');
-      html += _statBox('<i class="fa-solid fa-list"></i>', listings.length, '\u0412\u0441\u044c\u043e\u0433\u043e \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u044c', '#f59e0b');
-      html += '</div>';
-
-      if (top3.length) {
-        html += '<div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">\u041d\u0430\u0439\u043f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u0456\u0448\u0456</div>';
-        html += '<div style="display:flex;flex-direction:column;gap:8px">';
-        top3.forEach(function(l, i) {
-          var maxViews = top3[0].views || 1;
-          var pct = Math.round(((l.views || 0) / maxViews) * 100);
-          var medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
-          html += '<div style="background:var(--dark3);border-radius:10px;padding:10px 14px">';
-          html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
-          html += '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">' + medals[i] + ' ' + (l.title || '\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0438') + '</div>';
-          html += '<div style="font-size:13px;font-weight:700;color:var(--brand);flex-shrink:0"><i class="fa-solid fa-eye" style="font-size:11px;margin-right:4px"></i>' + (l.views || 0) + '</div>';
-          html += '</div>';
-          html += '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">';
-          html += '<div style="height:100%;width:' + pct + '%;background:var(--brand);border-radius:3px;transition:width .5s"></div>';
-          html += '</div></div>';
-        });
-        html += '</div>';
-      }
-
-      if (noViews > 0) {
-        html += '<div style="margin-top:14px;padding:10px 14px;background:var(--brand-dim);border-radius:10px;font-size:12px;color:var(--text-muted)">';
-        html += '<i class="fa-solid fa-lightbulb" style="color:var(--brand);margin-right:6px"></i>';
-        html += noViews + ' \u043e\u0433\u043e\u043b\u043e\u0448\u0435\u043d\u044c \u043d\u0435 \u043c\u0430\u044e\u0442\u044c \u043f\u0435\u0440\u0435\u0433\u043b\u044f\u0434\u0456\u0432 \u2014 \u0434\u043e\u0434\u0430\u0439\u0442\u0435 \u0444\u043e\u0442\u043e \u0430\u0431\u043e \u0430\u043a\u0442\u0438\u0432\u0443\u0439\u0442\u0435 TOP \u043f\u0440\u043e\u0441\u0443\u0432\u0430\u043d\u043d\u044f.';
-        html += '</div>';
-      }
-
-      content.innerHTML = html;
-  }
-
-  // Спочатку беремо з кешу myListings
-  var cached = typeof myListings !== 'undefined'
-    ? myListings.filter(function(l) { return l && l.uid === uid && l.status !== 'deleted'; })
-    : [];
-
-  if (cached.length > 0) {
-    _runStats(cached);
-  } else if (typeof _fbListings !== 'undefined' && _fbListings.length) {
-    // Fallback — фільтруємо з загального кешу
-    var fromFb = _fbListings.filter(function(l) { return l && l.uid === uid && l.status !== 'deleted'; });
-    if (fromFb.length > 0) {
-      _runStats(fromFb);
-    } else {
-      // Крайній випадок — читаємо з Firestore
-      window._db.collection('listings').where('uid', '==', uid).get()
-        .then(function(snap) {
-          var listings = snap.docs.map(function(d) {
-            return Object.assign({ id: d.id }, d.data());
-          }).filter(function(l) { return l.status !== 'deleted'; });
-          _runStats(listings);
-        })
-        .catch(function(e) {
-          content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">\u041f\u043e\u043c\u0438\u043b\u043a\u0430 \u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f: ' + e.message + '</div>';
-        });
+  function run(all) {
+    var listings = all.filter(function(l) { return l && l.status !== 'deleted'; });
+    if (!listings.length) {
+      content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Немає оголошень для статистики</div>';
+      return;
     }
-  } else {
-    window._db.collection('listings').where('uid', '==', uid).get()
-      .then(function(snap) {
-        var listings = snap.docs.map(function(d) {
-          return Object.assign({ id: d.id }, d.data());
-        }).filter(function(l) { return l.status !== 'deleted'; });
-        _runStats(listings);
-      })
-      .catch(function(e) {
-        content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">\u041f\u043e\u043c\u0438\u043b\u043a\u0430 \u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f: ' + e.message + '</div>';
+    var total = 0, period = 0;
+    listings.forEach(function(l) { total += Number(l.views) || 0; period += _viewsInPeriod(l, numDays); });
+    var active = listings.filter(function(l) { return l.status === 'active'; }).length;
+
+    var ranked = listings.map(function(l) { return { l: l, p: _viewsInPeriod(l, numDays), t: Number(l.views) || 0 }; })
+      .sort(function(a, b) { return (b.p - a.p) || (b.t - a.t); });
+    var top = ranked.slice(0, 3).filter(function(x) { return x.p || x.t; });
+    var usePeriod = period > 0;
+
+    var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">';
+    html += _statBox('<i class="fa-solid fa-eye"></i>', period.toLocaleString('uk'), 'Переглядів за ' + numDays + ' днів', 'var(--brand)');
+    html += _statBox('<i class="fa-solid fa-chart-simple"></i>', total.toLocaleString('uk'), 'Переглядів за весь час', '#6366f1');
+    html += _statBox('<i class="fa-solid fa-list"></i>', active, 'Активних оголошень', '#f59e0b');
+    html += '</div>';
+
+    if (top.length) {
+      html += '<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:10px">Найпопулярніші' + (usePeriod ? ' за ' + numDays + ' днів' : ' за весь час') + '</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px">';
+      var max = usePeriod ? (top[0].p || 1) : (top[0].t || 1);
+      top.forEach(function(x) {
+        var v = usePeriod ? x.p : x.t;
+        html += '<div style="background:var(--dark3);border-radius:10px;padding:10px 14px">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">'
+          + '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.l.title || 'Без назви') + '</div>'
+          + '<div style="font-size:13px;font-weight:700;color:var(--brand);flex-shrink:0"><i class="fa-solid fa-eye" style="font-size:11px;margin-right:4px"></i>' + v + '</div></div>'
+          + '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + Math.round(v / max * 100) + '%;background:var(--brand);border-radius:3px"></div></div>'
+          + '</div>';
       });
+      html += '</div>';
+    }
+
+    var noViews = listings.filter(function(l) { return l.status === 'active' && !(Number(l.views) > 0); }).length;
+    if (noViews > 0) {
+      html += '<div style="margin-top:14px;padding:10px 14px;background:var(--brand-dim);border-radius:10px;font-size:12px;color:var(--text-muted)">'
+        + '<i class="fa-solid fa-lightbulb" style="color:var(--brand);margin-right:6px"></i>'
+        + noViews + ' ' + (window.plUk ? plUk(noViews, ['оголошення ще не має', 'оголошення ще не мають', 'оголошень ще не мають']) : 'оголошень ще не мають') + ' переглядів — додайте фото або активуйте TOP-просування.</div>';
+    }
+    html += '<div style="margin-top:12px;font-size:11px;color:var(--text-muted)">Перегляд рахується один раз на добу з одного пристрою; ваші власні перегляди не враховуються. Розбивка по днях збирається з 23.09.2026.</div>';
+    content.innerHTML = html;
   }
+
+  // Свіжі дані з бази, але не частіше ніж раз на хвилину.
+  var c = _viewsStatsCache;
+  if (c && c.uid === uid && Date.now() - c.at < 60000) { run(c.listings); return; }
+  content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i> Завантаження...</div>';
+  window._db.collection('listings').where('uid', '==', uid).get()
+    .then(function(snap) {
+      var listings = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      _viewsStatsCache = { at: Date.now(), uid: uid, listings: listings };
+      run(listings);
+    })
+    .catch(function(e) {
+      content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">Помилка завантаження: ' + esc(e.message) + '</div>';
+    });
 }
 
 function _statBox(icon, value, label, color) {
@@ -2778,7 +2797,7 @@ function _setListingSchema(l) {
     'category': l.cat || '',
     'brand': l.brand ? { '@type': 'Brand', 'name': l.brand } : undefined,
     'model': l.model || undefined,
-    'image': l.photos && l.photos.length ? l.photos : (l.img ? [l.img] : undefined),
+    'image': l.imgs && l.imgs.length ? l.imgs : (l.img ? [l.img] : undefined),
     'itemCondition': l.condition === '\u041d\u043e\u0432\u0438\u0439'
       ? 'https://schema.org/NewCondition'
       : 'https://schema.org/UsedCondition',

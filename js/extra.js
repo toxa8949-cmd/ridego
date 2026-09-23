@@ -76,8 +76,8 @@ function _confirmSold() {
     }
 
     var uid = currentUser && currentUser.uid;
-    var soldCount = (typeof _allListings === 'function' ? _allListings() : [])
-      .filter(function(x){ return x && x.uid === uid && x.status === 'sold'; }).length;
+    var soldCount = (typeof myListings !== 'undefined' ? myListings : [])
+      .filter(function(x){ return x && (x.status === 'sold' || (x.status === 'deleted' && /продано/i.test(x.deletedReason || ''))); }).length;
     var soldEl = document.getElementById('pstat-sold');
     if (soldEl) soldEl.textContent = soldCount;
     if (window._db && uid) {
@@ -311,7 +311,7 @@ function submitReview() {
   var review = {
     sellerUid:   _reviewSellerUid,
     reviewerUid: currentUser.uid,
-    reviewerName: currentUser.name || currentUser.email,
+    reviewerName: currentUser.name || (currentUser.email ? String(currentUser.email).split('@')[0] : 'Користувач'),
     rating: _reviewStar,
     text:   text,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -361,7 +361,7 @@ function _renderSellerReviewsUI(revs) {
         var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
         return tb - ta;
       });
-      var avg = revs.length ? revs.reduce(function(s,r){ return s+r.rating; }, 0) / revs.length : 0;
+      var avg = revs.length ? revs.reduce(function(s,r){ return s+(Number(r.rating)||0); }, 0) / revs.length : 0;
       document.getElementById('rev-avg').textContent = avg > 0 ? avg.toFixed(1) : '—';
       // Оновити рейтинг в stat card
       var ratingStat = document.getElementById('sp-stat-rating');
@@ -369,7 +369,7 @@ function _renderSellerReviewsUI(revs) {
       document.getElementById('rev-stars').textContent = avg > 0
         ? ('★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg))) : '☆☆☆☆☆';
       document.getElementById('rev-count').textContent = revs.length
-        ? 'на основі ' + revs.length + ' відгуків' : 'Відгуків поки немає';
+        ? 'на основі ' + revs.length + ' ' + (window.plUk ? plUk(revs.length, ['відгуку', 'відгуків', 'відгуків']) : 'відгуків') : 'Відгуків поки немає';
 
       var bars = [5,4,3,2,1];
       document.getElementById('rev-bars').innerHTML = bars.map(function(star) {
@@ -385,7 +385,10 @@ function _renderSellerReviewsUI(revs) {
 
       var colors = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#22c55e','#f97316'];
       document.getElementById('reviews-list').innerHTML = revs.length ? revs.map(function(r, i) {
-        var safeName = typeof _esc === 'function' ? _esc(r.reviewerName||'Анонім') : (r.reviewerName||'Анонім');
+        // У старих відгуках замість імені міг зберегтися email — не показуємо його.
+        var _rn = String(r.reviewerName || 'Анонім');
+        if (_rn.indexOf('@') !== -1) _rn = _rn.split('@')[0];
+        var safeName = typeof _esc === 'function' ? _esc(_rn) : _rn;
         var safeText = typeof _esc === 'function' ? _esc(r.text||'')               : (r.text||'');
         var initials = safeName.replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g,'').split(' ').map(function(w){ return w[0]||''; }).join('').slice(0,2).toUpperCase() || '?';
         var stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
@@ -422,6 +425,10 @@ function _confirmDelete(id, btn) {
 
   myListings = myListings.filter(function(l){ return l.id !== id; });
   _fbListings = _fbListings.filter(function(l){ return l.id !== id; });
+  if (/продано/i.test(reason.value)) {
+    var _ps = document.getElementById('pstat-sold');
+    if (_ps) _ps.textContent = (parseInt(_ps.textContent, 10) || 0) + 1;
+  }
   if (typeof renderMyListings === 'function') renderMyListings();
   if (typeof _updateActiveCount === 'function') _updateActiveCount();
   showToast('✅ Оголошення видалено');

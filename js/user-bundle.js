@@ -240,7 +240,10 @@ function renderProfile() {
   if (settingsLetterEl) settingsLetterEl.textContent = currentUser.initial;
 
   document.getElementById('pstat-active').textContent = myListings.filter(function(l){ return l && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; }).length;
-  document.getElementById('pstat-sold').textContent = 0;
+  // «Продано» раніше завжди показувало 0 після перезавантаження сторінки.
+  document.getElementById('pstat-sold').textContent = myListings.filter(function(l){
+    return l && (l.status === 'sold' || (l.status === 'deleted' && /продано/i.test(l.deletedReason || '')));
+  }).length;
   document.getElementById('pstat-favs').textContent = favorites.length;
 
   // Беремо профіль з кешу або Firestore

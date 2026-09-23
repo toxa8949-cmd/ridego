@@ -1062,37 +1062,81 @@ function _renderSellerByUid(uid) {
     switchSellerTab('listings', document.querySelector('.seller-tab'));
   }
 
-  var cached = _fbListings.filter(function(x){ return x && x.uid === uid && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive'; });
-  if (cached.length > 0 || _fbListings.length > 0) {
+  // Раніше, якщо в кеші вже були хоч якісь оголошення сайту, сторінка
+  // продавця брала його оголошення лише з цього кешу (перші 50 на сайті).
+  // У продавця з давнішими оголошеннями лічильник показував менше, ніж є,
+  // або навіть 0. Тепер кеш — лише для миттєвого показу, а список і
+  // лічильники завжди звіряються з базою.
+  var _isShown = function(l) { return l && l.status !== 'deleted' && l.status !== 'sold' && l.status !== 'inactive'; };
+  var cached = _fbListings.filter(function(x){ return x && x.uid === uid && _isShown(x); });
+  if (cached.length) _doRender(cached);
 
-    _doRender(cached);
-  } else {
-
-    window._db.collection('listings')
-      .where('uid', '==', uid)
-      .get()
-      .then(function(snap) {
-        var listings = snap.docs
-          .map(function(d){ return Object.assign({id: d.id}, d.data()); })
-          .filter(function(l){ return l.status !== 'inactive' && l.status !== 'deleted' && l.status !== 'sold'; });
-
-        listings.sort(function(a,b){
-          var ta=a.createdAt&&a.createdAt.seconds?a.createdAt.seconds:0;
-          var tb=b.createdAt&&b.createdAt.seconds?b.createdAt.seconds:0;
-          return tb-ta;
-        });
-
-        listings.forEach(function(l) {
-          if (!_fbListings.find(function(x){ return x.id === l.id; })) {
-            _fbListings.push(l);
-          }
-        });
-        _doRender(listings);
-      })
-      .catch(function(e) {
-        showToast('⚠️ Помилка завантаження: ' + e.message);
+  window._db.collection('listings')
+    .where('uid', '==', uid)
+    .get()
+    .then(function(snap) {
+      var all = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+      var listings = all.filter(_isShown);
+      listings.sort(function(a,b){
+        var ta=a.createdAt&&a.createdAt.seconds?a.createdAt.seconds:0;
+        var tb=b.createdAt&&b.createdAt.seconds?b.createdAt.seconds:0;
+        return tb-ta;
       });
-  }
+      listings.forEach(function(l) {
+        if (!_fbListings.find(function(x){ return x.id === l.id; })) _fbListings.push(l);
+      });
+      if (!cached.length) {
+        _doRender(listings);
+      } else if (listings.length !== cached.length) {
+        var nm = listings.length ? (listings[0].sellerName || listings[0].seller || 'Продавець') : 'Продавець';
+        renderSellerListings(listings, { name: nm, id: 'uid:' + uid });
+      }
+      _setSellerCounts(all, listings.length);
+    })
+    .catch(function(e) {
+      if (!cached.length) { _doRender([]); showToast('⚠️ Помилка завантаження: ' + e.message); }
+    });
+}
+
+// Лічильники на сторінці продавця: активні й продані оголошення.
+// «Продано» — позначені як продані або видалені з причиною «Продано…».
+function _setSellerCounts(all, activeCount) {
+  var sold = all.filter(function(l) {
+    return l && (l.status === 'sold' || (l.status === 'deleted' && /продано/i.test(l.deletedReason || '')));
+  }).length;
+  var ads = document.getElementById('sp-stat-ads'); if (ads) ads.textContent = activeCount;
+  var soldEl = document.getElementById('sp-stat-sold'); if (soldEl) soldEl.textContent = sold;
+}
+
+// Блок продавця на сторінці оголошення: скільки в нього активних оголошень
+// і який рейтинг. Раніше кількість бралась лише з перших 50 оголошень сайту,
+// рейтинг завжди був «Новий продавець», а «відповідей» — завжди «—».
+function _loadSellerMini(uid) {
+  if (!window._db || !uid) return;
+  window._sellerMini = window._sellerMini || {};
+  var apply = function(m) {
+    if (window._currentDetailUid !== uid) return;
+    var adsEl = document.getElementById('seller-ads-count');
+    var revEl = document.getElementById('seller-response-rate');
+    var ratingEl = document.getElementById('detail-seller-rating');
+    if (adsEl) adsEl.textContent = m.ads;
+    if (revEl) revEl.textContent = m.reviews;
+    if (ratingEl) ratingEl.innerHTML = m.reviews
+      ? '<span style="color:#ffa726">★</span> <b>' + m.avg.toFixed(1) + '</b> <span style="color:var(--text-muted);font-size:12px">· ' + m.reviews + ' ' + (window.plUk ? plUk(m.reviews, ['відгук', 'відгуки', 'відгуків']) : 'відгуків') + '</span>'
+      : '<span style="color:var(--text-muted);font-size:12px">Ще немає відгуків</span>';
+  };
+  var c = window._sellerMini[uid];
+  if (c && Date.now() - c.at < 5 * 60 * 1000) { apply(c); return; }
+  Promise.all([
+    window._db.collection('listings').where('uid', '==', uid).get(),
+    window._db.collection('reviews').where('sellerUid', '==', uid).limit(100).get()
+  ]).then(function(r) {
+    var ads = r[0].docs.filter(function(d) { return d.data().status === 'active'; }).length;
+    var revs = r[1].docs.map(function(d) { return Number(d.data().rating) || 0; }).filter(Boolean);
+    var m = { at: Date.now(), ads: ads, reviews: revs.length, avg: revs.length ? revs.reduce(function(a, b) { return a + b; }, 0) / revs.length : 0 };
+    window._sellerMini[uid] = m;
+    apply(m);
+  }).catch(function() {});
 }
 
 function renderSellerPage(id) {
@@ -1362,21 +1406,28 @@ function showDetail(id, _skipPush) {
   });
   _setListingSchema(l); if (typeof _setBreadcrumb === 'function') { try { _setBreadcrumb([{name:'Головна',url:'https://www.ridego.com.ua/'},{name:l.cat||'Каталог',url:'https://www.ridego.com.ua/catalog'+(l.cat?'?cat='+encodeURIComponent(l.cat):'')},{name:l.title||'Оголошення'}]); } catch(e){} }
 
+  // Перегляди: раз на добу з одного браузера, без власника оголошення.
+  // Раніше update() відхилявся правилами для всіх, крім власника й адміна,
+  // тож лічильник рахував переважно перегляди самого продавця.
   if (window._db && id && typeof id === 'string') {
     var today = new Date().toISOString().slice(0,10);
     var _viewKey = 'ridego_view_' + id + '_' + today;
     var _alreadyViewed = false;
     try { _alreadyViewed = !!localStorage.getItem(_viewKey); } catch(e) {}
+    var _me = (window._auth && window._auth.currentUser && window._auth.currentUser.uid) || '';
+    var _isOwner = !!(_me && l.uid && _me === l.uid);
 
-    if (!_alreadyViewed) {
+    if (!_alreadyViewed && !_isOwner) {
+      try { localStorage.setItem(_viewKey, '1'); } catch(e) {}
+      var _vu = { views: firebase.firestore.FieldValue.increment(1) };
+      _vu['viewsByDay.' + today.replace(/-/g, '')] = firebase.firestore.FieldValue.increment(1);
+      window._db.collection('listings').doc(id).update(_vu)
+        .then(function() { l.views = (Number(l.views) || 0) + 1; })
+        .catch(function() { try { localStorage.removeItem(_viewKey); } catch(e) {} });
       window._db.collection('analytics').doc('views_' + today).set({
         date: today,
         count: firebase.firestore.FieldValue.increment(1)
       }, { merge: true }).catch(function(){});
-      window._db.collection('listings').doc(id).update({
-        views: firebase.firestore.FieldValue.increment(1)
-      }).catch(function(){});
-      try { localStorage.setItem(_viewKey, '1'); } catch(e) {}
     }
   }
 
@@ -1485,13 +1536,13 @@ function showDetail(id, _skipPush) {
   window._currentDetailUid = sellerUid;
   var sellerListings = _fbListings.filter(function(x){ return x && (sellerUid ? x.uid === sellerUid : x.seller === sellerName) && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive'; });
   if (adsEl) adsEl.textContent = sellerListings.length || 1;
+  if (sellerUid) _loadSellerMini(sellerUid);
 
   if (window._db && sellerUid) {
     if (!window._sellersCache) window._sellersCache = {};
     var _cachedSeller = window._sellersCache[sellerUid];
     if (_cachedSeller) {
       var createdYear = _cachedSeller.createdAt ? new Date(_cachedSeller.createdAt.seconds * 1000).getFullYear() : '';
-      if (ratingEl) ratingEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Новий продавець</span>';
       if (sinceEl && createdYear) sinceEl.innerHTML = 'На сайті з ' + createdYear;
       // Показати фото продавця
       var _avEl = document.getElementById('detail-avatar');
@@ -1504,7 +1555,6 @@ function showDetail(id, _skipPush) {
         if (!d) return;
         window._sellersCache[sellerUid] = d;
         var createdYear = d.createdAt ? new Date(d.createdAt.seconds * 1000).getFullYear() : '';
-        if (ratingEl) ratingEl.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Новий продавець</span>';
         if (sinceEl && createdYear) sinceEl.innerHTML = 'На сайті з ' + createdYear;
         // Показати фото продавця
         var _avEl2 = document.getElementById('detail-avatar');

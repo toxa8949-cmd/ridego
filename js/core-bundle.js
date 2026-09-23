@@ -2,7 +2,8 @@
 window.updateHomeStats = function(){ try {
   var L = (typeof _allListings === 'function') ? _allListings() : [];
   var c={}, s={};
-  for (var i=0;i<L.length;i++){ var l=L[i]; if (l.city) c[l.city]=1; var u=l.uid||l.userId||l.sellerId; if (u) s[u]=1; }
+  L = L.filter(function(l){ return l && (l.status === 'active' || !l.status); });
+  for (var i=0;i<L.length;i++){ var l=L[i]; if (l.city) c[String(l.city).split(',')[0].trim().toLowerCase()]=1; var u=l.uid||l.userId||l.sellerId; if (u) s[u]=1; }
   var nL=L.length, nC=Object.keys(c).length, nS=Object.keys(s).length;
 
   // Клієнт завантажує лише перші 50 оголошень, тож його підрахунок —
@@ -1595,6 +1596,7 @@ function _loadFirebaseFromNetwork(force) {
       _fbServices = cachedSvcs.filter(function(s){ return myIds.indexOf(s.id) < 0; });
       renderHomeServices();
       if (typeof renderServices === 'function') renderServices();
+      if (typeof _svcFillRatings === 'function') _svcFillRatings(_fbServices);
       var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
       if (_svcPath) showServiceDetail(_svcPath[1]);
       return;
@@ -1607,6 +1609,7 @@ function _loadFirebaseFromNetwork(force) {
         _idbSet('services', _fbServices);
         renderHomeServices();
         if (typeof renderServices === 'function') renderServices();
+        if (typeof _svcFillRatings === 'function') _svcFillRatings(_fbServices);
         var _svcPath = window.location.pathname.match(/^\/service\/(.+)$/);
         if (_svcPath) showServiceDetail(_svcPath[1]);
       }).catch(function(e){ void('services:', e.message); });
