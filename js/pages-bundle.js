@@ -1119,8 +1119,9 @@ function _loadSellerMini(uid) {
     var adsEl = document.getElementById('seller-ads-count');
     var revEl = document.getElementById('seller-response-rate');
     var ratingEl = document.getElementById('detail-seller-rating');
-    if (adsEl) adsEl.textContent = m.ads;
-    if (revEl) revEl.textContent = m.reviews;
+    var pl = function(n, f) { return window.plUk ? plUk(n, f) : f[2]; };
+    if (adsEl) { adsEl.textContent = m.ads; if (adsEl.nextElementSibling) adsEl.nextElementSibling.textContent = pl(m.ads, ['оголошення', 'оголошення', 'оголошень']); }
+    if (revEl) { revEl.textContent = m.reviews; if (revEl.nextElementSibling) revEl.nextElementSibling.textContent = pl(m.reviews, ['відгук', 'відгуки', 'відгуків']); }
     if (ratingEl) ratingEl.innerHTML = m.reviews
       ? '<span style="color:#ffa726">★</span> <b>' + m.avg.toFixed(1) + '</b> <span style="color:var(--text-muted);font-size:12px">· ' + m.reviews + ' ' + (window.plUk ? plUk(m.reviews, ['відгук', 'відгуки', 'відгуків']) : 'відгуків') + '</span>'
       : '<span style="color:var(--text-muted);font-size:12px">Ще немає відгуків</span>';
