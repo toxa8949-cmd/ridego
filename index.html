@@ -275,6 +275,13 @@
         var _applySnap = function(snap) {
           if (snap.exists) {
             var d = snap.data();
+            // Заблокований адміністратором акаунт — виходимо одразу.
+            if (d.status === 'blocked') {
+              try { localStorage.removeItem(_pcKey); localStorage.removeItem(_pcKey + '_at'); } catch (e) {}
+              if (typeof showToast === 'function') showToast('⛔ Акаунт заблоковано. Якщо це помилка — напишіть у підтримку.');
+              window._auth.signOut();
+              return;
+            }
             // Якщо юзер змінив ім'я — використовувати з Firestore
             _cu.name    = d.name || _cu._googleName || _cu.name;
             _cu.initial = (_cu.name||'U')[0].toUpperCase();
@@ -291,7 +298,7 @@
               ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
                 var el = document.getElementById(id);
                 if (!el) return;
-                el.innerHTML = '<img alt="Аватар" src="' + d.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+                el.innerHTML = '<img alt="Аватар" src="' + String(d.photoUrl).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
               });
             }
           } else {

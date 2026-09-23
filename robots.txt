@@ -3,6 +3,8 @@ Allow: /
 
 # Не індексуємо адмінку і API
 Disallow: /ridego-admin.html
+Disallow: /ridego-admin
+Disallow: /admin/
 Disallow: /api/
 
 Sitemap: https://www.ridego.com.ua/sitemap.xml
