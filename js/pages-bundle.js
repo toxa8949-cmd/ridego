@@ -582,7 +582,11 @@ function runSearch() {
   grid.className = 'listing-grid' + (currentLayout === 'list' ? ' list-view' : '');
 
   if (!regularData.length && !topData.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><i class="fa-solid fa-search"></i><h3>Нічого не знайдено</h3><p>Спробуйте змінити фільтри</p></div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><i class="fa-solid fa-search"></i><h3>Нічого не знайдено</h3><p>Спробуйте змінити фільтри — або збережіть пошук, і ми напишемо, щойно з'явиться підходяще оголошення</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px">
+        <button class="btn-outline" onclick="clearFilters()"><i class="fa-solid fa-rotate-left" style="margin-right:6px"></i>Скинути фільтри</button>
+        <button class="btn-primary" onclick="typeof _uxSaveSearch==='function'&&_uxSaveSearch()"><i class="fa-regular fa-bell" style="margin-right:6px"></i>Повідомити про нові</button>
+      </div></div>`;
     _removePaginationUI();
   } else if (!regularData.length) {
     grid.innerHTML = '';

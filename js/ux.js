@@ -831,6 +831,142 @@
     document.body.appendChild(m);
   };
 
+  // ══ 10. ФІЛЬТРИ ШТОРКОЮ ЗНИЗУ НА ТЕЛЕФОНІ ════════════════════
+  // На телефоні панель фільтрів розгорталась посеред сторінки довгим
+  // полотном. Тепер вона відкривається шторкою знизу, а кнопка
+  // «Показати оголошення» завжди видна внизу шторки.
+  function isMobile() { return window.innerWidth <= 768; }
+  function closeSheet() {
+    document.body.classList.remove('ux-fp-sheet');
+    var b = $('fp-body'); if (b && isMobile()) b.style.display = 'none';
+    var ov = $('ux-fp-overlay'); if (ov) ov.remove();
+  }
+  function openSheet() {
+    document.body.classList.add('ux-fp-sheet');
+    if (!$('ux-fp-overlay')) {
+      var ov = document.createElement('div');
+      ov.id = 'ux-fp-overlay';
+      ov.onclick = closeSheet;
+      document.body.appendChild(ov);
+    }
+    var body = $('fp-body');
+    if (body && !$('ux-fp-sheet-head')) {
+      var h = document.createElement('div');
+      h.id = 'ux-fp-sheet-head';
+      h.innerHTML = '<b>Фільтри</b><button type="button" aria-label="Закрити" onclick="event.stopPropagation();_uxCloseFilters()"><i class="fa-solid fa-xmark"></i></button>';
+      body.insertBefore(h, body.firstChild);
+    }
+  }
+  window._uxCloseFilters = closeSheet;
+  wrap('_toggleFilterPanel', function () {
+    if (!isMobile()) return;
+    var b = $('fp-body');
+    if (b && b.style.display !== 'none') openSheet(); else closeSheet();
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.fp-search-btn') && document.body.classList.contains('ux-fp-sheet')) setTimeout(closeSheet, 0);
+  }, true);
+  wrap('showPage', function () { if (document.body.classList.contains('ux-fp-sheet')) closeSheet(); });
+
+  // ══ 11. ПІДКАЗКИ В ПОШУКУ ═══════════════════════════════════
+  // Раніше кожна літера в рядку пошуку одразу перекидала на каталог.
+  // Тепер під рядком з'являються підказки (моделі, бренди, міста),
+  // а пошук запускається по Enter або по кліку на підказку.
+  var sugBox = null, sugInput = null, sugTimer = null;
+  function sugHide() { if (sugBox) sugBox.style.display = 'none'; }
+  function buildSuggestions(q) {
+    q = norm(q);
+    if (q.length < 2) return [];
+    var out = [], seen = {};
+    function add(type, text, action, extra) {
+      var k = type + '|' + norm(text);
+      if (seen[k] || out.length >= 8) return; seen[k] = 1;
+      out.push({ type: type, text: text, action: action, extra: extra || '' });
+    }
+    var ls = listings().filter(function (l) { return l && l.status !== 'deleted' && l.status !== 'sold'; });
+    // Спершу бренди й міста (по 2), далі конкретні оголошення
+    var brands = {};
+    if (typeof BRANDS !== 'undefined') Object.keys(BRANDS).forEach(function (c) { (BRANDS[c] || []).forEach(function (b) { brands[b.replace(/\s*\(.*\)$/, '')] = 1; }); });
+    Object.keys(brands).filter(function (b) { return norm(b).indexOf(q) === 0; }).slice(0, 2).forEach(function (b) { add('brand', b, 'q:' + b); });
+    var cities = {};
+    ls.forEach(function (l) { if (l.city) cities[String(l.city).split(',')[0].trim()] = 1; });
+    Object.keys(cities).filter(function (c) { return norm(c).indexOf(q) === 0; }).slice(0, 2).forEach(function (c) { add('city', c, 'q:' + c); });
+    ls.forEach(function (l) {
+      if (norm(l.title).indexOf(q) > -1) add('listing', l.title, 'l:' + l.id, fmtN(l.price) + ' грн');
+    });
+    return out.slice(0, 7);
+  }
+  function sugRender(input) {
+    var items = buildSuggestions(input.value);
+    if (!sugBox) {
+      sugBox = document.createElement('div');
+      sugBox.id = 'ux-suggest';
+      sugBox.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      sugBox.addEventListener('click', function (e) {
+        var it = e.target.closest('[data-act]'); if (!it) return;
+        var a = it.getAttribute('data-act');
+        sugHide();
+        if (a.indexOf('l:') === 0) { if (typeof showDetail === 'function') showDetail(a.slice(2)); }
+        else { var q = a.slice(2); if (sugInput) sugInput.value = q; if (typeof doSearch === 'function') doSearch(q); }
+      });
+      document.body.appendChild(sugBox);
+    }
+    if (!items.length) { sugHide(); return; }
+    var icons = { listing: 'fa-bolt', brand: 'fa-tag', city: 'fa-location-dot' };
+    sugBox.innerHTML = items.map(function (it) {
+      return '<div class="ux-sug" data-act="' + esc(it.action) + '"><i class="fa-solid ' + icons[it.type] + '"></i><span>' + esc(it.text) + '</span>' +
+        (it.extra ? '<small>' + esc(it.extra) + '</small>' : '') + '</div>';
+    }).join('') + '<div class="ux-sug ux-sug-all" data-act="q:' + esc(input.value.trim()) + '"><i class="fa-solid fa-magnifying-glass"></i><span>Шукати «' + esc(input.value.trim()) + '»</span></div>';
+    var r = input.getBoundingClientRect();
+    sugBox.style.left = Math.max(8, r.left) + 'px';
+    sugBox.style.top = (r.bottom + 6) + 'px';
+    sugBox.style.width = Math.min(Math.max(r.width, 280), window.innerWidth - 16) + 'px';
+    sugBox.style.display = 'block';
+  }
+  (function () {
+    var orig = window.handleSearch;
+    if (typeof orig !== 'function') return;
+    window.handleSearch = function (query, immediate) {
+      var input = document.activeElement && /headerSearch/.test(document.activeElement.id) ? document.activeElement : null;
+      if (immediate) { sugHide(); return orig.apply(this, arguments); }
+      if (!input) return orig.apply(this, arguments);
+      sugInput = input;
+      clearTimeout(sugTimer);
+      sugTimer = setTimeout(function () { sugRender(input); }, 120);
+    };
+    ['headerSearch', 'headerSearchMobile'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.addEventListener('blur', function () { setTimeout(sugHide, 150); });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { sugHide(); if (id === 'headerSearchMobile') window.handleSearch(el.value, true); }
+        if (e.key === 'Escape') sugHide();
+      });
+    });
+    window.addEventListener('scroll', sugHide, { passive: true });
+  })();
+
+  // ══ 12. ХАРАКТЕРИСТИКИ: СПОЧАТКУ ГОЛОВНЕ ═══════════════════════
+  wrap('buildSpecTable', function () {
+    var el = $('detail-specs-full');
+    if (!el) return;
+    var rows = el.querySelectorAll('.spec-table tr');
+    if (rows.length <= 8) return;
+    el.classList.add('ux-specs-collapsed');
+    for (var i = 8; i < rows.length; i++) rows[i].classList.add('ux-spec-more');
+    el.querySelectorAll('.spec-section').forEach(function (sec) {
+      if (!sec.querySelector('.spec-table tr:not(.ux-spec-more)')) sec.classList.add('ux-spec-more');
+    });
+    var btn = document.createElement('button');
+    btn.className = 'ux-specs-toggle';
+    btn.textContent = 'Усі характеристики (' + rows.length + ')';
+    btn.onclick = function () {
+      var c = el.classList.toggle('ux-specs-collapsed');
+      btn.textContent = c ? 'Усі характеристики (' + rows.length + ')' : 'Згорнути';
+    };
+    el.appendChild(btn);
+  });
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }

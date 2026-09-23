@@ -3592,3 +3592,35 @@ body.light .mnav-item span {
   .profile-actions-v2 { flex-wrap: wrap; }
   .profile-actions-v2 .pact-main { flex: 1 1 100%; }
 }
+
+/* ══ Фільтри шторкою, підказки пошуку, характеристики ══ */
+@media (max-width: 768px) {
+  body.ux-fp-sheet { overflow: hidden; }
+  body.ux-fp-sheet #fp-body {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1600; margin: 0 !important;
+    max-height: 86vh; overflow-y: auto; background: var(--card-bg);
+    border-radius: 20px 20px 0 0; padding: 0 16px 16px; box-shadow: 0 -10px 40px rgba(0,0,0,.25);
+    animation: uxSheetUp .22s ease;
+  }
+  body.ux-fp-sheet .fp-search-btn { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -8px 16px var(--card-bg); }
+  #ux-fp-overlay { position: fixed; inset: 0; z-index: 1590; background: rgba(0,0,0,.45); }
+  #ux-fp-sheet-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 14px 0 10px; background: var(--card-bg); font-size: 17px; }
+  #ux-fp-sheet-head::before { content: ''; position: absolute; top: 6px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--border); }
+  #ux-fp-sheet-head button { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--dark3); color: var(--text); font-size: 16px; cursor: pointer; }
+}
+#ux-fp-sheet-head { display: none; }
+body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
+@keyframes uxSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+#ux-suggest { position: fixed; z-index: 3000; display: none; background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,.18); overflow: hidden; }
+.ux-sug { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; font-size: 14px; color: var(--text); }
+.ux-sug + .ux-sug { border-top: 1px solid var(--border); }
+.ux-sug:hover { background: var(--brand-dim); }
+.ux-sug i { color: var(--brand); width: 16px; text-align: center; font-size: 13px; }
+.ux-sug span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ux-sug small { color: var(--brand); font-weight: 700; white-space: nowrap; }
+.ux-sug-all span { color: var(--text-muted); }
+
+.ux-specs-collapsed .ux-spec-more { display: none; }
+.ux-specs-toggle { display: block; width: 100%; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--brand); font: 700 14px/1 inherit; font-family: inherit; cursor: pointer; }
+.ux-specs-toggle:hover { border-color: var(--brand); }
