@@ -2,18 +2,76 @@
 'use strict';
 (function () {
   var chartDays = 30;
-  var traffic = null; // { visitors, views } за сьогодні
+  var traffic = null; // { days: {date: {visitors, views}}, pwa, online }
 
+  // Відвідувачі й перегляди — з документів analytics/visitors_ДАТА і views_ДАТА.
+  // До 23.09.2026 правила пускали туди лише користувачів з акаунтом,
+  // тому старіші дні занижені.
   function loadTraffic() {
-    var today = new Date().toISOString().slice(0, 10);
-    var get = function (id) {
-      return A.db.collection('analytics').doc(id).get()
-        .then(function (s) { return s.exists ? (s.data().count || 0) : 0; }, function () { return null; });
-    };
-    Promise.all([get('visitors_' + today), get('views_' + today)]).then(function (r) {
-      traffic = { visitors: r[0], views: r[1] };
+    var from = new Date(Date.now() - 95 * 86400000).toISOString().slice(0, 10);
+    var t = { days: {}, pwa: null, online: null };
+    var q1 = A.db.collection('analytics').where('date', '>=', from).get().then(function (s) {
+      s.forEach(function (d) {
+        var x = d.data(), m = /^(visitors|views)_(\d{4}-\d{2}-\d{2})$/.exec(d.id);
+        if (!m) return;
+        var day = t.days[m[2]] || (t.days[m[2]] = { visitors: 0, views: 0 });
+        day[m[1]] = Number(x.count) || 0;
+      });
+    }, function (e) { console.error('analytics', e); });
+    var q2 = A.db.collection('analytics').doc('pwa_installs').get().then(function (s) {
+      t.pwa = s.exists ? (Number(s.data().count) || 0) : 0;
+    }, function () {});
+    var q3 = countOnline().then(function (n) { t.online = n; });
+    Promise.all([q1, q2, q3]).then(function () {
+      traffic = t;
       if (A.current === 'overview') A.render();
     });
+  }
+
+  // «Онлайн зараз» — записи presence у Realtime Database, оновлені за
+  // останні 5 хвилин. Старі «завислі» записи не рахуються.
+  function countOnline() {
+    if (!A.rtdb) return Promise.resolve(null);
+    return A.rtdb.ref('presence').once('value').then(function (snap) {
+      var fresh = 0, now = Date.now();
+      snap.forEach(function (c) { var v = c.val(); if (v && now - (Number(v.t) || 0) < 5 * 60 * 1000) fresh++; });
+      return fresh;
+    }, function () { return null; });
+  }
+  A.reloadTraffic = loadTraffic;
+
+  function dayStr(daysAgo) { return new Date(Date.now() - daysAgo * 86400000).toISOString().slice(0, 10); }
+  function trafficSum(key, days) {
+    if (!traffic) return null;
+    var s = 0;
+    for (var i = 0; i < days; i++) { var d = traffic.days[dayStr(i)]; if (d) s += d[key] || 0; }
+    return s;
+  }
+
+  function trafficChart(days) {
+    if (!traffic) return '<p class="muted">Завантаження…</p>';
+    var rows = [];
+    for (var i = days - 1; i >= 0; i--) { var k = dayStr(i); var d = traffic.days[k] || {}; rows.push({ k: k, a: d.visitors || 0, b: d.views || 0 }); }
+    var max = Math.max(1, Math.max.apply(null, rows.map(function (r) { return Math.max(r.a, r.b); })));
+    var W = 720, H = 120, gw = (W - 30) / days, bw = Math.max(2, Math.min(9, gw / 2 - 1));
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" role="img" aria-label="Відвідувачі і перегляди">' +
+      '<line class="axis" x1="30" x2="' + W + '" y1="' + H + '" y2="' + H + '"/>' +
+      '<text x="24" y="' + H + '" text-anchor="end">0</text><text x="24" y="10" text-anchor="end">' + max + '</text>';
+    var step = days <= 14 ? 1 : days <= 30 ? 3 : 10;
+    rows.forEach(function (r, i) {
+      var x = 30 + i * gw + (gw - bw * 2 - 1) / 2;
+      var ha = Math.round(r.a / max * (H - 6)), hb = Math.round(r.b / max * (H - 6));
+      var label = r.k.slice(8) + '.' + r.k.slice(5, 7);
+      svg += '<g><title>' + label + ': відвідувачів ' + r.a + ', переглядів ' + r.b + '</title>' +
+        '<rect class="bar-l" x="' + x.toFixed(1) + '" y="' + (H - ha) + '" width="' + bw.toFixed(1) + '" height="' + ha + '"/>' +
+        '<rect class="bar-u" x="' + (x + bw + 1).toFixed(1) + '" y="' + (H - hb) + '" width="' + bw.toFixed(1) + '" height="' + hb + '"/>' +
+        '<rect x="' + (30 + i * gw).toFixed(1) + '" y="0" width="' + gw.toFixed(1) + '" height="' + H + '" fill="transparent"/></g>';
+      if ((days - 1 - i) % step === 0) svg += '<text x="' + (30 + i * gw + gw / 2).toFixed(1) + '" y="' + (H + 13) + '" text-anchor="middle">' + label + '</text>';
+    });
+    svg += '</svg>';
+    return '<div class="chart">' + svg + '</div><div class="legend"><span><i style="background:var(--accent)"></i>Відвідувачі: ' + trafficSum('visitors', days) + '</span>' +
+      '<span><i style="background:var(--text-3)"></i>Перегляди оголошень: ' + trafficSum('views', days) + '</span></div>' +
+      '<p class="muted" style="font-size:12px;margin:8px 0 0">Унікальний відвідувач — один браузер за добу. Перегляд — одне оголошення з одного браузера за добу, без переглядів власника. До 23.09.2026 рахувались лише відвідувачі з акаунтом.</p>';
   }
 
   function kpi(value, label, sub, up) {
@@ -64,7 +122,6 @@
 
   A.page('overview', {
     title: 'Огляд',
-    enter: function () { if (!traffic) loadTraffic(); },
     render: function () {
       var d = A.data;
       var active = d.listings.filter(function (l) { return l.status === 'active'; });
@@ -86,9 +143,12 @@
         kpi(lToday + ' / ' + uToday, 'Сьогодні: оголошень / реєстрацій') +
         kpi(Object.keys(sellers).length, 'Продавців з активними', business + ' бізнес-акаунтів') +
         kpi(median ? A.num(median) : '—', 'Медіанна ціна, грн') +
-        kpi(traffic && traffic.visitors != null ? A.num(traffic.visitors) : '—', 'Відвідувачів сьогодні',
-          'лише з входом в акаунт') +
-        kpi(traffic && traffic.views != null ? A.num(traffic.views) : '—', 'Переглядів оголошень сьогодні');
+        kpi(traffic ? A.num(trafficSum('visitors', 1)) : '—', 'Відвідувачів сьогодні',
+          traffic ? 'вчора ' + A.num((traffic.days[dayStr(1)] || {}).visitors || 0) : '') +
+        kpi(traffic ? A.num(trafficSum('views', 1)) : '—', 'Переглядів оголошень сьогодні',
+          traffic ? A.num(trafficSum('views', 7)) + ' за 7 днів' : '') +
+        kpi(traffic && traffic.online != null ? traffic.online : '—', 'Онлайн зараз', 'за останні 5 хв') +
+        kpi(traffic && traffic.pwa != null ? A.num(traffic.pwa) : '—', 'Встановили застосунок', 'усього');
 
       var att = [];
       if (openReports) att.push('<a href="#reports">' + openReports + ' ' + A.plural(openReports, 'відкрита скарга', 'відкриті скарги', 'відкритих скарг') + '</a>');
@@ -103,6 +163,7 @@
         b.classList.toggle('on', Number(b.getAttribute('data-days')) === chartDays);
       });
       A.$('chart').innerHTML = chart(chartDays);
+      A.$('traffic-chart').innerHTML = trafficChart(chartDays);
 
       A.$('by-cat').innerHTML = A.distHtml(A.countBy(active, function (l) { return l.cat; }), active.length);
       A.$('by-city').innerHTML = A.distHtml(A.countBy(active, function (l) { return (l.city || '').split(',')[0].trim(); }), active.length, 7);

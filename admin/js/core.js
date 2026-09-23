@@ -19,10 +19,12 @@ firebase.initializeApp({
   projectId: 'ridego-6f981',
   storageBucket: 'ridego-6f981.firebasestorage.app',
   messagingSenderId: '769845611953',
-  appId: '1:769845611953:web:d21b7cf32f5fae84888190'
+  appId: '1:769845611953:web:d21b7cf32f5fae84888190',
+  databaseURL: 'https://ridego-6f981-default-rtdb.europe-west1.firebasedatabase.app'
 });
 A.db = firebase.firestore();
 A.auth = firebase.auth();
+A.rtdb = firebase.database ? firebase.database() : null; // лише для «онлайн зараз»
 A.FV = firebase.firestore.FieldValue;
 A.SITE = 'https://www.ridego.com.ua';
 
@@ -340,6 +342,7 @@ A.load = function () {
       if (errs.length) A.toast('Не завантажилось: ' + errs.map(function (x) { return x.coll; }).join(', '), true);
       A.loadedAt = Date.now();
       A.data.logs = null; // журнал перечитується при відкритті
+      if (A.reloadTraffic) A.reloadTraffic();
       A.render();
     })
     .finally(function () { btn.disabled = false; btn.textContent = 'Оновити'; });
