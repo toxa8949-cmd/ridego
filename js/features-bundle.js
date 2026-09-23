@@ -324,7 +324,6 @@ function submitListing() {
       imgs: [],
       uid: currentUser.uid,
       sellerName: (currentUser.name || '').substring(0, 100),
-      sellerEmail: (currentUser.email || '').substring(0, 200),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
       status: 'active'
@@ -3286,7 +3285,6 @@ function _submitImport() {
       time:       new Date().toLocaleDateString('uk-UA'),
       seller:     (currentUser.name || '').substring(0, 100),
       sellerName: (currentUser.name || '').substring(0, 100),
-      sellerEmail:(currentUser.email || '').substring(0, 200),
       uid:        currentUser.uid,
       createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt:  firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000)),
