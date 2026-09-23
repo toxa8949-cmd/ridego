@@ -3739,3 +3739,33 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   .mc-img { width: 80px !important; height: 80px !important; }
   .my-card { gap: 10px !important; }
 }
+
+/* ══ Категорії на головній: компактні плитки на телефоні ══ */
+@media (max-width: 600px) {
+  .cats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .cat-card { padding: 14px 8px 12px !important; border-radius: 14px !important; }
+  .cat-card .cat-icon { width: 40px !important; height: 40px !important; margin: 0 auto 8px !important; font-size: 18px !important; border-radius: 11px !important; }
+  .cat-card h3 { font-size: 13.5px !important; margin: 0 0 2px !important; overflow-wrap: anywhere; }
+  .cat-card p { font-size: 11.5px !important; margin: 0 !important; }
+  .cat-card:hover { transform: none !important; }
+}
+
+/* ══ Вкладки на сторінці оголошення: без обрізаних назв ══ */
+@media (max-width: 600px) {
+  #detail-tabs { overflow-x: auto; scrollbar-width: none; margin-top: 20px !important; }
+  #detail-tabs::-webkit-scrollbar { display: none; }
+  #detail-tabs .dtab { flex: 0 0 auto !important; max-width: none !important; overflow: visible !important; text-overflow: clip !important; padding: 11px 12px !important; font-size: 13.5px !important; }
+}
+
+/* ══ Фото оголошення: лічильник, одне фото, фото першим на телефоні ══ */
+#ux-gal-count { position: absolute; right: 12px; bottom: 12px; padding: 4px 10px; border-radius: 20px; background: rgba(0,0,0,.6); color: #fff; font: 600 12px/1.4 'Inter', sans-serif; pointer-events: none; }
+#detail-gallery-wrap.ux-one-photo > button { display: none !important; }
+#detail-thumbs.ux-one-photo { display: none !important; }
+@media (max-width: 700px) {
+  #detail-gallery-wrap.ux-gal-top { margin: 0 0 12px; border-radius: 16px !important; }
+  #detail-gallery-wrap.ux-gal-top + #detail-thumbs { margin: -4px 0 14px !important; }
+  #detail-gallery-wrap.ux-gal-top > button { width: 34px !important; height: 34px !important; }
+  #detail-price, #detail-price-usd, #detail-old-price { text-align: left; }
+  #detail-price { font-size: 30px !important; }
+  #detail-title { font-size: 21px !important; }
+}

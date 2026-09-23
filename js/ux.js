@@ -983,6 +983,47 @@
     window.addEventListener('resize', syncChatMode);
   })();
 
+
+  // ══ 14. ФОТО ОГОЛОШЕННЯ НА ТЕЛЕФОНІ ════════════════════════
+  // На телефоні фото йде першим (як на OLX), з лічильником «2 / 7»;
+  // стрілки й мініатюри ховаємо, коли фото лише одне.
+  function galleryTitleRow() {
+    var t = $('detail-title');
+    return t && t.parentElement && t.parentElement.parentElement;
+  }
+  function placeGallery() {
+    var g = $('detail-gallery-wrap'), th = $('detail-thumbs'), row = galleryTitleRow();
+    if (!g || !row || !row.parentElement) return;
+    if (!g._uxHome) { g._uxHome = document.createComment('gallery'); g.parentElement.insertBefore(g._uxHome, g); }
+    var mobile = window.innerWidth <= 700;
+    if (mobile && g.parentElement !== row.parentElement) {
+      row.parentElement.insertBefore(g, row);
+      if (th) row.parentElement.insertBefore(th, row);
+      g.classList.add('ux-gal-top');
+    } else if (!mobile && g.parentElement === row.parentElement) {
+      var home = g._uxHome;
+      home.parentElement.insertBefore(g, home.nextSibling);
+      if (th) home.parentElement.insertBefore(th, g.nextSibling);
+      g.classList.remove('ux-gal-top');
+    }
+  }
+  function galleryCounter() {
+    var g = $('detail-gallery-wrap');
+    if (!g) return;
+    var n = (window.galleryImgs || []).length, i = (window.galleryIdx || 0) + 1;
+    g.classList.toggle('ux-one-photo', n <= 1);
+    var th = $('detail-thumbs');
+    if (th) th.classList.toggle('ux-one-photo', n <= 1);
+    var c = $('ux-gal-count');
+    if (!c) { c = document.createElement('div'); c.id = 'ux-gal-count'; g.appendChild(c); }
+    c.textContent = i + ' / ' + n;
+    c.style.display = n > 1 ? '' : 'none';
+  }
+  wrap('showDetail', function () { placeGallery(); galleryCounter(); });
+  wrap('galleryNav', galleryCounter);
+  wrap('setGalleryIdx', galleryCounter);
+  window.addEventListener('resize', placeGallery);
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }
