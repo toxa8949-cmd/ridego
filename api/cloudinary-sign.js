@@ -20,18 +20,30 @@
 //   CLOUDINARY_API_KEY     — з Cloudinary → Settings → API Keys
 //   CLOUDINARY_API_SECRET  — звідти ж
 //
-//   Поки цих змінних немає, функція відповідає 501, і клієнт тихо
-//   повертається до старого способу. Тобто залити цей код можна
-//   хоч зараз — нічого не зламається, захист просто ще не ввімкнеться.
+//   Поки цих змінних немає, функція відповідає 501 і фото не вантажаться.
 
 const crypto = require('crypto');
-const { verifyIdToken, bearer } = require('./_auth');
+const { verifyIdToken, bearer, PROJECT } = require('./_auth');
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dxgtpo5dq';
 
 // Теки, в які взагалі можна вантажити. Без цього списку клієнт міг би
 // попросити підпис на будь-який шлях в акаунті.
-const FOLDER_OK = /^(listings\/[A-Za-z0-9_-]{1,64}|services|feedback|profiles|avatars)$/;
+const FOLDER_OK = /^(listings\/[A-Za-z0-9_-]{1,64}|services|feedback|profiles|avatars|news)$/;
+// Ці теки — лише для адмінів (фото новин з адмінки).
+const ADMIN_FOLDERS = ['news'];
+
+// Адмін = існує документ admins/{uid}. Читаємо його токеном самого
+// користувача: правила дозволяють це будь-кому авторизованому.
+async function isAdmin(uid, idToken) {
+  try {
+    const r = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/admins/${encodeURIComponent(uid)}`,
+      { headers: { Authorization: 'Bearer ' + idToken } }
+    );
+    return r.ok;
+  } catch (e) { return false; }
+}
 
 // Простий ліміт у пам'яті інстансу — щоб один акаунт не міг
 // нескінченно просити підписи.
@@ -58,13 +70,17 @@ module.exports = async (req, res) => {
     return res.status(501).json({ error: 'Signed uploads not configured' });
   }
 
-  const caller = await verifyIdToken(bearer(req), 'cloudinary');
+  const idToken = bearer(req);
+  const caller = await verifyIdToken(idToken, 'cloudinary');
   if (!caller) return res.status(401).json({ error: 'Unauthorized' });
 
   if (rateLimited(caller.uid)) return res.status(429).json({ error: 'Too many uploads' });
 
   const folder = String((req.body && req.body.folder) || '').trim();
   if (!FOLDER_OK.test(folder)) return res.status(400).json({ error: 'Bad folder' });
+  if (ADMIN_FOLDERS.includes(folder) && !(await isAdmin(caller.uid, idToken))) {
+    return res.status(403).json({ error: 'Admins only' });
+  }
 
   // Підпис Cloudinary: sha1 від параметрів, відсортованих за іменем,
   // плюс секрет у кінці. Підписуємо рівно те, що надішле клієнт.
