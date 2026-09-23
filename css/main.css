@@ -3660,7 +3660,11 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
 .mc-menu button i { width: 16px; color: var(--brand); }
 .mc-menu .mc-danger, .mc-menu .mc-danger i { color: #ef4444; }
 @media (max-width: 600px) {
-  #my-listings-grid { grid-template-columns: 1fr !important; }
+  #my-listings-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .my-card { min-width: 0; }
+  .mc-acts { gap: 5px; }
+  .mc-btn { padding: 8px 10px; font-size: 12.5px; min-width: 0; }
+  .mc-btn:not(.mc-dots) { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .mc-img { width: 96px; height: 96px; }
   .my-card { gap: 12px; padding: 10px; }
   .mc-title { font-size: 14px; }
@@ -3725,4 +3729,13 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   #svc-cat-filters::-webkit-scrollbar { display: none; }
   #svc-cat-filters .svc-filter-pill { flex: 0 0 auto; }
   #page-services .services-hero, #page-services .svc-hero { padding-top: 20px !important; padding-bottom: 20px !important; }
+}
+
+/* ══ Захист від горизонтального «вилазіння» сторінки на вузьких екранах ══ */
+@media (max-width: 900px) {
+  html, body { overflow-x: clip; max-width: 100%; }
+}
+@media (max-width: 380px) {
+  .mc-img { width: 80px !important; height: 80px !important; }
+  .my-card { gap: 10px !important; }
 }
