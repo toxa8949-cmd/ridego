@@ -658,6 +658,16 @@ function _doFillEditForm(l) {
   }
 
   // ── Локація ──
+  // У старих оголошеннях область і район окремо не зберігались — лише в
+  // fullLoc («Місто, Район, Область»). Без області форма не пускала далі
+  // кроку 2, тож такі оголошення неможливо було відредагувати.
+  if (!l.oblast && l.fullLoc && typeof UA_GEO !== 'undefined') {
+    var _parts = String(l.fullLoc).split(',').map(function(x){ return x.trim(); });
+    _parts.forEach(function(pp) { if (!l.oblast && UA_GEO[pp]) l.oblast = pp; });
+    if (l.oblast && !l.raion && UA_GEO[l.oblast].raions) {
+      _parts.forEach(function(pp) { if (!l.raion && UA_GEO[l.oblast].raions[pp]) l.raion = pp; });
+    }
+  }
   var oblastEl = document.getElementById('new-oblast');
   if (oblastEl && l.oblast) {
     oblastEl.value = l.oblast;

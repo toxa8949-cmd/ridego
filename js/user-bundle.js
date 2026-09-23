@@ -1556,7 +1556,8 @@ function addGoStep(step) {
     const city   = document.getElementById('new-city')?.value;
     if (!title) { showToast('⚠️ Введіть назву оголошення'); return; }
     if (!price || price < 1) { showToast('⚠️ Введіть коректну ціну'); return; }
-    if (!oblast) { showToast('⚠️ Оберіть область'); return; }
+    var _editing = typeof _editListingId !== 'undefined' && _editListingId;
+    if (!oblast && !(_editing && city)) { showToast('⚠️ Оберіть область'); return; }
     if (!city) { showToast('⚠️ Оберіть місто або село'); return; }
   }
   if (step === 4) {
