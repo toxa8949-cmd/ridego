@@ -18,10 +18,12 @@ window.updateHomeStats = function(){ try {
   }
   if (!nL) return;
 
-  var st=function(id,v){ var e=document.getElementById(id); if (e) e.textContent=v; };
+  // Пишемо лише якщо текст змінився: кожна перезапис hero-тексту браузер
+  // рахує новою «найбільшою відмальовкою» (LCP), і на мобільному
+  // PageSpeed показував 14 секунд замість реальних ~2.
+  var st=function(id,v){ var e=document.getElementById(id); if (e && e.textContent !== String(v)) e.textContent=v; };
   st('stat-listings',nL); st('stat-sellers',nS); st('stat-cities',nC);
-  var h=document.getElementById('hero-count-text');
-  if (h) h.textContent='Більше '+nL+' '+(window.plUk?plUk(nL,['пропозиція','пропозиції','пропозицій']):'пропозицій');
+  st('hero-count-text', 'Більше '+nL+' '+(window.plUk?plUk(nL,['пропозиція','пропозиції','пропозицій']):'пропозицій'));
 } catch(e){} };
 [300, 1500, 4000, 8000].forEach(function(d){ setTimeout(function(){ if (window.updateHomeStats) window.updateHomeStats(); }, d); });
 window.plUk = function(n, forms) {
@@ -566,11 +568,7 @@ function _sortWithPromo(data, sortType) {
   var urgents   = data.filter(function(l){ return l.promo === 'urgent'; });
   var regulars  = data.filter(function(l){ return !l.promo || l.promo === 'banner'; });
 
-  var byDate = function(a, b) {
-    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
-    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
-    return tb - ta;
-  };
+  var byDate = function(a, b) { return _listTs(b) - _listTs(a); };
   var byDateAsc = function(a, b) { return byDate(b, a); };
 
   tops.sort(byDate);
@@ -618,6 +616,28 @@ function _sortWithPromo(data, sortType) {
     }
   }
   return mixed;
+}
+
+// Час для сортування «нові спочатку»: піднятті оголошення (bumpedAt)
+// стають угору так само, як щойно опубліковані.
+function _listTs(l) {
+  var c = l && l.createdAt && l.createdAt.seconds ? l.createdAt.seconds : 0;
+  var b = l && l.bumpedAt && l.bumpedAt.seconds ? l.bumpedAt.seconds : 0;
+  return b > c ? b : c;
+}
+
+// Попередня ціна, якщо продавець її знизив (показуємо 45 днів).
+function _oldPrice(l) {
+  var o = Number(l && l.oldPrice) || 0, p = Number(l && l.price) || 0;
+  if (!o || !p || o <= p) return 0;
+  var t = l.priceDroppedAt && l.priceDroppedAt.seconds;
+  if (t && Date.now() / 1000 - t > 45 * 86400) return 0;
+  return o;
+}
+function _oldPriceHtml(l) {
+  var o = _oldPrice(l);
+  if (!o) return '';
+  return '<s class="old-price">' + o.toLocaleString('uk') + '</s><span class="price-drop-pill">−' + Math.round((o - l.price) / o * 100) + '%</span>';
 }
 
 function _allListings() {
@@ -1323,6 +1343,7 @@ function createCard(l, backPage) {
       <!-- Price + ТОРГ/ОБМІН -->
       <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
         <div class="listing-price">${l.price.toLocaleString('uk')} грн</div>
+        ${_oldPriceHtml(l)}
         ${eBargain==='Торг' ? `<span class="card-pill card-pill-bargain">Торг</span>` : ''}
         ${eBargain==='Обмін' ? `<span class="card-pill card-pill-exchange">Обмін</span>` : ''}
         ${eBargain==='Торг+Обмін' ? `<span class="card-pill card-pill-bargain">Торг</span><span class="card-pill card-pill-exchange">Обмін</span>` : ''}
@@ -1852,11 +1873,7 @@ function renderHomeListings() {
 
   var newEl = document.getElementById('home-listings');
   var regular = all.filter(function(l){ return !_isPromoActive(l); });
-  regular.sort(function(a, b) {
-    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
-    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
-    return tb - ta;
-  });
+  regular.sort(function(a, b) { return _listTs(b) - _listTs(a); });
   if (newEl) {
     if (regular.length) {
       newEl.innerHTML = regular.slice(0, 6).map(function(l){ return createCard(l,'home'); }).join('');
@@ -1932,7 +1949,7 @@ function createHomeSvcCard(s) {
   return "<div class=\"home-svc-card\" onclick=\"showServiceDetail('"+s.id+"')\">"
     +"<div class=\"home-svc-card-top\">"
     +(s.photoUrl
-      ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img alt=\"Фото сервісу\" src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
+      ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img alt=\"Фото сервісу\" loading=\"lazy\" decoding=\"async\" src=\""+_esc(_cdnImg(s.photoUrl,{w:200,c:'fill'}))+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
       : "<div class=\"home-svc-icon\">"+s.icon+"</div>"
     )
     +"<div style=\"flex:1;min-width:0\">"

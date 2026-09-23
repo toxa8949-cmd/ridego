@@ -837,8 +837,9 @@ function _renderMessages(msgs, chat) {
 
   if (chat && chat.listingId && chat.listingTitle) {
     var listing = _allListings().find(function(l){ return l && l.id === chat.listingId; });
-    var imgHtml = listing && listing.photos && listing.photos[0]
-      ? '<img alt="Фото оголошення" src="' + listing.photos[0] + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0">'
+    var _chatImg = listing && (listing.img || (listing.imgs && listing.imgs[0]) || (listing.photos && listing.photos[0]));
+    var imgHtml = _chatImg
+      ? '<img alt="Фото оголошення" src="' + _esc(_chatImg) + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0">'
       : '<div style="width:56px;height:56px;background:var(--dark3);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px">🛵</div>';
     var priceHtml = listing ? '<div style="color:var(--brand);font-weight:700;font-size:15px">' + listing.price.toLocaleString('uk') + ' грн</div>' : '';
     html += '<div style="margin-bottom:12px;display:flex;justify-content:center">'

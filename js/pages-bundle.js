@@ -808,11 +808,7 @@ function renderCatalog(catFilter) {
   var topListings = all.filter(function(l){ return l.promo === 'top'; });
   var regular = all.filter(function(l){ return l.promo !== 'top'; });
 
-  regular.sort(function(a, b){
-    var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
-    var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
-    return tb - ta;
-  });
+  regular.sort(function(a, b){ return _listTs(b) - _listTs(a); });
 
   if (topEl && topSec) {
     if (topListings.length > 0) {
@@ -1580,22 +1576,31 @@ function showDetail(id, _skipPush) {
 
   const candidates = _allListings().filter(x => x && x.id !== id && x.status !== 'deleted' && x.status !== 'sold' && x.status !== 'inactive');
 
-  // Скоринг схожості
+  // Скоринг схожості. Бренд і модель шукаємо і в окремих полях, і в назві:
+  // у старих оголошеннях бренд був лише в назві. Оголошення того самого
+  // продавця трохи понижуємо — покупцю цікавіше порівняти різні пропозиції.
+  var _n = function(s) { return String(s || '').toLowerCase().trim(); };
+  var _lb = _n(l.brand), _lm = _n(l.model);
+  if (_lb === 'інший' || _lb === 'інший бренд') _lb = '';
   var scored = candidates.map(function(c) {
-    var score = 0;
-    if (c.cat === l.cat)    score += 10;  // та сама категорія — найважливіше
-    if (c.brand && l.brand && c.brand === l.brand) score += 5;  // той самий бренд
-    if (c.city && l.city && c.city === l.city) score += 3;  // те саме місто
-    // Ціна в межах ±30%
+    var score = 0, ct = _n(c.title);
+    if (c.cat === l.cat) score += 10;
+    if (_lb && (_n(c.brand) === _lb || ct.indexOf(_lb) > -1)) score += 6;
+    if (_lm && _lm.length > 1 && (_n(c.model) === _lm || ct.indexOf(_lm) > -1)) score += 5;
+    if (c.city && l.city && c.city === l.city) score += 3;
+    else if (c.oblast && l.oblast && c.oblast === l.oblast) score += 1;
     if (c.price && l.price) {
       var ratio = c.price / l.price;
-      if (ratio > 0.7 && ratio < 1.3) score += 2;
+      if (ratio > 0.7 && ratio < 1.3) score += 3;
+      else if (ratio > 0.5 && ratio < 1.6) score += 1;
     }
     if (c.condition && l.condition && c.condition === l.condition) score += 1;
-    return { listing: c, score: score };
-  }).filter(function(s) { return s.score >= 5; }); // мін 5 балів (хоча б категорія)
+    if (c.img) score += 1;
+    if (c.uid && l.uid && c.uid === l.uid) score -= 4;
+    return { listing: c, score: score, d: Math.abs((c.price || 0) - (l.price || 0)) };
+  }).filter(function(s) { return s.score >= 10; });
 
-  scored.sort(function(a, b) { return b.score - a.score; });
+  scored.sort(function(a, b) { return (b.score - a.score) || (a.d - b.d); });
   var similar = scored.slice(0, 4).map(function(s) { return s.listing; });
 
   // Fallback: якщо мало результатів — додати з тієї ж категорії

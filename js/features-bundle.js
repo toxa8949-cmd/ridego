@@ -127,7 +127,7 @@ function submitListing() {
     var now = Date.now();
     if (now - rateData.since < 600000) {
       if (rateData.count >= 5) {
-        showToast('⚠️ Забагато оголошень підряд. Зачекайте кілька хвилин.'); return;
+        showToast('⚠️ Забагато оголошень підряд. Зачекайте кілька хвилин.'); _unlockBtn(); return;
       }
     } else {
       rateData = { count: 0, since: now };
@@ -319,6 +319,15 @@ function submitListing() {
       brand: (brand || '').substring(0, 60),
       model: (model || '').substring(0, 60),
       year:  (year  || '').substring(0, 10),
+      // Телефон, область, район, торг і пробіг форма збирала, але в документ
+      // не писала: «Показати номер» брав телефон лише з профілю (якщо він там
+      // був), а позначок «Торг/Обмін» на картках нових оголошень не було.
+      phone:    (phone || '').substring(0, 20),
+      oblast:   (oblastVal || '').substring(0, 100),
+      raion:    (raionVal || '').substring(0, 100),
+      bargain:  (bargain || '').substring(0, 20),
+      mileage:  (mileage || '').substring(0, 10),
+      district: (document.getElementById('new-district')?.value.trim() || '').substring(0, 120),
       specs: safeSpecs || {},
       img: '',
       imgs: [],
@@ -383,7 +392,13 @@ function submitListing() {
     window._db.collection('listings').add(fbListing)
       .then(function(docRef) {
         newL.id = docRef.id;
+        newL.uid = currentUser.uid;
+        newL.createdAt = { seconds: Math.floor(Date.now() / 1000) };
         _fbListings.unshift(newL);
+        if (typeof _uxDraftClear === 'function') _uxDraftClear();
+        // Кнопка лишалась «Публікація...» і заблокованою — друге оголошення
+        // не можна було подати без перезавантаження сторінки.
+        _unlockBtn();
         if (document.getElementById('pstat-active')) {
           var _activeCount = _allListings().filter(function(l){ return l && l.uid === currentUser.uid && l.status !== 'deleted' && l.status !== 'sold'; }).length;
           document.getElementById('pstat-active').textContent = _activeCount;
@@ -454,6 +469,8 @@ function submitListing() {
                   if (typeof renderMyListings === 'function') renderMyListings();
                   renderHomeListings();
                   showToast('🖼 Фото завантажено!');
+                  // Листи тим, хто зберіг підходящий пошук (вже з фото)
+                  if (typeof _uxNotify === 'function') _uxNotify('new_listing', docRef.id);
                 });
               }
             }).catch(function(e){
@@ -465,7 +482,9 @@ function submitListing() {
                   window._db.collection('listings').doc(docRef.id).update({
                     img: finalUrls[0] || '',
                     imgs: finalUrls
-                  }).catch(function(){});
+                  }).catch(function(){}).then(function() {
+                    if (typeof _uxNotify === 'function') _uxNotify('new_listing', docRef.id);
+                  });
                 }
                 showToast('⚠️ Деякі фото не завантажились');
               }
@@ -476,6 +495,7 @@ function submitListing() {
       .catch(function(e) {
         console.error('Firestore save error:', e);
         showToast('⚠️ Помилка збереження: ' + e.message);
+        _unlockBtn();
       });
     } // end _doPublish
   } else {
@@ -851,6 +871,20 @@ function saveEditListing() {
   // Додати sp-дані
   Object.assign(updateData, spData);
 
+  // Зниження ціни: запам'ятовуємо попередню, щоб показати «було» і
+  // надіслати листи тим, хто додав оголошення в обране.
+  var _orig = _editOriginalData || {};
+  var _origPrice = Number(_orig.price) || 0, _prevOld = Number(_orig.oldPrice) || 0;
+  var _priceDropped = false;
+  if (_origPrice && price < _origPrice) {
+    updateData.oldPrice = (_prevOld > _origPrice) ? _prevOld : _origPrice;
+    updateData.priceDroppedAt = firebase.firestore.FieldValue.serverTimestamp();
+    _priceDropped = true;
+  } else if (_prevOld && price >= _prevOld) {
+    updateData.oldPrice = firebase.firestore.FieldValue.delete();
+    updateData.priceDroppedAt = firebase.firestore.FieldValue.delete();
+  }
+
   // Побудувати human-readable поля
   var battAh = updateData.battAh || '';
   var speedVal = updateData.speedVal || '';
@@ -926,9 +960,17 @@ function saveEditListing() {
       }
 
       showToast('✅ Оголошення оновлено!');
+      if (_priceDropped && typeof _uxNotify === 'function') _uxNotify('price_drop', editId);
 
       var cached = _allListings().find(function(x){ return x && x.id === editId; });
-      if (cached) Object.assign(cached, updateData);
+      if (cached) {
+        Object.assign(cached, updateData);
+        // FieldValue-заглушки не мають потрапити в локальний кеш
+        var _nowTs = { seconds: Math.floor(Date.now() / 1000) };
+        cached.updatedAt = _nowTs;
+        if (_priceDropped) cached.priceDroppedAt = _nowTs;
+        else if (updateData.oldPrice && typeof updateData.oldPrice !== 'number') { delete cached.oldPrice; delete cached.priceDroppedAt; }
+      }
       _editListingId = null;
       _editOriginalData = null;
       _resetAddWizard();
@@ -1023,13 +1065,17 @@ function renewListing(id) {
     window._db.collection('listings').doc(id).update({
       status: 'active',
       expiresAt: firebase.firestore.Timestamp.fromDate(newExpiry),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      // createdAt правила змінювати не дозволяють — через це поновлення
+      // завжди падало з помилкою доступу (а слот уже був списаний).
+      // Щоб оголошення піднялось угору, ставимо bumpedAt.
+      bumpedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function() {
 
       var l = myListings.find(function(x){ return x.id === id; });
-      if (l) { l.status = 'active'; l.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; }
+      var _bt = { seconds: Math.floor(Date.now()/1000) };
+      if (l) { l.status = 'active'; l.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; l.bumpedAt = _bt; }
       var fl = _fbListings.find(function(x){ return x.id === id; });
-      if (fl) { fl.status = 'active'; fl.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; }
+      if (fl) { fl.status = 'active'; fl.expiresAt = { seconds: Math.floor(newExpiry.getTime()/1000) }; fl.bumpedAt = _bt; }
       renderMyListings();
       showToast('✅ Оголошення поновлено на 30 днів!');
     }).catch(function(e){ showToast('⚠️ ' + e.message); });
@@ -1055,10 +1101,30 @@ function createMyCard(l) {
     }
   }
 
+  // Перегляди за 7 днів і кнопка «Підняти» (раз на 7 днів, безкоштовно)
+  var _v7 = typeof _viewsInPeriod === 'function' ? _viewsInPeriod(l, 7) : 0;
+  var _vAll = Number(l.views) || 0;
+  var viewsStr = '<span style="font-size:11px;color:var(--text-muted)"><i class="fa-solid fa-eye" style="font-size:10px;margin-right:4px"></i>'
+    + _v7 + ' за 7 днів · ' + _vAll + ' усього</span>';
+  var canBump = l.status === 'active' && typeof _uxBumpLeft === 'function';
+  var bumpLeft = canBump ? _uxBumpLeft(l) : 0;
+  var bumpBtn = canBump
+    ? (bumpLeft
+        ? `<button class="promo-manage-btn no-promo" style="background:var(--dark3);color:var(--text-muted)" title="Безкоштовно раз на 7 днів"
+             onclick="event.stopPropagation(); bumpListing('${l.id}')">
+             <i class="fa-solid fa-arrow-up"></i> Через ${bumpLeft} дн.
+           </button>`
+        : `<button class="promo-manage-btn no-promo" style="background:var(--brand-dim);color:var(--brand)" title="Безкоштовно раз на 7 днів"
+             onclick="event.stopPropagation(); bumpListing('${l.id}')">
+             <i class="fa-solid fa-arrow-up"></i> Підняти
+           </button>`)
+    : '';
+
   const promoBtn = `
     <div style="padding: 8px 16px 12px; border-top: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;gap:2px">
         ${expiryStr}
+        ${viewsStr}
         ${hasPromo && !isInactive
           ? `<span style="font-size:11px;color:var(--brand);display:flex;align-items:center;gap:5px">
                <i class="fa-solid fa-circle-dot" style="font-size:8px"></i>${promoLabel}
@@ -1084,6 +1150,7 @@ function createMyCard(l) {
           onclick="event.stopPropagation(); openEditListing('${l.id}')">
           <i class="fa-solid fa-pen"></i> Редагувати
         </button>
+        ${bumpBtn}
         ${isInactive
           ? `<button class="promo-manage-btn has-promo" onclick="event.stopPropagation(); renewListing('${l.id}')">
                <i class="fa-solid fa-rotate-right"></i> Поновити (1 слот)
@@ -1156,7 +1223,7 @@ function createServiceCard(s){
   var rating=s.rating>0?s.rating+" \u00b7 "+s.reviews+" "+(window.plUk?plUk(s.reviews,["\u0432\u0456\u0434\u0433\u0443\u043a","\u0432\u0456\u0434\u0433\u0443\u043a\u0438","\u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432"]):"\u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432"):"\u041d\u043e\u0432\u0438\u0439";
   return "<div class=\"service-card\" onclick=\"showServiceDetail('"+s.id+"')\">"+
     (s.photoUrl
-      ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img alt=\"Фото сервісу\" src=\""+s.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
+      ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img alt=\"Фото сервісу\" loading=\"lazy\" decoding=\"async\" src=\""+_esc(_cdnImg(s.photoUrl,{w:600,c:'fill'}))+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
       : "<div class=\"service-card-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><div class=\"service-card-cover-icon\">"+s.icon+"</div>"+badge+"</div>"
     )+
     "<div class=\"service-card-body\">"+
