@@ -3797,3 +3797,10 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   .seller-stat-val { font-size: 19px !important; letter-spacing: 0 !important; }
   .seller-stat-lbl { font-size: 10px !important; letter-spacing: 0 !important; text-transform: none !important; }
 }
+
+/* ══ Подача оголошення: компактні заголовки кроків на телефоні ══ */
+@media (max-width: 600px) {
+  .ux-add-h { font-size: 21px !important; }
+  #add-type-badge { font-size: 26px !important; }
+  #add-step-2 > div:first-child, #add-step-3 > div:first-child, #add-step-4 > div:first-child { margin-bottom: 16px !important; }
+}

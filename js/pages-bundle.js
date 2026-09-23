@@ -1006,6 +1006,8 @@ function _renderSellerByUid(uid) {
         if (d.email) qi.push('<a href="mailto:' + _esc(d.email) + '"><i class="fa-solid fa-envelope"></i>' + _esc(d.email) + '</a>');
         if (d.website) qi.push('<a href="' + _esc(d.website) + '" target="_blank"><i class="fa-solid fa-globe"></i>' + _esc(d.website).replace(/^https?:\/\//, '') + '</a>');
         quickInfo.innerHTML = qi.join('') || '<span style="color:var(--text-muted)">Контакти не вказані</span>';
+        var qiCard = quickInfo.closest('.seller-side-card');
+        if (qiCard) qiCard.style.display = qi.length ? '' : 'none';
       }
       // Hide socials wrap if no socials
       var socWrap = document.getElementById('seller-socials-wrap');
@@ -1019,7 +1021,7 @@ function _renderSellerByUid(uid) {
         var badges = [];
         if (d.type === 'business') badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-shield-halved"></i>Офіційний продавець</span>');
         if (d.phoneVerified) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-phone"></i>Телефон верифікований</span>');
-        if (cached && cached.length > 5) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-bolt"></i>' + cached.length + '+ оголошень</span>');
+        if (false && cached && cached.length > 5) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-bolt"></i>' + cached.length + '+ оголошень</span>');
         if (year && (new Date().getFullYear() - year) >= 1) badges.push('<span class="seller-trust-badge"><i class="fa-solid fa-clock"></i>На сайті ' + (new Date().getFullYear() - year) + '+ років</span>');
         trustEl.innerHTML = badges.join('');
       }
