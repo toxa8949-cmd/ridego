@@ -46,6 +46,10 @@ function doSocialLogin(provider) {
               ...( typeof _newUserSlotFields === 'function' ? _newUserSlotFields() : {} )
             }).then(function() {
               if (typeof _afterUserCreated === 'function') _afterUserCreated(user.displayName);
+              if (typeof _mirrorPublic === 'function') _mirrorPublic(user.uid, {
+                name: user.displayName || '', type: 'personal', listings: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
             }).catch(function(e){ console.error('create user doc:', e.message); });
           }
           showToast('✅ Вхід через Google!');
@@ -130,6 +134,12 @@ function doRegister() { var _mkt = !!(document.getElementById('reg-marketing') &
       })
       .then(function() {
         if (typeof _afterUserCreated === 'function') _afterUserCreated(name);
+        if (typeof _mirrorPublic === 'function' && window._auth && window._auth.currentUser) {
+          _mirrorPublic(window._auth.currentUser.uid, {
+            name: name, type: 'personal', listings: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
         showToast('✅ Акаунт створено!'); showPage('profile');
       })
       .catch(function(e) {

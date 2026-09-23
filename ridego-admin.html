@@ -1826,6 +1826,15 @@ function saveUser(){
   if(reason)data.blockReason=reason;
   closeModal('user-modal');
   _db.collection('users').doc(uid).update(data)
+    .then(function(){
+      // Ім'я, телефон, місто і тип видно на сторінці продавця — тому
+      // дублюємо їх у publicProfiles. Слоти, статус і причина блокування
+      // туди не йдуть.
+      return _db.collection('publicProfiles').doc(uid).set({
+        uid: uid, name: data.name, phone: data.phone, city: data.city, type: data.type,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(function(){});
+    })
     .then(function(){showToast('Збережено','success');logAction('edit_user',uid+' → '+data.name);loadAllData();})
     .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }

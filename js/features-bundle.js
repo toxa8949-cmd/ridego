@@ -418,6 +418,7 @@ function submitListing() {
             window._db.collection('users').doc(currentUser.uid).update(profileUpdate)
               .then(function() { Object.assign(currentUser, profileUpdate); })
               .catch(function(){});
+            if (typeof _mirrorPublic === 'function') _mirrorPublic(currentUser.uid, profileUpdate);
           }
         }
 
@@ -2287,6 +2288,7 @@ function confirmPhoneCode() {
           phoneVerified: true,
           phoneVerifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         }).catch(function(){});
+        if (typeof _mirrorPublic === 'function') _mirrorPublic(currentUser.uid, { phone: phone });
       }
 
       var badge = document.getElementById('phone-verified-badge');

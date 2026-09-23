@@ -117,6 +117,23 @@ function _publicProfileFrom(d) {
 }
 window._publicProfileFrom = _publicProfileFrom;
 
+// Дописати публічні поля в publicProfiles/{uid}.
+// Викликається скрізь, де в users змінюються ім'я, місто чи телефон —
+// інакше після закриття users сторінка продавця і кнопка «Показати номер»
+// бачили б застарілі дані або не бачили б нічого.
+// Поля, яких немає в PUBLIC_PROFILE_FIELDS (email, слоти), відкидаються.
+function _mirrorPublic(uid, fields) {
+  if (!window._db || !uid || !fields) return Promise.resolve();
+  var pub = _publicProfileFrom(fields);
+  if (!Object.keys(pub).length) return Promise.resolve();
+  pub.uid = uid;
+  pub.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+  return window._db.collection('publicProfiles').doc(uid)
+    .set(pub, { merge: true })
+    .catch(function(e){ void('publicProfile mirror:', e.message); });
+}
+window._mirrorPublic = _mirrorPublic;
+
 // ── ЗАВАНТАЖЕННЯ ФОТО В CLOUDINARY ──────────────────────────
 // Раніше кожне з п'яти місць вантажило напряму з відкритим пресетом
 // ridego_unsigned. Назва пресета й хмари лежать у цьому ж файлі, тож
