@@ -135,35 +135,17 @@ function _mirrorPublic(uid, fields) {
 window._mirrorPublic = _mirrorPublic;
 
 // ── ЗАВАНТАЖЕННЯ ФОТО В CLOUDINARY ──────────────────────────
-// Раніше кожне з п'яти місць вантажило напряму з відкритим пресетом
-// ridego_unsigned. Назва пресета й хмари лежать у цьому ж файлі, тож
-// заливати файли в акаунт міг будь-хто, навіть не реєструючись.
-//
-// Тепер спершу просимо підпис у /api/cloudinary-sign — він видається
+// Кожне завантаження підписує /api/cloudinary-sign: підпис видається
 // лише авторизованому користувачу і лише на дозволену теку.
+// Відкритий пресет ridego_unsigned більше не використовується —
+// його можна вимкнути в Cloudinary, і сторонні заливки стануть неможливі.
 //
-// Якщо на сервері ще не заданий CLOUDINARY_API_SECRET, функція
-// відповідає 501, і ми тихо повертаємось до старого способу. Тобто
-// код можна залити до налаштування змінних — фото вантажитимуться,
-// просто без підпису, як і раніше.
-var _cldSignFailed = false;   // щоб не смикати сервер на кожне фото
-
+// Повертає Promise з відповіддю Cloudinary ({ secure_url, ... }).
+// Помилку кидає з повідомленням, яке можна показати користувачу.
 function _cldUpload(fileOrBlob, filename, folder) {
-  var CLOUD = 'dxgtpo5dq';
-
-  function unsigned() {
-    var fd = new FormData();
-    fd.append('file', fileOrBlob, filename);
-    fd.append('upload_preset', 'ridego_unsigned');
-    if (folder) fd.append('folder', folder);
-    return fetch('https://api.cloudinary.com/v1_1/' + CLOUD + '/image/upload',
-                 { method: 'POST', body: fd }).then(function(r){ return r.json(); });
+  if (!window._auth || !window._auth.currentUser) {
+    return Promise.reject(new Error('Увійдіть, щоб завантажити фото'));
   }
-
-  if (_cldSignFailed || !window._auth || !window._auth.currentUser || !folder) {
-    return unsigned();
-  }
-
   return window._auth.currentUser.getIdToken()
     .then(function(tok) {
       return fetch('/api/cloudinary-sign', {
@@ -173,7 +155,8 @@ function _cldUpload(fileOrBlob, filename, folder) {
       });
     })
     .then(function(r) {
-      if (!r.ok) throw new Error('sign ' + r.status);
+      if (r.status === 429) throw new Error('Забагато завантажень, спробуйте пізніше');
+      if (!r.ok) throw new Error('Не вдалося підготувати завантаження (' + r.status + ')');
       return r.json();
     })
     .then(function(sig) {
@@ -184,13 +167,14 @@ function _cldUpload(fileOrBlob, filename, folder) {
       fd.append('signature', sig.signature);
       fd.append('folder', sig.folder);
       return fetch('https://api.cloudinary.com/v1_1/' + sig.cloudName + '/image/upload',
-                   { method: 'POST', body: fd }).then(function(r){ return r.json(); });
+                   { method: 'POST', body: fd });
     })
-    .catch(function(e) {
-      // Підпис недоступний — запам'ятовуємо і далі працюємо як раніше.
-      _cldSignFailed = true;
-      void('cloudinary sign unavailable:', e.message);
-      return unsigned();
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || !data.secure_url) {
+        throw new Error((data && data.error && data.error.message) || 'Помилка завантаження фото');
+      }
+      return data;
     });
 }
 window._cldUpload = _cldUpload;

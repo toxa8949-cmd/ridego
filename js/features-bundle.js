@@ -3463,8 +3463,10 @@ function uploadFeedbackImg(input) {
         document.getElementById('feedback-img-clear').style.display = '';
       }
     })
-    .catch(function() {
-      document.getElementById('feedback-img-label').textContent = 'Помилка завантаження';
+    .catch(function(e) {
+      document.getElementById('feedback-img-label').textContent = (e && e.message) || 'Помилка завантаження';
+      document.getElementById('feedback-img-preview').style.display = 'none';
+      input.value = '';
     });
 }
 
