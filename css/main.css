@@ -3557,3 +3557,38 @@ body.light .mnav-item span {
 .ux-pub-acts { display: flex; flex-direction: column; gap: 8px; }
 .ux-pub-acts button { width: 100%; padding: 12px; font-size: 15px; }
 .ux-link { background: none; border: none; color: var(--text-muted); font: inherit; font-size: 14px; cursor: pointer; padding: 8px; text-decoration: underline; }
+
+/* ══ Шапка профілю v2: без «Продано/Обраних», дії праворуч ══ */
+.profile-header .profile-inner { align-items: center; gap: 22px; padding-bottom: 22px; }
+.profile-header .profile-info-block { flex: 1; min-width: 0; }
+.profile-header .profile-name { font-size: 24px; }
+.profile-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pchip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 999px; background: var(--brand-dim); color: var(--text); font-size: 13px; font-weight: 500; }
+.pchip i { color: var(--brand); font-size: 12px; }
+.pchip b { color: var(--brand); font-weight: 800; }
+.profile-actions-v2 { display: flex; align-items: center; gap: 8px; margin: 0 !important; flex-shrink: 0; flex-wrap: nowrap; }
+.profile-actions-v2 button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 14px; }
+.profile-actions-v2 .pact-main { padding: 11px 18px; }
+.profile-actions-v2 .pact { padding: 10px 16px; }
+.pact-icon { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; justify-content: center; padding: 0 !important; }
+.pact-icon:hover { color: #ef4444; border-color: #ef4444; }
+/* Вкладки: без чорної рамки фокусу після кліку */
+.ptab:focus { outline: none; }
+.ptab:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+@media (max-width: 760px) {
+  .profile-header .profile-inner { flex-wrap: wrap !important; align-items: center; text-align: left; flex-direction: row !important; }
+  .profile-header .profile-info-block { text-align: left; }
+  .profile-header .profile-name-row { justify-content: flex-start; }
+  .profile-header .profile-name { font-size: 20px; }
+  .profile-chips { margin-top: 8px; }
+  .profile-actions-v2 { width: 100%; }
+  .profile-actions-v2 .pact-main { flex: 1; justify-content: center; }
+  .profile-actions-v2 .pact { flex: 1; justify-content: center; }
+}
+.pact-icon { flex: 0 0 42px !important; width: 42px !important; }
+/* «Додати оголошення» вже є в шапці профілю — у вкладці лишаємо лише імпорт */
+#ptab-my > div:nth-child(2) > .btn-primary { display: none; }
+@media (max-width: 760px) {
+  .profile-actions-v2 { flex-wrap: wrap; }
+  .profile-actions-v2 .pact-main { flex: 1 1 100%; }
+}
