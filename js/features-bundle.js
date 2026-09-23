@@ -438,13 +438,7 @@ function submitListing() {
           var urls = new Array(photoBlobs.length).fill(null);
           var completed = 0;
           photoBlobs.forEach(function(p, idx) {
-            var fd = new FormData();
-            fd.append('file', p.blob, 'photo.jpg');
-            fd.append('upload_preset', 'ridego_unsigned');
-            fd.append('folder', 'listings/' + docRef.id);
-            fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
-              method: 'POST', body: fd
-            }).then(function(r){ return r.json(); })
+            _cldUpload(p.blob, 'photo.jpg', 'listings/' + docRef.id)
             .then(function(data) {
               urls[idx] = data.secure_url;
               completed++;
@@ -896,13 +890,7 @@ function saveEditListing() {
         var urls = new Array(newPhotos.length).fill(null);
         var completed = 0;
         newPhotos.forEach(function(p, idx) {
-          var fd = new FormData();
-          fd.append('file', p.blob, 'photo.jpg');
-          fd.append('upload_preset', 'ridego_unsigned');
-          fd.append('folder', 'listings/' + editId);
-          fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
-            method: 'POST', body: fd
-          }).then(function(r){ return r.json(); })
+          _cldUpload(p.blob, 'photo.jpg', 'listings/' + editId)
           .then(function(data) {
             urls[idx] = data.secure_url;
             completed++;
@@ -1242,12 +1230,7 @@ function triggerSvcPhotoUpload(svcId) {
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         canvas.toBlob(function(blob) {
-          var fd = new FormData();
-          fd.append('file', blob, 'svc-cover.jpg');
-          fd.append('upload_preset', 'ridego_unsigned');
-          fd.append('folder', 'services');
-          fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method:'POST', body:fd })
-            .then(function(r){ return r.json(); })
+          _cldUpload(blob, 'svc-cover.jpg', 'services')
             .then(function(data) {
               if (!data.secure_url) { showToast('⚠️ Помилка завантаження'); return; }
               var url = data.secure_url;
@@ -3470,12 +3453,7 @@ function uploadFeedbackImg(input) {
   };
   reader.readAsDataURL(file);
   // Upload to Cloudinary
-  var fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', 'ridego_unsigned');
-  fd.append('folder', 'feedback');
-  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
+  _cldUpload(file, file.name || 'feedback.jpg', 'feedback')
     .then(function(data) {
       if (data.secure_url) {
         document.getElementById('feedback-img-url').value = data.secure_url;

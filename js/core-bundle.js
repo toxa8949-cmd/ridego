@@ -117,6 +117,67 @@ function _publicProfileFrom(d) {
 }
 window._publicProfileFrom = _publicProfileFrom;
 
+// ── ЗАВАНТАЖЕННЯ ФОТО В CLOUDINARY ──────────────────────────
+// Раніше кожне з п'яти місць вантажило напряму з відкритим пресетом
+// ridego_unsigned. Назва пресета й хмари лежать у цьому ж файлі, тож
+// заливати файли в акаунт міг будь-хто, навіть не реєструючись.
+//
+// Тепер спершу просимо підпис у /api/cloudinary-sign — він видається
+// лише авторизованому користувачу і лише на дозволену теку.
+//
+// Якщо на сервері ще не заданий CLOUDINARY_API_SECRET, функція
+// відповідає 501, і ми тихо повертаємось до старого способу. Тобто
+// код можна залити до налаштування змінних — фото вантажитимуться,
+// просто без підпису, як і раніше.
+var _cldSignFailed = false;   // щоб не смикати сервер на кожне фото
+
+function _cldUpload(fileOrBlob, filename, folder) {
+  var CLOUD = 'dxgtpo5dq';
+
+  function unsigned() {
+    var fd = new FormData();
+    fd.append('file', fileOrBlob, filename);
+    fd.append('upload_preset', 'ridego_unsigned');
+    if (folder) fd.append('folder', folder);
+    return fetch('https://api.cloudinary.com/v1_1/' + CLOUD + '/image/upload',
+                 { method: 'POST', body: fd }).then(function(r){ return r.json(); });
+  }
+
+  if (_cldSignFailed || !window._auth || !window._auth.currentUser || !folder) {
+    return unsigned();
+  }
+
+  return window._auth.currentUser.getIdToken()
+    .then(function(tok) {
+      return fetch('/api/cloudinary-sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ folder: folder })
+      });
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('sign ' + r.status);
+      return r.json();
+    })
+    .then(function(sig) {
+      var fd = new FormData();
+      fd.append('file', fileOrBlob, filename);
+      fd.append('api_key', sig.apiKey);
+      fd.append('timestamp', sig.timestamp);
+      fd.append('signature', sig.signature);
+      fd.append('folder', sig.folder);
+      return fetch('https://api.cloudinary.com/v1_1/' + sig.cloudName + '/image/upload',
+                   { method: 'POST', body: fd }).then(function(r){ return r.json(); });
+    })
+    .catch(function(e) {
+      // Підпис недоступний — запам'ятовуємо і далі працюємо як раніше.
+      _cldSignFailed = true;
+      void('cloudinary sign unavailable:', e.message);
+      return unsigned();
+    });
+}
+window._cldUpload = _cldUpload;
+
 function _esc(str) {
   if (!str) return '';
   return String(str)

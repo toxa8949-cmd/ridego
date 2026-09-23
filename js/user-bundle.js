@@ -317,16 +317,10 @@ function onProfilePhotoChange(input) {
     ['profile-pic-el','settings-avatar-preview'].forEach(function(id) {
       var el = document.getElementById(id);
       if (!el) return;
-      el.innerHTML = '<img alt="Аватар" src="' + localUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      el.innerHTML = '<img alt="Аватар" src="' + _esc(localUrl) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     });
 
-    var fd = new FormData();
-    fd.append('file', blob, 'avatar.jpg');
-    fd.append('upload_preset', 'ridego_unsigned');
-    fd.append('folder', 'avatars');
-    fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload', {
-      method: 'POST', body: fd
-    }).then(function(r){ return r.json(); })
+    _cldUpload(blob, 'avatar.jpg', 'avatars')
     .then(function(data) {
       if (data.secure_url) {
         profilePhotoUrl = data.secure_url;
