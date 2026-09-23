@@ -136,7 +136,8 @@ async function getStats() {
       if (!d.document) return;
       n++;
       const f = d.document.fields || {};
-      const c = f.city?.stringValue; if (c) cities.add(c);
+      // «Одеса» і «Одеса, центр» — одне місто, інакше лічильник міст завищений.
+      const c = f.city?.stringValue; if (c) cities.add(c.split(',')[0].trim().toLowerCase());
       const u = f.uid?.stringValue;  if (u) sellers.add(u);
     });
     if (!n) return null;
