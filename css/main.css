@@ -3783,3 +3783,17 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   .listing-footer > div > div:last-child > span:nth-child(3) { display: none !important; }
   .listing-footer .loc { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 }
+
+/* ══ Кроки подачі оголошення: підписи не злипаються на телефоні ══ */
+@media (max-width: 600px) {
+  .ux-steps-lbl { display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 4px; text-transform: none !important; letter-spacing: 0 !important; font-size: 10.5px !important; line-height: 1.2; }
+  .ux-steps-lbl span { text-align: center; }
+}
+
+/* ══ Сторінка продавця: статистика в один рядок на телефоні ══ */
+@media (max-width: 600px) {
+  .seller-stats-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px !important; }
+  .seller-stat-card { padding: 10px 4px !important; border-radius: 12px !important; }
+  .seller-stat-val { font-size: 19px !important; letter-spacing: 0 !important; }
+  .seller-stat-lbl { font-size: 10px !important; letter-spacing: 0 !important; text-transform: none !important; }
+}
