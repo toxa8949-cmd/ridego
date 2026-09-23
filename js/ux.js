@@ -967,6 +967,22 @@
     el.appendChild(btn);
   });
 
+  // ══ 13. ЧАТ НА ТЕЛЕФОНІ НА ВЕСЬ ЕКРАН ═══════════════════════
+  // Коли відкрита переписка, нижнє меню ховаємо: поле вводу не
+  // затискається між меню і клавіатурою, а повідомленням більше місця.
+  function syncChatMode() {
+    var lay = $('messages-layout'), page = $('page-messages');
+    var on = !!(lay && page && page.classList.contains('active') && lay.classList.contains('chat-open') && window.innerWidth <= 700);
+    document.body.classList.toggle('ux-chat-full', on);
+  }
+  (function () {
+    var lay = $('messages-layout'), page = $('page-messages');
+    if (!window.MutationObserver) return;
+    if (lay) new MutationObserver(syncChatMode).observe(lay, { attributes: true, attributeFilter: ['class'] });
+    if (page) new MutationObserver(syncChatMode).observe(page, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', syncChatMode);
+  })();
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }

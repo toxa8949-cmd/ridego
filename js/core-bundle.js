@@ -1961,7 +1961,7 @@ function createHomeSvcCard(s) {
     +"<div class=\"home-svc-card-top\">"
     +(s.photoUrl
       ? "<div class=\"home-svc-icon\" style=\"background:none;overflow:hidden;padding:0\"><img alt=\"Фото сервісу\" loading=\"lazy\" decoding=\"async\" src=\""+_esc(_cdnImg(s.photoUrl,{w:200,c:'fill'}))+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:inherit\"></div>"
-      : "<div class=\"home-svc-icon\">"+s.icon+"</div>"
+      : "<div class=\"home-svc-icon\">"+(s.icon||'🔧')+"</div>"
     )
     +"<div style=\"flex:1;min-width:0\">"
     +"<div style=\"display:flex;align-items:center;gap:6px;flex-wrap:wrap\">"

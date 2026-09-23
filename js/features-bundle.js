@@ -1185,7 +1185,7 @@ function filterServices(){
   var cityF=document.getElementById("svc-city-select")?document.getElementById("svc-city-select").value:"";
   var all=_fbServices.concat(myServices);
   var filtered=all.filter(function(s){
-    var mc=!currentServiceFilter||s.cats.indexOf(currentServiceFilter)>=0;
+    var mc=!currentServiceFilter||(s.cats||[]).indexOf(currentServiceFilter)>=0;
     var mq=!q||s.name.toLowerCase().indexOf(q)>=0||(s.city||"").toLowerCase().indexOf(q)>=0||(s.desc||"").toLowerCase().indexOf(q)>=0||s.services.some(function(sv){return sv.name.toLowerCase().indexOf(q)>=0;});
     var mct=!cityF||s.city===cityF;
     return mc&&mq&&mct;
@@ -1205,23 +1205,25 @@ function filterServices(){
 }
 
 function createServiceCard(s){
-  var stars="\u2605".repeat(Math.round(s.rating));
+  var stars="\u2605".repeat(Math.max(0,Math.min(5,Math.round(Number(s.rating)||0))));
   var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\">"+s.badgeLabel+"</div>":"";
   var shopLk=s.sellerId?"<button onclick=\"event.stopPropagation();showSeller('"+s.sellerId+"')\" style=\"font-size:11px;color:var(--brand);background:none;border:none;cursor:pointer;padding:0;font-family:inherit;display:flex;align-items:center;gap:4px\"><i class=\"fa-solid fa-store\"></i> \u041c\u0430\u0433\u0430\u0437\u0438\u043d</button>":"";
   var prev=_renderSvcPreview(s.services);
-      var cats=s.cats.map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
-  var addr=s.address?" \u00b7 "+s.address:"";
+  // Сервіс без категорій або опису раніше ламав усю сторінку «Сервіси»
+  // (s.cats.map на undefined), а текстові поля йшли в HTML без екранування.
+  var cats=(s.cats||[]).map(function(c){return "<span class=\"service-cat-tag\">"+_esc(c)+"</span>";}).join("");
+  var addr=s.address?" \u00b7 "+_esc(s.address):"";
   var rating=s.rating>0?s.rating+" \u00b7 "+s.reviews+" "+(window.plUk?plUk(s.reviews,["\u0432\u0456\u0434\u0433\u0443\u043a","\u0432\u0456\u0434\u0433\u0443\u043a\u0438","\u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432"]):"\u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432"):"\u041d\u043e\u0432\u0438\u0439";
   return "<div class=\"service-card\" onclick=\"showServiceDetail('"+s.id+"')\">"+
     (s.photoUrl
       ? "<div class=\"service-card-cover\" style=\"background:none;padding:0;overflow:hidden\"><img alt=\"Фото сервісу\" loading=\"lazy\" decoding=\"async\" src=\""+_esc(_cdnImg(s.photoUrl,{w:600,c:'fill'}))+"\" style=\"width:100%;height:100%;object-fit:cover\">"+badge+"</div>"
-      : "<div class=\"service-card-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><div class=\"service-card-cover-icon\">"+s.icon+"</div>"+badge+"</div>"
+      : "<div class=\"service-card-cover\" style=\"background:linear-gradient(135deg,"+(s.coverColor||'#1b5e20')+" 0%,var(--dark2) 100%)\"><div class=\"service-card-cover-icon\">"+(s.icon||'🔧')+"</div>"+badge+"</div>"
     )+
     "<div class=\"service-card-body\">"+
     "<div class=\"service-card-cats\">"+cats+"</div>"+
     "<div class=\"service-card-name\">"+window.escHtml(s.name)+"</div>"+
-    "<div class=\"service-card-city\"><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand)\"></i>"+s.city+addr+"</div>"+
-    "<div class=\"service-card-desc\">"+s.desc+"</div>"+
+    "<div class=\"service-card-city\"><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand)\"></i>"+_esc(s.city||'')+addr+"</div>"+
+    "<div class=\"service-card-desc\">"+_esc(s.desc||'')+"</div>"+
     "<div class=\"service-card-services\">"+prev+"</div>"+
     "<div class=\"service-card-footer\">"+
     "<div class=\"service-card-rating\"><span style=\"color:#ffa726\">"+stars+"</span> "+rating+"</div>"+
@@ -1232,7 +1234,7 @@ function createServiceCard(s){
 
 function _buildSvcDetailHeader(s){
   var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\" style=\"font-size:12px;padding:5px 14px\">"+s.badgeLabel+"</div>":"";
-  var cats=s.cats.map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
+  var cats=(s.cats||[]).map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
   var cityLine=s.city?"<span><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.city)+(s.address?", "+window.escHtml(s.address):"")+"</span>":"";
   var hoursLine=s.hours?"<span><i class=\"fa-solid fa-clock\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.hours+"</span>":"";
   var phoneLine=s.phone?"<span><i class=\"fa-solid fa-phone\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.phone+"</span>":"";
@@ -1664,7 +1666,7 @@ function _mysvcEmptyState() {
 
 function _mysvcCard(s) {
   var stars = s.rating > 0 ? "\u2605".repeat(Math.round(s.rating)) : "";
-  var cats  = s.cats.map(function(c){return '<span class="service-cat-tag">'+c+'</span>';}).join("");
+  var cats  = (s.cats||[]).map(function(c){return '<span class="service-cat-tag">'+_esc(c)+'</span>';}).join("");
   var svcPreview = _renderSvcPreview(s.services);
 
   return '<div class="mysvc-hero" style="flex-direction:column;align-items:stretch">'
@@ -1699,7 +1701,7 @@ function openMysvcEditor(id) {
   });
 
   var catsHtml = CATS_LIST.map(function(cat){
-    var active = (s && s.cats.indexOf(cat.key)>=0) ? ' active' : '';
+    var active = (s && (s.cats||[]).indexOf(cat.key)>=0) ? ' active' : '';
     return '<button type="button" class="mysvc-cat-pill'+active+'" data-cat="'+cat.key+'" onclick="toggleMysvcCatPill(this)">'
       +cat.label+'</button>';
   }).join(' ');
