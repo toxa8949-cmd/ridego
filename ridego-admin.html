@@ -2185,24 +2185,32 @@ function deleteNews(id){
     .catch(function(e){showToast('Помилка: '+e.message,'error');});
 }
 function newsCmd(cmd,val){var e=document.getElementById('news-editor');e.focus();document.execCommand(cmd,false,val||null);}
+// Підписане завантаження в Cloudinary (відкритий пресет більше не використовується).
+function adminCldUpload(file, folder){
+  var u=_auth&&_auth.currentUser; if(!u) return Promise.reject(new Error('Не авторизовано'));
+  return u.getIdToken().then(function(tok){
+    return fetch('/api/cloudinary-sign',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({folder:folder})});
+  }).then(function(r){ if(!r.ok) throw new Error('підпис '+r.status); return r.json(); })
+  .then(function(sig){
+    var fd=new FormData();fd.append('file',file);fd.append('api_key',sig.apiKey);fd.append('timestamp',sig.timestamp);fd.append('signature',sig.signature);fd.append('folder',sig.folder);
+    return fetch('https://api.cloudinary.com/v1_1/'+sig.cloudName+'/image/upload',{method:'POST',body:fd});
+  }).then(function(r){return r.json();})
+  .then(function(d){ if(!d||!d.secure_url) throw new Error((d&&d.error&&d.error.message)||'Cloudinary'); return d; });
+}
 function uploadNewsImg(input){
   var file=input.files[0];if(!file)return;
   document.getElementById('news-img-btn-label').textContent='Завантаження...';
   var reader=new FileReader();reader.onload=function(e){document.getElementById('news-img-preview-el').src=e.target.result;document.getElementById('news-img-preview').style.display='';};reader.readAsDataURL(file);
-  var fd=new FormData();fd.append('file',file);fd.append('upload_preset','ridego_unsigned');fd.append('folder','news');
-  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload',{method:'POST',body:fd})
-    .then(function(r){return r.json();}).then(function(d){
+  adminCldUpload(file,'news').then(function(d){
       if(d.secure_url){document.getElementById('news-img').value=d.secure_url;document.getElementById('news-img-clear-btn').style.display='';document.getElementById('news-img-btn-label').textContent='Змінити';showToast('Фото завантажено','success');}
-    }).catch(function(){showToast('Помилка завантаження','error');document.getElementById('news-img-btn-label').textContent='Завантажити';});
+    }).catch(function(e){showToast('Помилка завантаження: '+e.message,'error');document.getElementById('news-img-btn-label').textContent='Завантажити';});
 }
 function insertNewsInlineImg(input){
   var file=input.files[0];if(!file)return;
   showToast('Завантаження...','info');
-  var fd=new FormData();fd.append('file',file);fd.append('upload_preset','ridego_unsigned');fd.append('folder','news');
-  fetch('https://api.cloudinary.com/v1_1/dxgtpo5dq/image/upload',{method:'POST',body:fd})
-    .then(function(r){return r.json();}).then(function(d){
+  adminCldUpload(file,'news').then(function(d){
       if(d.secure_url){document.getElementById('news-editor').focus();document.execCommand('insertHTML',false,'<img src="'+d.secure_url+'" style="max-width:100%;border-radius:8px;margin:12px 0;display:block">');showToast('Додано','success');}
-    }).catch(function(){showToast('Помилка','error');});
+    }).catch(function(e){showToast('Помилка: '+e.message,'error');});
   input.value='';
 }
 function clearNewsImg(){
