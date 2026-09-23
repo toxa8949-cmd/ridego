@@ -216,40 +216,41 @@ function _totalSlots() {
 function loadUserSlots(profileData) {
   if (!currentUser || !currentUser.uid) return;
 
-  // Якщо передали дані з профілю — не робити зайвий Firestore read
-  if (profileData) {
-    _applySlots(profileData);
-    return;
-  }
-
-  // Спробувати з localStorage кешу профілю
+  // Профіль часто береться з localStorage-кешу (15 хв), а там слоти
+  // ще до публікації. Через це після оновлення сторінки списаний слот
+  // «повертався». Тепер кеш показуємо лише миттєво, а справжню кількість
+  // завжди дочитуємо з бази (один запит на сторінку).
   var _pcKey = '_pc_' + currentUser.uid;
-  try {
-    var _pcAt = parseInt(localStorage.getItem(_pcKey + '_at') || '0');
-    if (Date.now() - _pcAt < 15 * 60 * 1000) {
+  if (profileData) _applySlots(profileData);
+  else {
+    try {
       var cached = JSON.parse(localStorage.getItem(_pcKey) || 'null');
-      if (cached) { _applySlots(cached); return; }
-    }
-  } catch(e) {}
+      if (cached) _applySlots(cached);
+    } catch(e) {}
+  }
 
   // Fallback — читаємо з Firestore (рідко, тільки коли немає кешу)
   if (!window._db) {
-    if (typeof window._onFirebaseReady === 'function') window._onFirebaseReady(function() { _loadUserSlots(); });
+    if (typeof window._onFirebaseReady === 'function') window._onFirebaseReady(function() { loadUserSlots(); });
     return;
   }
   window._db.collection('users').doc(currentUser.uid).get().then(function(snap) {
     if (!snap.exists) return;
-    _applySlots(snap.data());
+    var d = snap.data();
+    _applySlots(d, true);
+    try { localStorage.setItem(_pcKey, JSON.stringify(d)); localStorage.setItem(_pcKey + '_at', String(Date.now())); } catch(e) {}
   }).catch(function(e){ void('slots load:', e.message); });
 }
 
-function _applySlots(d) {
+function _applySlots(d, fresh) {
     _userSlots.slots             = Math.max(0, d.slots || 0);
     _userSlots.slotsWelcome      = Math.max(0, d.slotsWelcome || 0);
     _userSlots.slotsWelcomeExpiry= d.slotsWelcomeExpiry || null;
     _userSlots.lastFreeSlotAt    = d.lastFreeSlotAt || null;
     _userSlots.loaded            = true;
-    _checkMonthlyFreeSlot();
+    // Щомісячний слот — лише за свіжими даними, інакше з кешу він міг
+    // нарахуватись двічі.
+    if (fresh) _checkMonthlyFreeSlot();
     _renderSlotsUI();
 }
 
@@ -383,7 +384,15 @@ function _consumeSlot() {
   update.totalListingsPublished = firebase.firestore.FieldValue.increment(1);
 
   return window._db.collection('users').doc(currentUser.uid).update(update)
-    .then(function() { _renderSlotsUI(); return true; })
+    .then(function() {
+      _renderSlotsUI();
+      // Оновити кеш профілю, щоб після перезавантаження не показувались старі слоти
+      try {
+        var k = '_pc_' + currentUser.uid, c = JSON.parse(localStorage.getItem(k) || 'null');
+        if (c) { c.slots = _userSlots.slots; c.slotsWelcome = _userSlots.slotsWelcome; localStorage.setItem(k, JSON.stringify(c)); }
+      } catch(e) {}
+      return true;
+    })
     .catch(function(e) { void('consume slot:', e.message); return false; });
 }
 
