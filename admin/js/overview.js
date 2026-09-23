@@ -53,7 +53,7 @@
     var rows = [];
     for (var i = days - 1; i >= 0; i--) { var k = dayStr(i); var d = traffic.days[k] || {}; rows.push({ k: k, a: d.visitors || 0, b: d.views || 0 }); }
     var max = Math.max(1, Math.max.apply(null, rows.map(function (r) { return Math.max(r.a, r.b); })));
-    var W = 720, H = 120, gw = (W - 30) / days, bw = Math.max(2, Math.min(9, gw / 2 - 1));
+    var W = 1100, H = 150, gw = (W - 30) / days, bw = Math.max(2, Math.min(9, gw / 2 - 1));
     var svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" role="img" aria-label="Відвідувачі і перегляди">' +
       '<line class="axis" x1="30" x2="' + W + '" y1="' + H + '" y2="' + H + '"/>' +
       '<text x="24" y="' + H + '" text-anchor="end">0</text><text x="24" y="10" text-anchor="end">' + max + '</text>';
