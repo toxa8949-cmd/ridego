@@ -15,7 +15,7 @@
     } catch (e) {}
   })();
 </script>
-<link rel="stylesheet" href="/admin/admin.css?v=2">
+<link rel="stylesheet" href="/admin/admin.css?v=3">
 </head>
 <body>
 
@@ -110,6 +110,10 @@
           <div class="panel"><div class="panel-head"><h2>Міста</h2></div><div id="by-city"></div></div>
           <div class="panel"><div class="panel-head"><h2>Бренди</h2></div><div id="by-brand"></div></div>
           <div class="panel"><div class="panel-head"><h2>Нові користувачі</h2><a href="#users" class="link">усі</a></div><div id="recent-users"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Відвідувачі і перегляди</h2></div>
+          <div id="traffic-chart"></div>
         </div>
         <div class="panel">
           <div class="panel-head"><h2>Останні оголошення</h2><a href="#listings" class="link">усі</a></div>
@@ -249,12 +253,13 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="/admin/js/core.js?v=2"></script>
-<script src="/admin/js/overview.js?v=2"></script>
-<script src="/admin/js/listings.js?v=2"></script>
-<script src="/admin/js/users.js?v=2"></script>
-<script src="/admin/js/moderation.js?v=2"></script>
-<script src="/admin/js/news.js?v=2"></script>
-<script src="/admin/js/system.js?v=2"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="/admin/js/core.js?v=3"></script>
+<script src="/admin/js/overview.js?v=3"></script>
+<script src="/admin/js/listings.js?v=3"></script>
+<script src="/admin/js/users.js?v=3"></script>
+<script src="/admin/js/moderation.js?v=3"></script>
+<script src="/admin/js/news.js?v=3"></script>
+<script src="/admin/js/system.js?v=3"></script>
 </body>
 </html>
