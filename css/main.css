@@ -3684,3 +3684,21 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   #seller-cover-bg { height: 110px !important; min-height: 0 !important; }
   .seller-avatar-big { width: 88px; height: 88px; font-size: 32px; border-radius: 20px; }
 }
+
+/* ══ Бейджі TOP/Хіт/Терміново — зліва, щоб не перекривались сердечком ══ */
+.listing-card .promo-badge-top, .listing-card .promo-badge-urgent, .listing-card .promo-badge-highlight {
+  right: auto !important; left: 10px !important; top: 10px !important;
+  font-size: 11px; letter-spacing: .3px; border-radius: 8px; padding: 4px 8px;
+}
+
+/* ══ Картка дій на сторінці оголошення: рівні відступи, другорядне — рядком ══ */
+.detail-card .btn-call, .detail-card .btn-msg { margin: 0 0 10px !important; padding: 13px 14px; font-size: 15px; }
+.detail-card #fav-detail-btn { margin-bottom: 10px !important; }
+#detail-action-row { display: flex !important; gap: 8px !important; margin-top: 2px !important; flex-wrap: nowrap !important; }
+#detail-action-row .btn-action-sm {
+  flex: 1 1 0 !important; margin: 0 !important; padding: 10px 6px !important;
+  font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 !important;
+}
+#detail-action-row .btn-action-sm:last-child:hover { color: #ef4444; border-color: #ef4444; }

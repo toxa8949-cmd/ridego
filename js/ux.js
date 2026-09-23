@@ -391,7 +391,7 @@
       if (d > 30 * 86400) { el.innerHTML = ''; return; }
       el.innerHTML = d < 300
         ? '<span class="ux-online"><i></i>Онлайн</span>'
-        : '<span class="ux-seen">На сайті ' + ago(s) + '</span>';
+        : '<span class="ux-seen">Був(ла) онлайн ' + ago(s) + '</span>';
     };
     el.setAttribute('data-uid', uid);
     var c = seenCache[uid];
