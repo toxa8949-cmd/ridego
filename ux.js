@@ -732,6 +732,34 @@
     };
   };
 
+  // ══ Кнопка «Назад» телефона/браузера у формі оголошення ══════
+  // Раніше системне «назад» викидало з форми цілком. Тепер кожен крок —
+  // окремий запис в історії, і «назад» повертає на попередній крок.
+  var stepNav = false;
+  (function () {
+    var orig = window.addGoStep;
+    if (typeof orig !== 'function') return;
+    window.addGoStep = function (step) {
+      var from = typeof addCurrentStep !== 'undefined' ? addCurrentStep : 1;
+      var r = orig.apply(this, arguments);
+      var to = typeof addCurrentStep !== 'undefined' ? addCurrentStep : from;
+      if (!stepNav && to > from) {
+        try { history.pushState({ addStep: to }, '', location.pathname + location.search); } catch (e) {}
+      }
+      return r;
+    };
+  })();
+  window.addEventListener('popstate', function (e) {
+    var page = $('page-add');
+    if (!page || typeof addCurrentStep === 'undefined') return;
+    var target = (e.state && e.state.addStep) || 1;
+    setTimeout(function () {
+      if (!page.classList.contains('active') || addCurrentStep <= target) return;
+      stepNav = true;
+      try { window.addGoStep(target); } finally { stepNav = false; }
+    }, 30);
+  });
+
   // ══ 8. ПАНЕЛЬ «ПОДЗВОНИТИ / НАПИСАТИ» НА ТЕЛЕФОНІ ═══════════
   // На сторінці оголошення кнопки зв'язку були лише в середині сторінки —
   // після галереї й опису їх доводилось шукати. Тепер вони завжди під рукою.
