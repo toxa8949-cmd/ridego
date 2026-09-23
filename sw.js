@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   '/js/user-bundle.js',
   '/js/extra.js',
   '/js/gallery-ux.js',
+  '/js/ux.js',
   '/css/main.css'
 ];
 

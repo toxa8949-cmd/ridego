@@ -47,6 +47,7 @@ const JS_FILES = [
   'js/features-bundle.js',
   'js/extra.js',
   'js/gallery-ux.js',
+  'js/ux.js',
   'js/data_geo.js',
   'js/data_specs.js',
 ];

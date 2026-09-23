@@ -502,7 +502,7 @@
   <div class="hero">
     <div class="hero-bg"></div>
     <div class="hero-grid"></div>
-    <div class="hero-content fade-up">
+    <div class="hero-content">
       <div class="hero-badge"><i class="fa-solid fa-bolt"></i> №1 маркетплейс електротранспорту</div>
       <h1>Рухайся в майбутнє<br><span>без заторів</span></h1>
       <p>Купуй та продавай електросамокати, велосипеди та скутери. <span id="hero-count-text">Більше 70 пропозицій</span> по всій Україні.</p>
@@ -795,8 +795,11 @@
     <div id="catalog-results-wrap" style="display:none">
       <div class="results-header">
         <div>
-          <div class="results-count">Знайдено: <span id="results-num">0</span> оголошень</div>
+          <div class="results-count">Знайдено: <span id="results-num">0</span> <span id="results-word">оголошень</span></div>
           <div style="font-size:13px;color:var(--text-muted);margin-top:4px" id="results-cat-label"></div>
+          <button id="save-search-btn" class="ux-save-search" onclick="_uxSaveSearch()" title="Повідомимо на пошту про нові оголошення за цими фільтрами">
+            <i class="fa-regular fa-bell"></i> Зберегти пошук
+          </button>
         </div>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <div class="sort-bar">
@@ -864,6 +867,7 @@
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div id="detail-price" style="font-family:'Inter',sans-serif;font-size:36px;font-weight:800;color:var(--brand);line-height:1"></div>
+        <div id="detail-old-price" class="detail-old-price"></div>
         <div id="detail-price-usd" style="font-size:14px;color:var(--text-muted);margin-top:4px"></div>
       </div>
     </div>
@@ -958,6 +962,7 @@
               <div class="seller-name" id="detail-seller"></div>
               <div class="seller-rating" style="margin-top:3px" id="detail-seller-rating"></div>
               <div class="seller-since" id="detail-seller-since"></div>
+              <div class="seller-since" id="detail-seller-seen"></div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px">
@@ -1026,6 +1031,7 @@
             <span id="seller-page-city"></span>
             <span id="seller-page-since"></span>
             <span id="seller-page-rating"></span>
+            <span id="seller-page-seen"></span>
           </div>
         </div>
       </div>
@@ -1723,8 +1729,11 @@
         <button class="ptab active" onclick="switchPTab('my',this)">
           <i class="fa-solid fa-grid-2" style="margin-right:6px;font-size:12px"></i>Оголошення
         </button>
-        <button class="ptab" onclick="switchPTab('favs',this)">
+        <button class="ptab" data-tab="favs" onclick="switchPTab('favs',this)">
           <i class="fa-solid fa-heart" style="margin-right:6px;font-size:12px"></i>Обране
+        </button>
+        <button class="ptab" data-tab="history" onclick="switchPTab('history',this)">
+          <i class="fa-solid fa-clock-rotate-left" style="margin-right:6px;font-size:12px"></i>Переглянуті
         </button>
         <button class="ptab" onclick="switchPTab('settings',this)">
           <i class="fa-solid fa-pen" style="margin-right:6px;font-size:12px"></i>Редагувати
@@ -1781,6 +1790,8 @@
 
       <!-- TAB: Favourites -->
       <div id="ptab-favs" style="display:none">
+        <div id="ux-searches" class="ux-panel"></div>
+        <div id="ux-email-prefs" class="ux-prefs"></div>
         <div id="favs-grid" class="listing-grid"></div>
         <div id="favs-empty" class="empty-state" style="display:none">
           <i class="fa-regular fa-heart"></i>
@@ -2562,6 +2573,7 @@
   <script src="/js/features-bundle.js?v=20260511" defer></script>
   <script src="/js/extra.js?v=20260511" defer></script>
   <script src="/js/gallery-ux.js?v=20260511" defer></script>
+  <script src="/js/ux.js?v=20260923" defer></script>
   <!-- Географічні дані — завантажуються асинхронно -->
   <script src="/js/data_geo.js" defer></script>
   <!-- Специфікації форм — завантажуються асинхронно -->
