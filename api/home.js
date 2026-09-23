@@ -153,6 +153,13 @@ const CATEGORIES = [
   { name: 'Електромотоцикли', slug: 'elektromotocykly', icon: '🏍' },
 ];
 
+function plForm(n, f) {
+  const a = n % 10, b = n % 100;
+  if (a === 1 && b !== 11) return f[0];
+  if (a >= 2 && a <= 4 && (b < 10 || b >= 20)) return f[1];
+  return f[2];
+}
+
 module.exports = async (req, res) => {
   const ua = req.headers['user-agent'] || '';
   const isBot = BOTS.test(ua);
@@ -375,5 +382,17 @@ ${itemListSchema ? `<script type="application/ld+json">${itemListSchema}</script
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
-  res.status(200).send(renderShell(adaptLegacyDocument(html, { stats })));
+  // Головна: показуємо справжню сторінку SPA (#page-home) одразу, без
+  // проміжного серверного блоку. Раніше блок ховав #page-home, а коли
+  // стартував JS — зникав, і головний екран малювався вдруге: на мобільному
+  // PageSpeed це 14 с до «найбільшої відмальовки». Нові оголошення сервер
+  // вставляє прямо в сітку #home-listings (renderShell → homeListings).
+  const shell = adaptLegacyDocument(html, { stats, homeListings: listings });
+  delete shell.bodyHtml;
+  if (stats && stats.listings) {
+    shell.desc = 'RideGO — маркетплейс електротранспорту в Україні. Купуй та продавай електросамокати, велосипеди, скутери: ' +
+      stats.listings + ' ' + plForm(stats.listings, ['оголошення', 'оголошення', 'оголошень']) +
+      ' від ' + stats.sellers + ' ' + plForm(stats.sellers, ['продавця', 'продавців', 'продавців']) + '.';
+  }
+  res.status(200).send(renderShell(shell));
 };

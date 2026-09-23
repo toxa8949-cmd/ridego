@@ -163,6 +163,31 @@ function renderShell(o) {
     html = html.replace(/(<span class="stat-num" id="stat-cities">)[^<]*(<)/,   `$1${nC}$2`);
   }
 
+  // Нові оголошення головної — одразу в сітку замість скелетонів.
+  // Це і перший екран без очікування JS, і посилання для краулерів.
+  // Коли SPA завантажить дані, renderHomeListings() замінить їх
+  // звичайними картками.
+  if (o.homeListings && o.homeListings.length) {
+    const cards = o.homeListings.slice(0, 6).map(l => {
+      const img = /^https:\/\/res\.cloudinary\.com\//.test(l.img || '')
+        ? l.img.replace('/upload/', '/upload/w_400,q_75,f_auto,c_fill/') : (l.img || '');
+      const price = l.price ? Number(l.price).toLocaleString('uk-UA') + ' грн' : '';
+      return '<a class="listing-card" href="/listing/' + encodeURIComponent(l.id) + '" style="text-decoration:none;color:inherit">' +
+        '<div style="position:relative;flex-shrink:0">' +
+          (img ? '<div class="listing-img-wrap"><img class="listing-img" src="' + escHtml(img) + '" alt="' + escHtml(l.title) + '" width="400" height="260" loading="lazy" decoding="async"></div>'
+               : '<div class="listing-img-placeholder">📦</div>') +
+        '</div>' +
+        '<div class="listing-body">' +
+          '<div class="listing-title">' + escHtml(l.title) + '</div>' +
+          '<div class="listing-price">' + escHtml(price) + '</div>' +
+          '<div class="listing-footer"><span class="loc">' + escHtml(l.city || '') + '</span></div>' +
+        '</div></a>';
+    }).join('');
+    const re = /(<div class="listing-grid" id="home-listings">)[\s\S]*?(<\/div>\s*<\/div>\s*<!-- ═══ НОВИНИ)/;
+    if (re.test(html)) html = html.replace(re, (m, a, b) => a + cards + b);
+    else warnings.push('home-listings');
+  }
+
   // Позначка для SPA: цю сторінку вже наповнив сервер, тож не треба
   // перезатирати добрий <title> загальною заглушкою, поки не приїхали дані.
   let boot = '<script>window.__SSR_SEO__=true;';
