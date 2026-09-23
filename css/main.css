@@ -3489,3 +3489,71 @@ body.light .mnav-item span {
   .profile-tabs { justify-content: flex-start; }
   .profile-tabs .ptab { flex: 0 0 auto; padding: 10px 12px; overflow: visible; text-overflow: clip; max-width: none; min-width: 0; }
 }
+
+/* ══ Дизайн v2: компактніша головна і картки, зв'язок завжди під рукою ══ */
+/* Сердечко на фото — як на OLX; інші сердечка в картці ховаємо */
+.fav-on-photo {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.92); color: #444; font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18); padding: 0;
+}
+.fav-on-photo.active, .fav-on-photo:hover { color: #ff3b3b; }
+.listing-card .listing-footer .fav-btn:not(.compare-btn-card),
+.listing-card .lv-bottom-row .fav-btn { display: none; }
+.listing-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.18); }
+.listing-card .listing-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+@media (max-width: 768px) {
+  /* Головна: перший екран показує товар, а не лише заголовок */
+  .hero { padding: 20px 16px 22px !important; }
+  .hero-content { padding: 0 !important; }
+  .hero-badge { display: none !important; }
+  .hero h1 { font-size: 26px !important; margin-bottom: 10px !important; letter-spacing: -.5px; }
+  .hero p { font-size: 14px !important; margin-bottom: 16px !important; line-height: 1.5; }
+  .hero-btns { flex-direction: row !important; gap: 8px !important; }
+  .hero-btns button { flex: 1; width: auto !important; padding: 11px 8px !important; font-size: 13px !important; white-space: normal !important; line-height: 1.25; text-overflow: clip !important; }
+  .hero-btns button i { display: none; }
+  .hero-stats { margin-top: 18px !important; padding-top: 14px !important; gap: 10px !important; }
+  .hero-stats .stat-num { font-size: 20px !important; }
+  .hero-stats .stat-label { font-size: 11px !important; }
+
+  /* Картки: 2 в ряд, коротші, головне — фото, ціна, назва, місто */
+  .listing-grid:not(.list-view) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .listing-grid:not(.list-view) .listing-body { padding: 10px 10px 12px !important; }
+  .listing-grid:not(.list-view) .listing-title { font-size: 13px !important; margin-bottom: 4px !important; line-height: 1.3; }
+  .listing-grid:not(.list-view) .listing-price { font-size: 17px !important; margin-bottom: 6px !important; }
+  .listing-grid:not(.list-view) .listing-specs,
+  .listing-grid:not(.list-view) .listing-specs-empty,
+  .listing-grid:not(.list-view) .card-pills-row,
+  .listing-grid:not(.list-view) .card-seller-btn,
+  .listing-grid:not(.list-view) .compare-btn-card { display: none !important; }
+  .listing-grid:not(.list-view) .listing-footer { padding-top: 6px !important; border-top: none !important; }
+  .listing-grid:not(.list-view) .card-pill { font-size: 10px !important; padding: 2px 6px !important; }
+  .listing-grid:not(.list-view) .old-price { font-size: 11px; }
+  .listing-grid:not(.list-view) .price-drop-pill { font-size: 10px; padding: 1px 5px; }
+  .fav-on-photo { width: 32px; height: 32px; font-size: 14px; top: 8px; right: 8px; }
+
+  /* Панель «Подзвонити / Написати» над нижнім меню */
+  #ux-contact-bar {
+    position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 999;
+    display: none; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--card-bg); border-top: 1px solid var(--border); box-shadow: 0 -6px 20px rgba(0,0,0,.12);
+  }
+  #ux-contact-bar.show { display: flex; }
+  body.ux-has-cb #page-detail { padding-bottom: 80px; }
+}
+.ux-cb-price { font-weight: 800; font-size: 16px; color: var(--brand); white-space: nowrap; margin-right: auto; }
+.ux-cb-btn { border: none; border-radius: 12px; padding: 12px 14px; font: 700 14px/1 inherit; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.ux-cb-call { background: var(--brand); color: #fff; }
+.ux-cb-msg { background: var(--brand-dim); color: var(--brand); }
+
+/* Екран «Оголошення опубліковано» */
+.ux-pub { text-align: center; }
+.ux-pub-ico { width: 64px; height: 64px; margin: 4px auto 14px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.ux-pub h3 { font-size: 20px; }
+.ux-pub p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
+.ux-pub-acts { display: flex; flex-direction: column; gap: 8px; }
+.ux-pub-acts button { width: 100%; padding: 12px; font-size: 15px; }
+.ux-link { background: none; border: none; color: var(--text-muted); font: inherit; font-size: 14px; cursor: pointer; padding: 8px; text-decoration: underline; }

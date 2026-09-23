@@ -732,6 +732,77 @@
     };
   };
 
+  // ══ 8. ПАНЕЛЬ «ПОДЗВОНИТИ / НАПИСАТИ» НА ТЕЛЕФОНІ ═══════════
+  // На сторінці оголошення кнопки зв'язку були лише в середині сторінки —
+  // після галереї й опису їх доводилось шукати. Тепер вони завжди під рукою.
+  function contactBar() {
+    var bar = $('ux-contact-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'ux-contact-bar';
+      bar.innerHTML = '<div class="ux-cb-price" id="ux-cb-price"></div>' +
+        '<button class="ux-cb-btn ux-cb-call" onclick="_uxCallSeller()"><i class="fa-solid fa-phone"></i> Подзвонити</button>' +
+        '<button class="ux-cb-btn ux-cb-msg" onclick="_startChatFromListing()"><i class="fa-solid fa-comment"></i> Написати</button>';
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+  function updateContactBar() {
+    var page = $('page-detail');
+    var l = window.currentDetailId ? findListing(window.currentDetailId) : null;
+    var own = l && me() && l.uid === me().uid;
+    var show = !!(page && page.classList.contains('active') && l && !own && l.status !== 'sold' && window.innerWidth <= 768);
+    var bar = show ? contactBar() : $('ux-contact-bar');
+    if (!bar) return;
+    bar.classList.toggle('show', show);
+    document.body.classList.toggle('ux-has-cb', show);
+    if (show) $('ux-cb-price').textContent = fmtN(l.price) + ' грн';
+  }
+  window._uxCallSeller = function () {
+    var a = $('phone-number'), rev = $('phone-revealed');
+    if (rev && rev.style.display !== 'none' && a && /^tel:\+?\d{7,}/.test(a.getAttribute('href') || '')) { location.href = a.getAttribute('href'); return; }
+    if (typeof revealPhone === 'function') revealPhone();
+    var tries = 0, t = setInterval(function () {
+      tries++;
+      var r = $('phone-revealed'), n = $('phone-number');
+      if (r && r.style.display !== 'none' && n) {
+        clearInterval(t);
+        r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        location.href = n.getAttribute('href');
+      } else if (tries > 20) clearInterval(t);
+    }, 150);
+  };
+  wrap('showDetail', function () { setTimeout(updateContactBar, 50); });
+  (function () {
+    var page = $('page-detail');
+    if (page && window.MutationObserver) new MutationObserver(updateContactBar).observe(page, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', updateContactBar);
+  })();
+
+  // ══ 9. ЕКРАН «ОГОЛОШЕННЯ ОПУБЛІКОВАНО» ══════════════════════
+  // Раніше одразу після публікації на весь екран відкривалось вікно
+  // платного просування. Тепер — спокійне підтвердження з вибором дій.
+  window._uxPublished = function (l) {
+    if (!l || !l.id) return;
+    var old = $('ux-pub-modal'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'ux-pub-modal';
+    m.className = 'ux-modal';
+    var id = esc(l.id);
+    m.innerHTML = '<div class="ux-modal-box ux-pub">' +
+      '<div class="ux-pub-ico"><i class="fa-solid fa-check"></i></div>' +
+      '<h3>Оголошення опубліковано</h3>' +
+      '<p class="ux-muted">«' + esc(l.title) + '» вже бачать покупці. Фото завантажуються у фоні.</p>' +
+      '<div class="ux-pub-acts">' +
+        '<button class="btn-primary" onclick="document.getElementById(\'ux-pub-modal\').remove();showDetail(\'' + id + '\')"><i class="fa-solid fa-eye"></i> Переглянути</button>' +
+        '<button class="btn-outline" onclick="document.getElementById(\'ux-pub-modal\').remove();showDetail(\'' + id + '\');setTimeout(function(){shareListing()},600)"><i class="fa-solid fa-share-nodes"></i> Поділитись</button>' +
+        '<button class="btn-outline" onclick="document.getElementById(\'ux-pub-modal\').remove();openPromoModal(\'' + id + '\', false)"><i class="fa-solid fa-rocket"></i> Просувати в ТОП</button>' +
+        '<button class="ux-link" onclick="document.getElementById(\'ux-pub-modal\').remove()">Подати ще одне</button>' +
+      '</div></div>';
+    m.addEventListener('click', function (e) { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+  };
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }

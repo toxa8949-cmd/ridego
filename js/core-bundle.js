@@ -1318,7 +1318,9 @@ function createCard(l, backPage) {
   <div class="listing-card ${promoClass}" onclick="showDetail('${_esc(l.id)}')">
 
     <!-- Photo — тільки promo badges (TOP/Хіт/Терміново) -->
-    <div style="position:relative;flex-shrink:0">${imgHtml}${promoBadge}</div>
+    <div style="position:relative;flex-shrink:0">${imgHtml}${promoBadge}
+      <button class="fav-btn fav-on-photo ${isFav?'active':''}" aria-label="В обране" onclick="event.stopPropagation();toggleFav('${_esc(l.id)}',this)"><i class="fa-${isFav?'solid':'regular'} fa-heart"></i></button>
+    </div>
 
     <!-- Body -->
     <div class="listing-body">

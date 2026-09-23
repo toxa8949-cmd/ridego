@@ -447,7 +447,12 @@ function submitListing() {
         var photoBlobs = photos.map(function(p) { return { blob: p.blob, idx: 0 }; });
         uploadedPhotos = []; window.uploadedPhotos = []; // очищаємо після збереження
         _resetAddWizard();
-        setTimeout(function(){ openPromoModal(newL.id, true); }, 600);
+        // Замість вікна просування одразу після публікації — екран «Опубліковано»
+        // з вибором: переглянути, поділитись, просувати, подати ще.
+        setTimeout(function(){
+          if (typeof _uxPublished === 'function') _uxPublished(newL);
+          else openPromoModal(newL.id, true);
+        }, 400);
 
         if (photoBlobs.length > 0) {
           var urls = new Array(photoBlobs.length).fill(null);
