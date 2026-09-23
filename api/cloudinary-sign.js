@@ -25,27 +25,13 @@
 //   хоч зараз — нічого не зламається, захист просто ще не ввімкнеться.
 
 const crypto = require('crypto');
+const { verifyIdToken, bearer } = require('./_auth');
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dxgtpo5dq';
 
 // Теки, в які взагалі можна вантажити. Без цього списку клієнт міг би
 // попросити підпис на будь-який шлях в акаунті.
 const FOLDER_OK = /^(listings\/[A-Za-z0-9_-]{1,64}|services|feedback|profiles|avatars)$/;
-
-async function verifyIdToken(idToken) {
-  const key = process.env.FIREBASE_API_KEY;
-  if (!key || !idToken) return null;
-  try {
-    const r = await fetch(
-      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + key,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) }
-    );
-    if (!r.ok) return null;
-    const j = await r.json();
-    const u = j.users && j.users[0];
-    return u && u.localId ? { uid: u.localId } : null;
-  } catch (e) { return null; }
-}
 
 // Простий ліміт у пам'яті інстансу — щоб один акаунт не міг
 // нескінченно просити підписи.
@@ -72,9 +58,7 @@ module.exports = async (req, res) => {
     return res.status(501).json({ error: 'Signed uploads not configured' });
   }
 
-  const authHeader = req.headers.authorization || '';
-  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  const caller = await verifyIdToken(idToken);
+  const caller = await verifyIdToken(bearer(req), 'cloudinary');
   if (!caller) return res.status(401).json({ error: 'Unauthorized' });
 
   if (rateLimited(caller.uid)) return res.status(429).json({ error: 'Too many uploads' });

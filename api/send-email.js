@@ -23,40 +23,21 @@ function rateLimited(uid) {
   return rec.count > MAX;
 }
 
-// ── Перевірка Firebase ID-токена без firebase-admin ──────────
-// Ідентифікація через Identity Toolkit REST: якщо токен підроблений
-// або протермінований — Google поверне помилку.
-async function verifyIdToken(idToken) {
-  const key = process.env.FIREBASE_API_KEY;
-  if (!key || !idToken) return null;
-  try {
-    const r = await fetch(
-      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + key,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken })
-      }
-    );
-    if (!r.ok) return null;
-    const j = await r.json();
-    const u = j.users && j.users[0];
-    if (!u || !u.localId) return null;
-    return { uid: u.localId, email: u.email || '' };
-  } catch (e) {
-    return null;
-  }
-}
+const { verifyIdToken, bearer, getAdminToken, PROJECT } = require('./_auth');
 
 // ── Email отримувача беремо з Firestore за uid, а не з тіла ──
-const PROJECT = 'ridego-6f981';
+// Колекція users закрита правилами, тож читаємо її службовим
+// токеном (FIREBASE_SERVICE_ACCOUNT у Vercel). Без нього — ''.
 async function getUserEmail(uid) {
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid || '')) return '';
+  const token = await getAdminToken();
+  if (!token) return '';
   try {
     const r = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/users/${uid}`
+      `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/users/${uid}`,
+      { headers: { Authorization: 'Bearer ' + token } }
     );
-    if (!r.ok) return '';
+    if (!r.ok) { console.warn('[send-email] users read http', r.status); return ''; }
     const j = await r.json();
     return (j.fields && j.fields.email && j.fields.email.stringValue) || '';
   } catch (e) {
@@ -64,7 +45,7 @@ async function getUserEmail(uid) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -84,9 +65,7 @@ export default async function handler(req, res) {
   // ── 2. Обов'язковий Firebase ID-токен ───────────────────────
   // Раніше тут була перевірка Origin, яка пропускала будь-який
   // запит без заголовка Origin (звичайний curl) — відкритий релей.
-  const authHeader = req.headers.authorization || '';
-  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  const caller = await verifyIdToken(idToken);
+  const caller = await verifyIdToken(bearer(req), 'send-email');
   if (!caller) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -227,3 +206,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+module.exports = handler;
