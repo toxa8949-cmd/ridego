@@ -1701,26 +1701,16 @@
           <div class="profile-meta" id="profile-meta-text">
             
           </div>
-          <div class="profile-stats">
-            <div class="pstat">
-              <div class="pstat-num" id="pstat-active">0</div>
-              <div class="pstat-l">Активних</div>
-            </div>
-            <div class="pstat">
-              <div class="pstat-num" id="pstat-sold">0</div>
-              <div class="pstat-l">Продано</div>
-            </div>
-            <div class="pstat">
-              <div class="pstat-num" id="pstat-favs">0</div>
-              <div class="pstat-l">Обраних</div>
-            </div>
+          <div class="profile-chips">
+            <span class="pchip"><i class="fa-solid fa-layer-group"></i><b id="pstat-active">0</b> активних оголошень</span>
+            <span id="pstat-sold" hidden>0</span><span id="pstat-favs" hidden>0</span>
           </div>
-          <!-- Actions -->
-          <div class="profile-actions">
-            <button class="btn-outline profile-btn-logout" onclick="doLogout()">
-              <i class="fa-solid fa-right-from-bracket"></i> Вийти
-            </button>
-          </div>
+        </div>
+        <!-- Actions -->
+        <div class="profile-actions profile-actions-v2">
+          <button class="btn-primary pact-main" onclick="showPage('add')"><i class="fa-solid fa-plus"></i> Подати оголошення</button>
+          <button class="btn-outline pact" onclick="if(currentUser&&currentUser.uid)showSellerByUid(currentUser.uid)" title="Як вашу сторінку бачать покупці"><i class="fa-solid fa-store"></i> Моя сторінка</button>
+          <button class="pact-icon profile-btn-logout" onclick="doLogout()" title="Вийти" aria-label="Вийти"><i class="fa-solid fa-right-from-bracket"></i></button>
         </div>
       </div>
 
