@@ -1098,92 +1098,68 @@ function renewListing(id) {
 }
 
 function createMyCard(l) {
-  const base = createCard(l, 'profile');
-  const hasPromo = !!l.promo;
-  const promoLabel = hasPromo ? PROMO_NAMES[l.promo] : null;
-
+  // Компактна картка у «Моїх оголошеннях»: фото зліва, головне справа,
+  // одна основна дія «Редагувати» + «Підняти», решта — у меню «⋯».
+  // Раніше під кожною карткою стояло п'ять кнопок стовпчиком.
+  var id = _esc(l.id);
   var isInactive = l.status === 'inactive' || l.status === 'expired';
-  var expiryStr = '';
-  if (l.expiresAt && l.expiresAt.seconds) {
-    var exp = new Date(l.expiresAt.seconds * 1000);
-    var daysLeft = Math.ceil((exp - new Date()) / (1000 * 60 * 60 * 24));
-    if (isInactive) {
-      expiryStr = '<span style="font-size:11px;color:#ff5252">Неактивне</span>';
-    } else if (daysLeft <= 3) {
-      expiryStr = '<span style="font-size:11px;color:#ffa726">Закінчується через ' + daysLeft + ' дн.</span>';
-    } else {
-      expiryStr = '<span style="font-size:11px;color:var(--text-muted)">Активне до ' + exp.toLocaleDateString('uk-UA',{day:'numeric',month:'short'}) + '</span>';
-    }
+  var isSold = l.status === 'sold';
+  var hasPromo = !!l.promo && _isPromoActive(l);
+  var img = l.img ? (_cdnThumb(l.img) || l.img) : '';
+
+  var status;
+  if (isSold) status = '<span class="mc-st mc-st-sold">Продано</span>';
+  else if (isInactive) status = '<span class="mc-st mc-st-off">Неактивне</span>';
+  else if (hasPromo) status = '<span class="mc-st mc-st-promo">' + _esc(PROMO_NAMES[l.promo] || 'Просування') + '</span>';
+  else status = '<span class="mc-st mc-st-on">Активне</span>';
+
+  var expiry = '';
+  if (!isSold && l.expiresAt && l.expiresAt.seconds) {
+    var daysLeft = Math.ceil((l.expiresAt.seconds * 1000 - Date.now()) / 86400000);
+    if (!isInactive) expiry = daysLeft <= 3
+      ? '<span class="mc-warn">ще ' + Math.max(daysLeft, 0) + ' дн.</span>'
+      : '<span>до ' + new Date(l.expiresAt.seconds * 1000).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' }) + '</span>';
   }
+  var v7 = typeof _viewsInPeriod === 'function' ? _viewsInPeriod(l, 7) : 0;
+  var vAll = Number(l.views) || 0;
 
-  // Перегляди за 7 днів і кнопка «Підняти» (раз на 7 днів, безкоштовно)
-  var _v7 = typeof _viewsInPeriod === 'function' ? _viewsInPeriod(l, 7) : 0;
-  var _vAll = Number(l.views) || 0;
-  var viewsStr = '<span style="font-size:11px;color:var(--text-muted)"><i class="fa-solid fa-eye" style="font-size:10px;margin-right:4px"></i>'
-    + _v7 + ' за 7 днів · ' + _vAll + ' усього</span>';
-  var canBump = l.status === 'active' && typeof _uxBumpLeft === 'function';
-  var bumpLeft = canBump ? _uxBumpLeft(l) : 0;
-  var bumpBtn = canBump
-    ? (bumpLeft
-        ? `<button class="promo-manage-btn no-promo" style="background:var(--dark3);color:var(--text-muted)" title="Безкоштовно раз на 7 днів"
-             onclick="event.stopPropagation(); bumpListing('${l.id}')">
-             <i class="fa-solid fa-arrow-up"></i> Через ${bumpLeft} дн.
-           </button>`
-        : `<button class="promo-manage-btn no-promo" style="background:var(--brand-dim);color:var(--brand)" title="Безкоштовно раз на 7 днів"
-             onclick="event.stopPropagation(); bumpListing('${l.id}')">
-             <i class="fa-solid fa-arrow-up"></i> Підняти
-           </button>`)
-    : '';
+  var bumpLeft = (l.status === 'active' && typeof _uxBumpLeft === 'function') ? _uxBumpLeft(l) : -1;
+  var mainBtns = '';
+  if (isInactive) {
+    mainBtns = '<button class="mc-btn mc-btn-main" onclick="event.stopPropagation();renewListing(\'' + id + '\')"><i class="fa-solid fa-rotate-right"></i> Поновити</button>';
+  } else if (!isSold) {
+    mainBtns = '<button class="mc-btn mc-btn-main" onclick="event.stopPropagation();openEditListing(\'' + id + '\')"><i class="fa-solid fa-pen"></i> Редагувати</button>';
+    if (bumpLeft === 0) mainBtns += '<button class="mc-btn" title="Безкоштовно раз на 7 днів" onclick="event.stopPropagation();bumpListing(\'' + id + '\')"><i class="fa-solid fa-arrow-up"></i> Підняти</button>';
+    else if (bumpLeft > 0) mainBtns += '<button class="mc-btn mc-btn-off" title="Підняти можна раз на 7 днів" onclick="event.stopPropagation();bumpListing(\'' + id + '\')"><i class="fa-solid fa-arrow-up"></i> Через ' + bumpLeft + ' дн.</button>';
+  }
+  var menu = '';
+  if (!isSold) menu += '<button onclick="event.stopPropagation();markAsSold(\'' + id + '\')"><i class="fa-solid fa-circle-check"></i> Позначити проданим</button>';
+  if (!isSold && !isInactive) menu += '<button onclick="event.stopPropagation();openPromoModal(\'' + id + '\', false)"><i class="fa-solid fa-rocket"></i> ' + (hasPromo ? 'Змінити просування' : 'Просувати в ТОП') + '</button>';
+  menu += '<button onclick="event.stopPropagation();showDetail(\'' + id + '\')"><i class="fa-solid fa-eye"></i> Переглянути</button>';
+  menu += '<button class="mc-danger" onclick="event.stopPropagation();deleteListing(\'' + id + '\')"><i class="fa-solid fa-trash"></i> Видалити</button>';
 
-  const promoBtn = `
-    <div style="padding: 8px 16px 12px; border-top: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-      <div style="display:flex;flex-direction:column;gap:2px">
-        ${expiryStr}
-        ${viewsStr}
-        ${hasPromo && !isInactive
-          ? `<span style="font-size:11px;color:var(--brand);display:flex;align-items:center;gap:5px">
-               <i class="fa-solid fa-circle-dot" style="font-size:8px"></i>${promoLabel}
-             </span>`
-          : (!isInactive ? `<span style="font-size:11px;color:var(--text-muted)">Звичайне розміщення</span>` : '')
-        }
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="promo-manage-btn no-promo" style="background:var(--dark3);color:var(--text-muted)"
-          onclick="event.stopPropagation(); deleteListing('${l.id}')">
-          <i class="fa-solid fa-trash"></i> Видалити
-        </button>
-        ${l.status === 'sold'
-          ? `<button class="promo-manage-btn no-promo" style="background:#e8f5e9;color:#2e7d32;cursor:default">
-               <i class="fa-solid fa-circle-check"></i> Продано
-             </button>`
-          : `<button class="promo-manage-btn no-promo" style="background:var(--brand-dim);color:var(--brand)"
-               onclick="event.stopPropagation(); markAsSold('${l.id}')">
-               <i class="fa-solid fa-circle-check"></i> Продано
-             </button>`
-        }
-        <button class="promo-manage-btn no-promo" style="background:var(--brand-dim);color:var(--brand)"
-          onclick="event.stopPropagation(); openEditListing('${l.id}')">
-          <i class="fa-solid fa-pen"></i> Редагувати
-        </button>
-        ${bumpBtn}
-        ${isInactive
-          ? `<button class="promo-manage-btn has-promo" onclick="event.stopPropagation(); renewListing('${l.id}')">
-               <i class="fa-solid fa-rotate-right"></i> Поновити (1 слот)
-             </button>`
-          : (l.status !== 'sold'
-            ? `<button class="promo-manage-btn ${hasPromo ? 'has-promo' : 'no-promo'}"
-                 onclick="event.stopPropagation(); openPromoModal('${l.id}', false)">
-                 <i class="fa-solid fa-${hasPromo ? 'pen' : 'rocket'}"></i>
-                 ${hasPromo ? 'Змінити' : 'Просувати'}
-               </button>`
-            : '')
-        }
-      </div>
-    </div>`;
-
-  const insertAt = base.lastIndexOf('</div>');
-  return base.slice(0, insertAt) + promoBtn + base.slice(insertAt);
+  return '<div class="my-card' + (isSold ? ' is-sold' : '') + '" onclick="showDetail(\'' + id + '\')">' +
+    '<div class="mc-img">' + (img ? '<img src="' + _esc(img) + '" alt="" loading="lazy" decoding="async">' : '<span>' + (l.icon || '📦') + '</span>') + '</div>' +
+    '<div class="mc-body">' +
+      '<div class="mc-top">' + status + expiry + '</div>' +
+      '<div class="mc-title">' + _esc(l.title) + '</div>' +
+      '<div class="mc-price">' + (Number(l.price) || 0).toLocaleString('uk') + ' грн' + (typeof _oldPriceHtml === 'function' ? ' ' + _oldPriceHtml(l) : '') + '</div>' +
+      '<div class="mc-stats"><span><i class="fa-solid fa-eye"></i> ' + v7 + ' за 7 дн.</span><span>' + vAll + ' усього</span></div>' +
+      '<div class="mc-acts">' + mainBtns +
+        '<div class="mc-more"><button class="mc-btn mc-dots" aria-label="Ще дії" onclick="event.stopPropagation();_mcMenu(this)"><i class="fa-solid fa-ellipsis"></i></button>' +
+        '<div class="mc-menu">' + menu + '</div></div>' +
+      '</div>' +
+    '</div></div>';
 }
+
+function _mcMenu(btn) {
+  var wrap = btn.parentNode, open = wrap.classList.contains('open');
+  document.querySelectorAll('.mc-more.open').forEach(function(m){ m.classList.remove('open'); });
+  if (!open) wrap.classList.add('open');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest || !e.target.closest('.mc-more')) document.querySelectorAll('.mc-more.open').forEach(function(m){ m.classList.remove('open'); });
+});
 
 
 function renderServices(){_initSvcCitySelect();filterServices();_initSvcOblastSelect();}

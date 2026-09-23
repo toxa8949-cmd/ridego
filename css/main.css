@@ -3624,3 +3624,63 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
 .ux-specs-collapsed .ux-spec-more { display: none; }
 .ux-specs-toggle { display: block; width: 100%; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--brand); font: 700 14px/1 inherit; font-family: inherit; cursor: pointer; }
 .ux-specs-toggle:hover { border-color: var(--brand); }
+
+/* ══ «Мої оголошення»: компактні картки з меню дій ══ */
+#my-listings-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)) !important; gap: 12px !important; padding: 0 !important; }
+.my-card { display: flex; gap: 14px; padding: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; cursor: pointer; transition: border-color .15s; }
+.my-card:hover { border-color: var(--brand); }
+.my-card.is-sold { opacity: .7; }
+.mc-img { width: 118px; height: 118px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: var(--dark3); display: flex; align-items: center; justify-content: center; font-size: 34px; }
+.mc-img img { width: 100%; height: 100%; object-fit: cover; }
+.mc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mc-top { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; flex-wrap: wrap; }
+.mc-st { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.mc-st-on { background: var(--brand-dim); color: var(--brand); }
+.mc-st-off { background: rgba(239,68,68,.12); color: #ef4444; }
+.mc-st-sold { background: var(--dark3); color: var(--text-muted); }
+.mc-st-promo { background: rgba(245,158,11,.15); color: #d97706; }
+.mc-warn { color: #d97706; font-weight: 600; }
+.mc-title { font-size: 15px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-price { font-size: 17px; font-weight: 800; color: var(--brand); margin: 2px 0 4px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.mc-stats { display: flex; gap: 10px; font-size: 12px; color: var(--text-muted); }
+.mc-stats i { color: var(--brand); font-size: 11px; margin-right: 3px; }
+.mc-acts { display: flex; gap: 6px; margin-top: auto; padding-top: 10px; align-items: center; }
+.mc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text); font: 600 13px/1 inherit; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.mc-btn:hover { border-color: var(--brand); color: var(--brand); }
+.mc-btn-main { background: var(--brand); border-color: var(--brand); color: #fff; }
+.mc-btn-main:hover { color: #fff; opacity: .9; }
+.mc-btn-off { color: var(--text-muted); }
+.mc-more { position: relative; margin-left: auto; }
+.mc-dots { padding: 8px 11px; }
+.mc-menu { display: none; position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 20; min-width: 210px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); overflow: hidden; }
+.mc-more.open .mc-menu { display: block; }
+.mc-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: none; background: none; color: var(--text); font: 500 14px/1.2 inherit; font-family: inherit; cursor: pointer; text-align: left; }
+.mc-menu button + button { border-top: 1px solid var(--border); }
+.mc-menu button:hover { background: var(--brand-dim); }
+.mc-menu button i { width: 16px; color: var(--brand); }
+.mc-menu .mc-danger, .mc-menu .mc-danger i { color: #ef4444; }
+@media (max-width: 600px) {
+  #my-listings-grid { grid-template-columns: 1fr !important; }
+  .mc-img { width: 96px; height: 96px; }
+  .my-card { gap: 12px; padding: 10px; }
+  .mc-title { font-size: 14px; }
+}
+
+/* ══ Форма оголошення: «Назад / Далі» завжди під рукою на телефоні ══ */
+@media (max-width: 768px) {
+  #add-step-1 > div:last-child, #add-step-2 > div:last-child,
+  #add-step-3 > div:last-child, #add-step-4 > div:last-child {
+    position: sticky; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 50;
+    margin: 16px -16px 0 !important; padding: 10px 16px; background: var(--card-bg);
+    border-top: 1px solid var(--border); box-shadow: 0 -6px 16px rgba(0,0,0,.08);
+    display: flex; gap: 10px; justify-content: space-between;
+  }
+  #add-step-1 > div:last-child button, #add-step-2 > div:last-child button,
+  #add-step-3 > div:last-child button, #add-step-4 > div:last-child button { flex: 1; padding: 13px 10px !important; font-size: 15px !important; }
+}
+
+/* ══ Сторінка продавця: нижча обкладинка ══ */
+@media (max-width: 768px) {
+  #seller-cover-bg { height: 110px !important; min-height: 0 !important; }
+  .seller-avatar-big { width: 88px; height: 88px; font-size: 32px; border-radius: 20px; }
+}
