@@ -1232,42 +1232,6 @@ function createServiceCard(s){
     "</div></div></div></div>";
 }
 
-function _buildSvcDetailHeader(s){
-  var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\" style=\"font-size:12px;padding:5px 14px\">"+(s.badgeLabel||"")+"</div>":"";
-  var cats=(s.cats||[]).map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
-  var cityLine=s.city?"<span><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.city)+(s.address?", "+window.escHtml(s.address):"")+"</span>":"";
-  var hoursLine=s.hours?"<span><i class=\"fa-solid fa-clock\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.hours)+"</span>":"";
-  var phoneLine=s.phone?"<a href=\"tel:"+String(s.phone).replace(/[^+\d]/g,'')+"\" style=\"color:inherit;text-decoration:none\"><i class=\"fa-solid fa-phone\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.phone)+"</a>":"";
-  var _tel=String(s.phone||'').replace(/[^+\d]/g,'');
-  var btnPhone=s.phone?"<a class=\"btn-primary\" href=\"tel:"+_tel+"\" style=\"padding:11px 20px;font-size:14px;display:inline-flex;align-items:center;text-decoration:none\"><i class=\"fa-solid fa-phone\" style=\"margin-right:6px\"></i>\u0417\u0430\u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443\u0432\u0430\u0442\u0438</a>":"";
-  var _tg=String(s.telegram||'').replace(/^https?:\/\/t\.me\//,'').replace(/^@/,'').replace(/[^\w]/g,'');
-  var btnTg=_tg?"<a class=\"btn-outline\" href=\"https://t.me/"+_tg+"\" target=\"_blank\" rel=\"noopener\" style=\"padding:11px 20px;font-size:14px;display:inline-flex;align-items:center;text-decoration:none\"><i class=\"fa-brands fa-telegram\" style=\"margin-right:6px;color:#2ca5e0\"></i>Telegram</a>":"";
-  var btnShop=s.sellerId?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showSeller('"+s.sellerId+"')\"><i class=\"fa-solid fa-store\" style=\"margin-right:6px\"></i>Магазин</button>":"";
-
-  var btnMsg = s.uid
-    ? "<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" data-uid=\""+window.escAttr(s.uid)+"\" data-name=\""+window.escAttr(s.name||'')+"\" onclick=\"_openSvcChat(this.dataset.uid,this.dataset.name)\"><i class=\"fa-solid fa-comment\" style=\"margin-right:6px\"></i>Написати</button>"
-    : "";
-
-  var coverHtml;
-  if (s.photoUrl) {
-    coverHtml = "<div class=\"service-detail-cover\" style=\"background:none;padding:0;overflow:hidden\">" +
-      "<img alt=\"Фото сервісу\" src=\"" + s.photoUrl + "\" style=\"width:100%;height:100%;object-fit:cover\">" +
-      badge + "</div>";
-  } else {
-    coverHtml = "<div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+(s.coverColor||"#0a2a1a")+" 0%,var(--dark2) 100%)\"><span>"+(s.icon||"🔧")+"</span>"+badge+"</div>";
-  }
-
-  var isOwner = (typeof currentUser !== 'undefined') && currentUser && currentUser.uid && s.uid && currentUser.uid === s.uid;
-  var editPhotoBtn = isOwner
-    ? "<button onclick=\"triggerSvcPhotoUpload('"+s.id+"')\" style=\"position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px\"><i class='fa-solid fa-camera'></i> Змінити фото</button>"
-    : "";
-  return "<div style=\"position:relative\">" + coverHtml + editPhotoBtn + "</div>"+
-    "<div><div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">"+cats+"</div>"+
-    "<div class=\"service-detail-name\">"+window.escHtml(s.name)+"</div>"+
-    "<div style=\"display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-muted);margin-bottom:16px\">"+cityLine+hoursLine+phoneLine+"</div>"+
-    "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">"+btnPhone+btnMsg+btnTg+btnShop+"</div></div>";
-}
-
 function _openSvcChat(sellerUid, svcName) {
   _startChat(sellerUid, null, svcName);
 }
@@ -1324,57 +1288,147 @@ function triggerSvcPhotoUpload(svcId) {
   inp.click();
 }
 
-function _buildSvcDetailBody(s){
-  var stars5="\u2605".repeat(Math.round(s.rating))+"\u2606".repeat(5-Math.round(s.rating));
-  var svcList=_renderSvcList(s.services);
-    var ratingNum=s.rating>0?s.rating:"\u2014";
-  var ratingStars=s.rating>0?stars5:"\u2606\u2606\u2606\u2606\u2606";
-  var reviewsTxt=s.reviews>0?"\u043d\u0430 \u043e\u0441\u043d\u043e\u0432\u0456 "+s.reviews+" \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432":"\u041f\u043e\u043a\u0438 \u043d\u0435\u043c\u0430\u0454 \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432";
-  var socialBlock="";
-  if(s.telegram||s.instagram){
-    var tgLine=s.telegram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf1 "+s.telegram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#2ca5e020;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-telegram\" style=\"color:#2ca5e0\"></i></div>"+s.telegram+"</div>":"";
-    var igLine=s.instagram?"<div style=\"display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer\" onclick=\"showToast('\ud83d\udcf8 "+s.instagram+"')\"><div style=\"width:36px;height:36px;border-radius:8px;background:#e1306c20;display:flex;align-items:center;justify-content:center\"><i class=\"fa-brands fa-instagram\" style=\"color:#e1306c\"></i></div>"+s.instagram+"</div>":"";
-    socialBlock="<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px\"><div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px\">\u0421\u043e\u0446\u043c\u0435\u0440\u0435\u0436\u0456</div><div style=\"display:flex;flex-direction:column;gap:10px\">"+tgLine+igLine+"</div></div>";
-  }
+// ══ Сторінка сервісу v2 ════════════════════════════════════════
+function _sdE(v){ return window.escHtml(v == null ? '' : String(v)); }
+function _sdPrice(p){
+  p = String(p == null ? '' : p).trim();
+  if (!p) return '<span class="sd-price-ask">за запитом</span>';
+  if (/^\d[\d\s]*$/.test(p)) return _sdE(p.replace(/\s/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,' ')) + ' грн';
+  return _sdE(p);
+}
+function _sdStars(r){ var n = Math.round(r || 0); return '★★★★★'.slice(0, n) + '<span class="sd-star-off">' + '★★★★★'.slice(0, 5 - n) + '</span>'; }
+function _sdRevWord(n){ return window.plUk ? plUk(n, ['відгук','відгуки','відгуків']) : 'відгуків'; }
+function _sdMapUrl(s){
+  var q = [s.address, s.city].filter(Boolean).join(', ');
+  return q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) : '';
+}
 
-  var _shopTarget = s.sellerId || (s.uid ? 'uid:'+s.uid : null);
-  var shopBlock = _shopTarget ? (
-    "<div style=\"background:var(--brand-dim);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:22px\">" +
-    "<div style=\"font-size:11px;font-weight:700;text-transform:uppercase;color:var(--brand);margin-bottom:10px\">" +
-    "<i class=\"fa-solid fa-store\" style=\"margin-right:5px\"></i>Пов'язаний магазин</div>" +
-    "<p style=\"font-size:13px;color:var(--text-muted);margin-bottom:12px\">Перегляньте всі оголошення цього продавця</p>" +
-    "<button class=\"btn-primary\" style=\"width:100%;padding:11px\" onclick=\"showSellerByUid('" + (s.uid||'') + "')\">Перейти до оголошень →</button>" +
-    "</div>"
-  ) : "";
-  return "<div style=\"display:flex;flex-direction:column;gap:20px\">"+
-    "<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:24px\">"+
-    "<div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-circle-info\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u0440\u043e \u0441\u0435\u0440\u0432\u0456\u0441</div>"+
-    "<p style=\"font-size:14px;line-height:1.8;color:var(--text-muted)\">"+window.escHtml(s.desc||'')+"</p></div>"+
-    "<div><div style=\"font-size:15px;font-weight:700;margin-bottom:12px\"><i class=\"fa-solid fa-list-check\" style=\"color:var(--brand);margin-right:8px\"></i>\u041f\u043e\u0441\u043b\u0443\u0433\u0438 \u0442\u0430 \u0446\u0456\u043d\u0438</div>"+
-    "<div class=\"service-services-list\">"+svcList+"</div></div></div>"+
-    "<div style=\"display:flex;flex-direction:column;gap:16px\">"+
-    "<div style=\"background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center\">"+
-    "<div style=\"font-size:48px;font-weight:800;color:var(--brand);line-height:1\">"+ratingNum+"</div>"+
-    "<div style=\"color:#ffa726;font-size:22px;margin:6px 0\">"+ratingStars+"</div>"+
-    "<div style=\"font-size:13px;color:var(--text-muted);margin-bottom:14px\">"+reviewsTxt+"</div>"+
-    "<button class=\"btn-outline\" style=\"width:100%;padding:10px\" onclick=\"openSvcReviewForm('"+s.uid+"')\"><i class=\"fa-solid fa-star\" style=\"margin-right:5px\"></i>Залишити відгук</button>"+
-    "</div>"+
-    "<div id=\"svc-review-form-"+s.uid+"\" style=\"display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:20px\">"+
-    "<div style=\"font-size:14px;font-weight:700;margin-bottom:12px\">Ваш відгук</div>"+
-    "<div style=\"display:flex;gap:6px;margin-bottom:12px;font-size:28px\" id=\"svc-stars-"+s.uid+"\">"+
-    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',1)\">☆</span>"+
-    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',2)\">☆</span>"+
-    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',3)\">☆</span>"+
-    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',4)\">☆</span>"+
-    "<span style=\"cursor:pointer;transition:transform .1s\" onclick=\"setSvcStar('"+s.uid+"',5)\">☆</span>"+
-    "</div>"+
-    "<textarea id=\"svc-review-text-"+s.uid+"\" rows=\"3\" placeholder=\"Розкажіть про досвід з цим сервісом...\" style=\"width:100%;background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:vertical;margin-bottom:10px\"></textarea>"+
-    "<div style=\"display:flex;gap:8px\">"+
-    "<button class=\"btn-outline\" style=\"flex:1;padding:10px\" onclick=\"closeSvcReviewForm('"+s.uid+"')\">Скасувати</button>"+
-    "<button class=\"btn-primary\" style=\"flex:2;padding:10px\" onclick=\"submitSvcReview('"+s.uid+"')\"><i class=\"fa-solid fa-paper-plane\" style=\"margin-right:6px\"></i>Надіслати</button>"+
-    "</div>"+
-    "</div>"+
-    socialBlock+shopBlock+"</div>";
+function _buildSvcDetailHeader(s){
+  var isOwner = (typeof currentUser !== 'undefined') && currentUser && currentUser.uid && s.uid && currentUser.uid === s.uid;
+  var cover = s.photoUrl
+    ? '<div class="service-detail-cover sd-cover"><img alt="' + _sdE(s.name) + '" src="' + _sdE(s.photoUrl) + '"></div>'
+    : '<div class="service-detail-cover sd-cover"><span>' + (s.icon || '🔧') + '</span></div>';
+  var editBtn = isOwner ? '<button class="sd-cover-edit" onclick="triggerSvcPhotoUpload(\'' + s.id + '\')"><i class="fa-solid fa-camera"></i> Змінити фото</button>' : '';
+
+  var badge = s.badge ? '<span class="sd-badge ' + _sdE(s.badge) + '"><i class="fa-solid fa-circle-check"></i>' + _sdE(s.badgeLabel || 'Перевірений') + '</span>' : '';
+  var rating = (s.rating > 0 && s.reviews > 0)
+    ? '<button class="sd-rating" onclick="_sdGoReviews()"><span class="sd-rating-stars">★</span><b id="sd-rating-num">' + (+s.rating).toFixed(1) + '</b><span id="sd-rating-cnt">· ' + s.reviews + ' ' + _sdRevWord(s.reviews) + '</span></button>'
+    : '<button class="sd-rating sd-rating-empty" onclick="_sdGoReviews()"><span class="sd-rating-stars">★</span><b id="sd-rating-num"></b><span id="sd-rating-cnt">Ще немає відгуків</span></button>';
+
+  var map = _sdMapUrl(s), tel = String(s.phone || '').replace(/[^+\d]/g, '');
+  var facts = '';
+  if (s.city || s.address) facts += '<div class="sd-fact"><i class="fa-solid fa-location-dot"></i><span>' + _sdE([s.city, s.address].filter(Boolean).join(', ')) + '</span></div>';
+  if (s.hours || s.schedule) facts += '<div class="sd-fact"><i class="fa-regular fa-clock"></i><span>' + _sdE(s.hours || s.schedule) + '</span></div>';
+  if (s.phone) facts += '<div class="sd-fact"><i class="fa-solid fa-phone"></i><a href="tel:' + tel + '">' + _sdE(s.phone) + '</a></div>';
+
+  var tg = String(s.telegram || '').replace(/^https?:\/\/t\.me\//, '').replace(/^@/, '').replace(/[^\w]/g, '');
+  var acts = '';
+  if (tel) acts += '<a class="sd-btn sd-btn-main" href="tel:' + tel + '"><i class="fa-solid fa-phone"></i>Зателефонувати</a>';
+  if (s.uid && !isOwner) acts += '<button class="sd-btn" data-uid="' + _sdE(s.uid) + '" data-name="' + _sdE(s.name) + '" onclick="_openSvcChat(this.dataset.uid,this.dataset.name)"><i class="fa-solid fa-comment"></i>Написати</button>';
+  if (map) acts += '<a class="sd-btn" href="' + map + '" target="_blank" rel="noopener"><i class="fa-solid fa-route"></i>Маршрут</a>';
+  if (tg) acts += '<a class="sd-btn sd-btn-icon" href="https://t.me/' + tg + '" target="_blank" rel="noopener" title="Telegram"><i class="fa-brands fa-telegram"></i></a>';
+  if (isOwner) acts += '<button class="sd-btn" onclick="showPage(\'profile\');setTimeout(function(){var t=[].find.call(document.querySelectorAll(\'.ptab\'),function(b){return /myservice/.test(b.getAttribute(\'onclick\')||\'\')});if(t)t.click();},200)"><i class="fa-solid fa-pen"></i>Редагувати</button>';
+
+  var cats = (s.cats || []).map(function(c){ return '<span class="sd-chip">' + _sdE(c) + '</span>'; }).join('');
+
+  // Панель дзвінка на телефоні
+  var bar = (tel || (s.uid && !isOwner)) ? '<div class="sd-bar">' +
+    (s.uid && !isOwner ? '<button class="sd-btn" data-uid="' + _sdE(s.uid) + '" data-name="' + _sdE(s.name) + '" onclick="_openSvcChat(this.dataset.uid,this.dataset.name)"><i class="fa-solid fa-comment"></i>Написати</button>' : '') +
+    (tel ? '<a class="sd-btn sd-btn-main" href="tel:' + tel + '"><i class="fa-solid fa-phone"></i>Зателефонувати</a>' : '') + '</div>' : '';
+
+  return '<div class="sd-cover-wrap">' + cover + editBtn + '</div>' +
+    '<div class="sd-info">' +
+      '<div class="sd-kicker"><i class="fa-solid fa-screwdriver-wrench"></i>Сервісний центр</div>' +
+      '<h1 class="service-detail-name sd-name">' + _sdE(s.name) + '</h1>' +
+      '<div class="sd-sub">' + rating + badge + '</div>' +
+      (facts ? '<div class="sd-facts">' + facts + '</div>' : '') +
+      (acts ? '<div class="sd-actions">' + acts + '</div>' : '') +
+      (cats ? '<div class="sd-cats"><span class="sd-cats-lbl">Ремонтуємо:</span>' + cats + '</div>' : '') +
+    '</div>' + bar;
+}
+
+function _sdGoReviews(){
+  var el = document.getElementById('sd-reviews');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function _sdFilterCat(btn, idx){
+  var box = btn.closest('.sd-section');
+  box.querySelectorAll('.sd-tab').forEach(function(b){ b.classList.toggle('active', b === btn); });
+  box.querySelectorAll('.sd-group').forEach(function(g){ g.style.display = (idx < 0 || +g.dataset.i === idx) ? '' : 'none'; });
+}
+
+function _sdServicesHtml(services){
+  var groups = _normalizeSvcs(services).map(function(g){
+    return { cat: g.cat || '', items: (g.items || []).filter(function(it){ return it && String(it.name || '').trim(); }) };
+  }).filter(function(g){ return g.items.length; });
+  var total = groups.reduce(function(n, g){ return n + g.items.length; }, 0);
+  if (!total) return '<div class="sd-empty"><i class="fa-regular fa-clipboard"></i><div>Сервіс ще не додав прайс.<br>Уточніть вартість телефоном або в чаті.</div></div>';
+  var tabs = groups.length > 1 && groups.every(function(g){ return g.cat; })
+    ? '<div class="sd-tabs"><button class="sd-tab active" onclick="_sdFilterCat(this,-1)">Усі <span>' + total + '</span></button>' +
+      groups.map(function(g, i){ return '<button class="sd-tab" onclick="_sdFilterCat(this,' + i + ')">' + _sdE(g.cat) + ' <span>' + g.items.length + '</span></button>'; }).join('') + '</div>'
+    : '';
+  var list = groups.map(function(g, i){
+    return '<div class="sd-group" data-i="' + i + '">' + (g.cat && groups.length > 1 ? '<div class="sd-group-title">' + _sdE(g.cat) + '</div>' : '') +
+      g.items.map(function(it){
+        return '<div class="sd-row"><span class="sd-row-name">' + _sdE(it.name) + '</span><span class="sd-row-dots"></span><span class="sd-row-price">' + _sdPrice(it.price) + '</span></div>';
+      }).join('') + '</div>';
+  }).join('');
+  return tabs + '<div class="sd-price-list">' + list + '</div>';
+}
+
+function _buildSvcDetailBody(s){
+  var uid = s.uid || '';
+  var hasRating = s.rating > 0 && s.reviews > 0;
+  var socials = '';
+  var tg = String(s.telegram || '').replace(/^https?:\/\/t\.me\//, '').replace(/^@/, '').replace(/[^\w]/g, '');
+  var ig = String(s.instagram || '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/^@/, '').replace(/[^\w.]/g, '');
+  if (tg) socials += '<a class="sd-social" href="https://t.me/' + tg + '" target="_blank" rel="noopener"><i class="fa-brands fa-telegram" style="color:#2ca5e0"></i>@' + _sdE(tg) + '</a>';
+  if (ig) socials += '<a class="sd-social" href="https://instagram.com/' + ig + '" target="_blank" rel="noopener"><i class="fa-brands fa-instagram" style="color:#e1306c"></i>@' + _sdE(ig) + '</a>';
+
+  var left =
+    (s.desc ? '<section class="sd-section"><h2 class="sd-h">Про сервіс</h2><p class="sd-desc">' + _sdE(s.desc) + '</p></section>' : '') +
+    '<section class="sd-section"><h2 class="sd-h">Послуги та ціни</h2>' + _sdServicesHtml(s.services) + '</section>' +
+    '<section class="sd-section" id="sd-reviews"><div class="sd-h-row"><h2 class="sd-h">Відгуки</h2>' +
+      '<button class="sd-link" onclick="openSvcReviewForm(\'' + uid + '\')"><i class="fa-regular fa-pen-to-square"></i>Написати відгук</button></div>' +
+      '<div id="sd-review-list"><div class="sd-empty"><i class="fa-regular fa-comments"></i><div>Ще немає відгуків.<br>Будьте першим, хто поділиться досвідом.</div></div></div>' +
+    '</section>';
+
+  var right =
+    '<div class="sd-card sd-score">' +
+      '<div class="sd-score-num" id="sd-score-num">' + (hasRating ? (+s.rating).toFixed(1) : '—') + '</div>' +
+      '<div class="sd-score-stars" id="sd-score-stars">' + _sdStars(hasRating ? s.rating : 0) + '</div>' +
+      '<div class="sd-score-cnt" id="sd-score-cnt">' + (hasRating ? 'на основі ' + s.reviews + ' ' + _sdRevWord(s.reviews) : 'Поки немає оцінок') + '</div>' +
+      '<button class="sd-btn sd-btn-block" onclick="openSvcReviewForm(\'' + uid + '\')"><i class="fa-solid fa-star"></i>Оцінити сервіс</button>' +
+    '</div>' +
+    '<div id="svc-review-form-' + uid + '" class="sd-card" style="display:none">' +
+      '<div class="sd-card-title">Ваш відгук</div>' +
+      '<div class="sd-stars-input" id="svc-stars-' + uid + '">' +
+        [1,2,3,4,5].map(function(n){ return '<span onclick="setSvcStar(\'' + uid + '\',' + n + ')">☆</span>'; }).join('') +
+      '</div>' +
+      '<textarea id="svc-review-text-' + uid + '" rows="3" class="sd-textarea" placeholder="Розкажіть про досвід з цим сервісом..."></textarea>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="sd-btn" style="flex:1" onclick="closeSvcReviewForm(\'' + uid + '\')">Скасувати</button>' +
+        '<button class="sd-btn sd-btn-main" style="flex:2" onclick="submitSvcReview(\'' + uid + '\')"><i class="fa-solid fa-paper-plane"></i>Надіслати</button>' +
+      '</div>' +
+    '</div>' +
+    (socials ? '<div class="sd-card"><div class="sd-card-title">Соцмережі</div><div class="sd-socials">' + socials + '</div></div>' : '') +
+    (uid ? '<button class="sd-card sd-shop" onclick="showSellerByUid(\'' + uid + '\')"><span class="sd-shop-ico"><i class="fa-solid fa-store"></i></span><span><b>Оголошення цього продавця</b><small>Транспорт і запчастини від сервісу</small></span><i class="fa-solid fa-chevron-right"></i></button>' : '');
+
+  return '<div class="sd-main">' + left + '</div><aside class="sd-side">' + right + '</aside>';
+}
+
+function _sdRenderReviews(revs){
+  var box = document.getElementById('sd-review-list');
+  if (!box || !revs.length) return;
+  revs.sort(function(a, b){ return ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0); });
+  box.innerHTML = revs.slice(0, 20).map(function(r){
+    var name = r.reviewerName || 'Користувач';
+    var when = r.createdAt && r.createdAt.seconds && typeof _timeAgo === 'function' ? _timeAgo(r.createdAt) : '';
+    return '<div class="sd-review"><div class="sd-review-top"><span class="sd-review-av">' + _sdE(name[0].toUpperCase()) + '</span>' +
+      '<div><b>' + _sdE(name) + '</b><div class="sd-review-meta"><span class="sd-review-stars">' + _sdStars(r.rating) + '</span>' + (when ? ' · ' + _sdE(when) : '') + '</div></div></div>' +
+      (r.text ? '<p>' + _sdE(r.text) + '</p>' : '') + '</div>';
+  }).join('');
 }
 
 var _svcReviewStars = {};
@@ -1457,19 +1511,12 @@ function _refreshSvcRating(uid, newStars) {
         ? 'на основі ' + total + ' ' + (window.plUk ? plUk(total, ['відгуку', 'відгуків', 'відгуків']) : 'відгуків')
         : 'Поки немає відгуків';
 
-      var form = document.getElementById('svc-review-form-' + uid);
-      if (form) {
-
-        var ratingDiv = form.previousElementSibling;
-        if (ratingDiv) {
-          var numEl = ratingDiv.querySelector('div[style*="font-size:48px"]');
-          var starsEl = ratingDiv.querySelector('div[style*="color:#ffa726"]');
-          var cntEl = ratingDiv.querySelector('div[style*="font-size:13px"][style*="text-muted"]');
-          if (numEl) numEl.textContent = avgStr;
-          if (starsEl) starsEl.textContent = starsStr;
-          if (cntEl) cntEl.textContent = reviewsTxt;
-        }
-      }
+      var _n=document.getElementById('sd-score-num'); if(_n) _n.textContent=avgStr;
+      var _st=document.getElementById('sd-score-stars'); if(_st) _st.innerHTML=_sdStars(avg);
+      var _c=document.getElementById('sd-score-cnt'); if(_c) _c.textContent=reviewsTxt;
+      var _rn=document.getElementById('sd-rating-num'); if(_rn) _rn.textContent=avg>0?avgStr:'';
+      var _rc=document.getElementById('sd-rating-cnt'); if(_rc && total){ _rc.textContent='· '+total+' '+_sdRevWord(total); _rc.parentElement.classList.remove('sd-rating-empty'); }
+      if (typeof _sdRenderReviews === 'function') _sdRenderReviews(revs);
 
       var svc = _fbServices.concat(myServices).find(function(x){ return x.uid === uid; });
       if (svc) { svc.rating = avg; svc.reviews = total; }
@@ -1548,19 +1595,12 @@ function showServiceDetail(id){
         var starsStr = '★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg));
         var reviewsTxt = 'на основі ' + total + ' ' + (window.plUk ? plUk(total, ['відгуку', 'відгуків', 'відгуків']) : 'відгуків');
 
-        var form = document.getElementById('svc-review-form-' + s.uid);
-        if (form) {
-          var ratingDiv = form.previousElementSibling;
-          if (ratingDiv) {
-            var numEl = ratingDiv.querySelector('div[style*="48px"]');
-            var starsEl = ratingDiv.querySelector('div[style*="#ffa726"]');
-            var cntEl = ratingDiv.querySelector('div[style*="13px"][style*="text-muted"]');
-            if (numEl) numEl.textContent = avgStr;
-            if (starsEl) starsEl.textContent = starsStr;
-            if (cntEl) cntEl.textContent = reviewsTxt;
-          }
-        }
-
+        var _n=document.getElementById('sd-score-num'); if(_n) _n.textContent=avgStr;
+        var _st=document.getElementById('sd-score-stars'); if(_st) _st.innerHTML=_sdStars(avg);
+        var _c=document.getElementById('sd-score-cnt'); if(_c) _c.textContent=reviewsTxt;
+        var _rn=document.getElementById('sd-rating-num'); if(_rn) _rn.textContent=avgStr;
+        var _rc=document.getElementById('sd-rating-cnt'); if(_rc){ _rc.textContent='· '+total+' '+_sdRevWord(total); _rc.parentElement.classList.remove('sd-rating-empty'); }
+        _sdRenderReviews(revs);
         s.rating = +avgStr; s.reviews = total;
       }).catch(function(){});
   }
