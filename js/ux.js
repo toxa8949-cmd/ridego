@@ -1383,7 +1383,8 @@
     var saved = lsGet('ridego_fcm', {});
     if (!force && saved.uid === u.uid && Date.now() - (saved.at || 0) < 3 * 86400000) return;
     pushBusy = true;
-    fetch('/api/config').then(function (r) { return r.ok ? r.json() : {}; }).then(function (cfg) {
+    // Публічний VAPID-ключ (Firebase → Cloud Messaging → Web Push). Він не секретний.
+    Promise.resolve({ vapidKey: 'BNOVtmsV2kLbLivE0C7XQhm_tBiLjKxSBMuEASQiez32YYuFTyiGZRfjzYlKB5sovvA-QOP7PX2aO13f_0Tsp0E' }).then(function (cfg) {
       if (!cfg || !cfg.vapidKey) throw new Error('no vapid');
       return loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js').then(function () {
         return navigator.serviceWorker.ready;
