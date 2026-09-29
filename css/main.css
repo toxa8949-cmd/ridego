@@ -4151,7 +4151,6 @@ body.light .service-detail-cover:not(:has(img))::before, body.light .service-car
   .seo-steps, .seo-checks { grid-template-columns: 1fr; }
   .seo-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
 }
-.footer-seo { max-width: 1280px; margin: 0 auto; padding: 0 24px 20px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
-.footer-seo a { color: var(--text-muted); text-decoration: none; }
-.footer-seo a:hover { color: var(--brand); }
-@media (max-width: 700px) { .footer-seo { padding: 0 16px 16px; } }
+
+/* Підвал: 5 колонок (додано «Продати») */
+@media (min-width: 769px) { .footer-inner { grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr; gap: 32px; } }
