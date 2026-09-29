@@ -1090,6 +1090,158 @@
   wrap('runSearch', function () { renderQueryUi(); });
   wrap('clearFilters', function () { if (catQuery) window._uxClearQuery(); });
 
+
+  // ══ 17. ПОРІВНЯННЯ ОГОЛОШЕНЬ ════════════════════════════════
+  // До 4 оголошень поруч: ціна, стан, АКБ, швидкість, запас ходу…
+  // Найкраще значення в рядку підсвічується. Список живе в браузері.
+  var CMP_KEY = 'ridego_cmp', CMP_MAX = 4, cmpCache = {};
+  function cmpIds() { return lsGet(CMP_KEY, []).filter(function (x) { return typeof x === 'string'; }).slice(0, CMP_MAX); }
+  function cmpSet(a) { lsSet(CMP_KEY, a.slice(0, CMP_MAX)); renderCmpBar(); syncCmpBtn(); }
+  function cmpHas(id) { return cmpIds().indexOf(id) > -1; }
+  window._uxCmpToggle = function (id) {
+    id = id || window.currentDetailId; if (!id) return;
+    var a = cmpIds();
+    if (a.indexOf(id) > -1) { a = a.filter(function (x) { return x !== id; }); cmpSet(a); toast('Прибрано з порівняння'); return; }
+    if (a.length >= CMP_MAX) { toast('У порівнянні вже ' + CMP_MAX + ' оголошення — приберіть одне'); window._uxCmpOpen(); return; }
+    var l = findListing(id); if (l) cmpCache[id] = l;
+    a.push(id); cmpSet(a);
+    toast(a.length > 1 ? 'Додано до порівняння (' + a.length + ')' : 'Додано. Відкрийте інше оголошення і теж натисніть «Порівняти»');
+  };
+  function syncCmpBtn() {
+    var b = $('ux-cmp-btn'); if (!b) return;
+    var on = cmpHas(window.currentDetailId);
+    b.classList.toggle('on', on);
+    b.innerHTML = '<i class="fa-solid ' + (on ? 'fa-check' : 'fa-scale-balanced') + '" style="margin-right:8px"></i>' + (on ? 'У порівнянні' : 'Порівняти');
+  }
+  wrap('showDetail', function () {
+    var fav = $('fav-detail-btn');
+    if (fav && !$('ux-cmp-btn')) {
+      var b = document.createElement('button');
+      b.id = 'ux-cmp-btn'; b.className = 'btn-msg ux-cmp-btn';
+      b.onclick = function () { window._uxCmpToggle(); };
+      fav.parentElement.insertBefore(b, fav.nextSibling);
+    }
+    syncCmpBtn(); renderCmpBar();
+  });
+  function renderCmpBar() {
+    var a = cmpIds(), bar = $('ux-cmp-bar');
+    if (!a.length) { if (bar) bar.classList.remove('show'); document.body.classList.remove('ux-has-cmp'); return; }
+    if (!bar) {
+      bar = document.createElement('div'); bar.id = 'ux-cmp-bar';
+      bar.innerHTML = '<button class="ux-cmp-open" onclick="_uxCmpOpen()"><i class="fa-solid fa-scale-balanced"></i><span>Порівняння</span><b id="ux-cmp-n"></b></button><button class="ux-cmp-x" onclick="_uxCmpClear()" aria-label="Очистити порівняння">✕</button>';
+      document.body.appendChild(bar);
+    }
+    $('ux-cmp-n').textContent = a.length;
+    bar.classList.add('show'); document.body.classList.add('ux-has-cmp');
+  }
+  window._uxCmpClear = function () { cmpSet([]); var m = $('ux-cmp-modal'); if (m) m.remove(); };
+
+  function num(v) { var m = String(v == null ? '' : v).replace(',', '.').match(/\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; }
+  function cmpRows(l) {
+    var r = {};
+    function put(k, v) { v = v == null ? '' : String(v).trim(); if (v && v !== '—' && v !== 'Не вказано' && v !== 'undefined') r[k] = v; }
+    put('Ціна', l.price ? fmtN(l.price) + ' грн' : '');
+    put('Місто', l.city);
+    put('Стан', l.condition);
+    put('Рік випуску', l.year);
+    put('Пробіг', l.mileage ? fmtN(l.mileage) + ' км' : '');
+    put('АКБ', l.battery || (l.battAh ? l.battAh + ' Ah' : ''));
+    put('Макс. швидкість', l.speed || (l.speedVal ? l.speedVal + ' км/год' : ''));
+    put('Запас ходу', l.range || (l.rangeVal ? l.rangeVal + ' км' : ''));
+    put('Потужність', l.motorW ? l.motorW + ' Вт' : '');
+    put('Вага', l.weight || (l.weightVal ? l.weightVal + ' кг' : ''));
+    var sp = l.specs && typeof _convertSpecs === 'function' ? _convertSpecs(l.specs) : null;
+    if (sp) Object.keys(sp).forEach(function (sec) {
+      (Array.isArray(sp[sec]) ? sp[sec] : []).forEach(function (row) { if (Array.isArray(row) && !r[row[0]]) put(row[0], row[1]); });
+    });
+    return r;
+  }
+  var BEST = { 'Ціна': 'min', 'Пробіг': 'min', 'Вага': 'min', 'АКБ': 'max', 'Макс. швидкість': 'max', 'Запас ходу': 'max', 'Потужність': 'max', 'Рік випуску': 'max' };
+  function bestRule(k) { if (BEST[k]) return BEST[k]; var q = k.toLowerCase(); if (/запас|швидк|потужн|ємн|напруг/.test(q)) return 'max'; if (/вага|час заряд/.test(q)) return 'min'; return ''; }
+
+  function loadCmp(ids) {
+    return Promise.all(ids.map(function (id) {
+      var l = findListing(id) || cmpCache[id];
+      if (l) return Promise.resolve(l);
+      if (!db()) return Promise.resolve(null);
+      return db().collection('listings').doc(id).get().then(function (d) {
+        if (!d.exists) return null; var x = Object.assign({ id: d.id }, d.data()); cmpCache[id] = x; return x;
+      }).catch(function () { return null; });
+    }));
+  }
+  window._uxCmpOpen = function () {
+    var ids = cmpIds(); if (!ids.length) return;
+    var m = $('ux-cmp-modal');
+    if (!m) {
+      m = document.createElement('div'); m.id = 'ux-cmp-modal';
+      m.addEventListener('click', function (e) { if (e.target === m) m.remove(); });
+      document.body.appendChild(m);
+    }
+    m.innerHTML = '<div class="ux-cmp-box"><div class="ux-cmp-loading"><i class="fa-solid fa-spinner fa-spin"></i></div></div>';
+    loadCmp(ids).then(function (ls) {
+      var gone = ids.filter(function (id, i) { return !ls[i]; });
+      if (gone.length) cmpSet(ids.filter(function (id) { return gone.indexOf(id) < 0; }));
+      ls = ls.filter(Boolean);
+      if (!ls.length) { m.remove(); return; }
+      drawCmp(m, ls, m._onlyDiff);
+    });
+  };
+  function drawCmp(m, ls, onlyDiff) {
+    var rows = ls.map(cmpRows), keys = [];
+    rows.forEach(function (r) { Object.keys(r).forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); }); });
+    // рядки, які є хоча б у двох оголошень, — вище; «самотні» — нижче
+    var base = ['Ціна', 'Місто', 'Стан', 'Рік випуску', 'Пробіг', 'АКБ', 'Макс. швидкість', 'Запас ходу', 'Потужність', 'Вага'];
+    keys.sort(function (a, b) {
+      var ia = base.indexOf(a), ib = base.indexOf(b);
+      if (ia > -1 || ib > -1) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      var ca = rows.filter(function (r) { return r[a]; }).length, cb = rows.filter(function (r) { return r[b]; }).length;
+      return cb - ca;
+    });
+    var cats = {}; ls.forEach(function (l) { cats[l.cat] = 1; });
+    var head = ls.map(function (l) {
+      var img = (l.imgs && l.imgs[0]) || l.img || '';
+      img = typeof _cdnImg === 'function' && img ? _cdnImg(img, { w: 400 }) : img;
+      return '<th><div class="ux-cmp-card">' +
+        '<button class="ux-cmp-rm" onclick="_uxCmpToggle(\'' + esc(l.id) + '\');_uxCmpOpen()" aria-label="Прибрати">✕</button>' +
+        '<a onclick="document.getElementById(\'ux-cmp-modal\').remove();showDetail(\'' + esc(l.id) + '\')">' +
+        (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<span class="ux-cmp-ph">' + esc(l.icon || '📦') + '</span>') +
+        '<span class="ux-cmp-title">' + esc(l.title) + '</span></a>' +
+        '<span class="ux-cmp-price">' + (l.price ? fmtN(l.price) + ' грн' : '') + '</span></div></th>';
+    }).join('');
+    var body = keys.filter(function (k) { return k !== 'Ціна'; }).map(function (k) {
+      var vals = rows.map(function (r) { return r[k] || ''; });
+      var filled = vals.filter(Boolean);
+      var same = filled.length === vals.length && filled.every(function (v) { return v === filled[0]; });
+      if (onlyDiff && (same || filled.length < 2)) return '';
+      var rule = bestRule(k), best = null;
+      if (rule && filled.length >= 2) {
+        var ns = vals.map(num).filter(function (n) { return !isNaN(n); });
+        if (ns.length >= 2) best = rule === 'max' ? Math.max.apply(null, ns) : Math.min.apply(null, ns);
+        if (ns.length >= 2 && Math.max.apply(null, ns) === Math.min.apply(null, ns)) best = null;
+      }
+      return '<tr' + (same ? ' class="same"' : '') + '><td class="k">' + esc(k) + '</td>' + vals.map(function (v) {
+        var b = best != null && v && num(v) === best;
+        return '<td' + (b ? ' class="best"' : '') + '>' + (v ? esc(v) : '<span class="nil">—</span>') + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    var priceRow = (function () {
+      var ps = ls.map(function (l) { return +l.price || 0; }), valid = ps.filter(function (p) { return p > 0; });
+      var min = valid.length >= 2 ? Math.min.apply(null, valid) : null;
+      return '<tr class="price"><td class="k">Ціна</td>' + ls.map(function (l, i) { return '<td' + (min && ps[i] === min && Math.max.apply(null, valid) !== min ? ' class="best"' : '') + '>' + (ps[i] ? fmtN(ps[i]) + ' грн' : '—') + '</td>'; }).join('') + '</tr>';
+    })();
+    m._onlyDiff = !!onlyDiff;
+    m.innerHTML = '<div class="ux-cmp-box" role="dialog" aria-label="Порівняння оголошень">' +
+      '<div class="ux-cmp-top"><div><h3>Порівняння</h3><span>' + ls.length + ' з ' + CMP_MAX + (Object.keys(cats).length > 1 ? ' · різні категорії' : '') + '</span></div>' +
+      '<label class="ux-cmp-diff"><input type="checkbox" ' + (onlyDiff ? 'checked' : '') + ' id="ux-cmp-diff"> Лише відмінності</label>' +
+      '<button class="ux-cmp-close" onclick="document.getElementById(\'ux-cmp-modal\').remove()" aria-label="Закрити">✕</button></div>' +
+      '<div class="ux-cmp-scroll"><table class="ux-cmp-table" style="--cols:' + ls.length + '"><thead><tr><th class="k"></th>' + head + '</tr></thead><tbody>' + priceRow + body + '</tbody></table></div>' +
+      (ls.length < 2 ? '<p class="ux-cmp-hint">Відкрийте ще одне оголошення і натисніть «Порівняти», щоб побачити їх поруч.</p>' : '') +
+      '</div>';
+    var cb = $('ux-cmp-diff'); if (cb) cb.onchange = function () { drawCmp(m, ls, cb.checked); };
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var m = $('ux-cmp-modal'); if (m) m.remove(); } });
+  setTimeout(renderCmpBar, 800);
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }
