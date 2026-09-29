@@ -1233,7 +1233,7 @@ function createServiceCard(s){
 }
 
 function _buildSvcDetailHeader(s){
-  var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\" style=\"font-size:12px;padding:5px 14px\">"+s.badgeLabel+"</div>":"";
+  var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\" style=\"font-size:12px;padding:5px 14px\">"+(s.badgeLabel||"")+"</div>":"";
   var cats=(s.cats||[]).map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
   var cityLine=s.city?"<span><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.city)+(s.address?", "+window.escHtml(s.address):"")+"</span>":"";
   var hoursLine=s.hours?"<span><i class=\"fa-solid fa-clock\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.hours+"</span>":"";
@@ -1252,7 +1252,7 @@ function _buildSvcDetailHeader(s){
       "<img alt=\"Фото сервісу\" src=\"" + s.photoUrl + "\" style=\"width:100%;height:100%;object-fit:cover\">" +
       badge + "</div>";
   } else {
-    coverHtml = "<div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+s.coverColor+" 0%,var(--dark2) 100%)\"><span>"+s.icon+"</span>"+badge+"</div>";
+    coverHtml = "<div class=\"service-detail-cover\" style=\"background:linear-gradient(135deg,"+(s.coverColor||"#0a2a1a")+" 0%,var(--dark2) 100%)\"><span>"+(s.icon||"🔧")+"</span>"+badge+"</div>";
   }
 
   var isOwner = (typeof currentUser !== 'undefined') && currentUser && currentUser.uid && s.uid && currentUser.uid === s.uid;
@@ -1506,7 +1506,26 @@ function _svcFillRatings(list) {
 
 function showServiceDetail(id){
   var s=_fbServices.concat(myServices).filter(function(x){return x.id===id;})[0];
-  if(!s)return;
+  if(!s){
+    // Сервісу ще немає в списку (перезавантаження сторінки, не в ТОП-30) — читаємо напряму
+    showServiceDetail._f = showServiceDetail._f || {};
+    var hdr=document.getElementById("svc-detail-header"), body=document.getElementById("svc-detail-body");
+    if(hdr && !hdr.innerHTML.trim()) hdr.innerHTML='<div style="padding:60px 0;text-align:center;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:22px"></i></div>';
+    if(window._db && !showServiceDetail._f[id]){
+      showServiceDetail._f[id]=1;
+      window._db.collection('services').doc(id).get().then(function(d){
+        if(d.exists){
+          var svc=Object.assign({id:d.id},d.data());
+          if(!_fbServices.concat(myServices).some(function(x){return x.id===id;})) _fbServices.push(svc);
+          if(location.pathname==='/service/'+id) showServiceDetail(id);
+        } else if(hdr){
+          hdr.innerHTML='<div style="padding:60px 16px;text-align:center"><div style="font-size:40px;margin-bottom:10px">🔧</div><div style="font-weight:700;font-size:18px;margin-bottom:6px">Сервіс не знайдено</div><div style="color:var(--text-muted);margin-bottom:16px">Можливо, його видалили</div><button class="btn-primary" onclick="showPage(\'services\')">До всіх сервісів</button></div>';
+          if(body) body.innerHTML='';
+        }
+      }).catch(function(){ showServiceDetail._f[id]=0; });
+    }
+    return;
+  }
   currentServiceId=id;
   document.getElementById("svc-detail-header").innerHTML=_buildSvcDetailHeader(s);
   document.getElementById("svc-detail-body").innerHTML=_buildSvcDetailBody(s);
