@@ -3820,3 +3820,49 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   #home-top-empty .btn-outline { margin-left: 0 !important; white-space: nowrap; padding: 7px 12px !important; font-size: 12.5px !important; overflow: visible !important; text-overflow: clip !important; max-width: none !important; }
   .transport-btn .tb-name { font-size: 12px !important; overflow-wrap: anywhere; }
 }
+
+/* ══ Сторінка продавця v2 ══ */
+#page-seller .seller-header-wrap { max-width: 1100px; }
+#page-seller .seller-top-row { align-items: flex-end; gap: 22px; margin-bottom: 22px; }
+#page-seller .seller-name-block { padding-top: 0; }
+#page-seller .seller-name-block h2 { font-size: clamp(22px, 2.6vw, 30px); letter-spacing: -.3px; }
+#page-seller .seller-meta { gap: 6px 16px; margin-top: 4px; }
+#page-seller .seller-meta:empty, #page-seller .seller-meta span:empty { display: none; }
+#page-seller .seller-top-row .seller-side-actions { flex-direction: row; align-items: center; gap: 8px; flex-shrink: 0; }
+#page-seller .seller-top-row .seller-side-actions > div { gap: 8px !important; }
+#page-seller .seller-side-btn-primary { width: auto; padding: 11px 22px; border-radius: 12px; display: inline-flex; align-items: center; white-space: nowrap; }
+#page-seller .seller-side-btn { flex: 0 0 auto; padding: 10px 16px; border-radius: 12px; white-space: nowrap; background: var(--card-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; display: inline-flex; align-items: center; gap: 7px; }
+#page-seller .seller-side-btn:hover { border-color: var(--brand) !important; color: var(--brand) !important; }
+#page-seller .seller-two-col { grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; margin-bottom: 20px; align-items: start; }
+#page-seller .seller-desc:empty, #page-seller .seller-trust-badges:empty { display: none; }
+/* Статистика — одна смуга з роздільниками */
+#page-seller .seller-stats-row { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 0 !important; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+#page-seller .seller-stat-card { border: none !important; border-radius: 0 !important; background: transparent !important; padding: 16px 8px !important; box-shadow: none !important; transform: none !important; }
+#page-seller .seller-stat-card + .seller-stat-card { border-left: 1px solid var(--border) !important; }
+#page-seller .seller-stat-val { font-size: 24px !important; letter-spacing: -.5px !important; }
+#page-seller .seller-stat-lbl { text-transform: none !important; letter-spacing: 0 !important; font-size: 12.5px !important; font-weight: 500 !important; margin-top: 2px; }
+#page-seller .seller-side-card { background: var(--card-bg); border-radius: 16px; }
+#page-seller .seller-tabs-wrap { justify-content: flex-start; }
+@media (min-width: 769px) {
+  #seller-cover-bg { height: 180px !important; }
+  #page-seller .seller-top-row .seller-avatar-outer { margin-top: -56px; }
+  #page-seller .seller-avatar-big { width: 116px; height: 116px; }
+}
+@media (max-width: 768px) {
+  #page-seller .seller-top-row { align-items: center; gap: 10px; margin-bottom: 16px; }
+  #page-seller .seller-top-row .seller-side-actions { flex-direction: column; align-items: stretch; width: 100%; margin-top: 6px; }
+  #page-seller .seller-top-row .seller-side-actions > div { display: flex; }
+  #page-seller .seller-side-btn-primary { width: 100%; justify-content: center; padding: 13px 20px; }
+  #page-seller .seller-side-btn { flex: 1 1 0; justify-content: center; }
+  #page-seller .seller-stat-card { padding: 12px 4px !important; }
+  #page-seller .seller-stat-val { font-size: 19px !important; }
+  #page-seller .seller-stat-lbl { font-size: 10.5px !important; }
+  #page-seller .seller-tabs-wrap { justify-content: center; }
+}
+#page-seller .seller-side-btn-primary { margin: 0 !important; background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; font-size: 14px; }
+#page-seller .seller-side-btn-primary:hover { opacity: .92; }
+#page-seller .seller-two-col:not(:has(.seller-side-card:not([style*="none"]))) { grid-template-columns: minmax(0, 1fr); }
+#page-seller .seller-two-col:not(:has(.seller-side-card:not([style*="none"]))) .seller-side-col { display: none; }
+@media (max-width: 768px) {
+  #page-seller .seller-two-col { grid-template-columns: minmax(0, 1fr) !important; gap: 12px; }
+}

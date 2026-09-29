@@ -1034,6 +1034,21 @@
             <span id="seller-page-seen"></span>
           </div>
         </div>
+        <!-- Actions -->
+        <div class="seller-side-actions">
+          <button class="btn-msg seller-side-btn-primary" onclick="openChat()">
+            <i class="fa-solid fa-comment" style="margin-right:7px"></i>Написати
+          </button>
+          <div style="display:flex;gap:8px">
+            <button id="seller-follow-btn" class="share-shop-btn seller-side-btn" onclick="toggleFollowSeller()" style="display:none">
+              <i class="fa-regular fa-bell" id="seller-follow-icon"></i>
+              <span id="seller-follow-label">Підписатись</span>
+            </button>
+            <button class="share-shop-btn seller-side-btn" onclick="copySellerLink()">
+              <i class="fa-solid fa-share-nodes"></i> Поділитись
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 2-column grid: left=content, right=sidebar -->
@@ -1077,22 +1092,6 @@
           <div class="seller-side-card" id="seller-socials-wrap">
             <div class="seller-side-label">Соцмережі</div>
             <div id="seller-socials-inline" class="seller-socials-inline"></div>
-          </div>
-
-          <!-- Actions -->
-          <div class="seller-side-actions">
-            <button class="btn-msg seller-side-btn-primary" onclick="openChat()">
-              <i class="fa-solid fa-comment" style="margin-right:7px"></i>Написати
-            </button>
-            <div style="display:flex;gap:8px">
-              <button id="seller-follow-btn" class="share-shop-btn seller-side-btn" onclick="toggleFollowSeller()" style="display:none">
-                <i class="fa-regular fa-bell" id="seller-follow-icon"></i>
-                <span id="seller-follow-label">Підписатись</span>
-              </button>
-              <button class="share-shop-btn seller-side-btn" onclick="copySellerLink()">
-                <i class="fa-solid fa-share-nodes"></i> Поділитись
-              </button>
-            </div>
           </div>
         </div>
       </div>
