@@ -384,22 +384,23 @@
     if (!el) return;
     el.innerHTML = '';
     if (!uid || !db()) return;
-    var render = function (s) {
+    var render = function (s, pv) {
       if ($(elId) !== el || el.getAttribute('data-uid') !== uid) return;
-      if (!s) { el.innerHTML = ''; return; }
-      var d = Date.now() / 1000 - s;
-      if (d > 30 * 86400) { el.innerHTML = ''; return; }
-      el.innerHTML = d < 300
+      var badge = pv && elId === 'detail-seller-seen' ? '<div class="ux-pv"><i class="fa-solid fa-circle-check"></i>Телефон підтверджено</div>' : '';
+      var d = s ? Date.now() / 1000 - s : 1e9;
+      var seen = d > 30 * 86400 ? '' : d < 300
         ? '<span class="ux-online"><i></i>Онлайн</span>'
         : '<span class="ux-seen">Був(ла) онлайн ' + ago(s) + '</span>';
+      el.innerHTML = seen + badge;
     };
     el.setAttribute('data-uid', uid);
     var c = seenCache[uid];
-    if (c && Date.now() - c.at < 2 * 60 * 1000) { render(c.s); return; }
+    if (c && Date.now() - c.at < 2 * 60 * 1000) { render(c.s, c.pv); return; }
     db().collection('publicProfiles').doc(uid).get().then(function (snap) {
-      var s = snap.exists ? sec(snap.data().lastSeen) : 0;
-      seenCache[uid] = { at: Date.now(), s: s };
-      render(s);
+      var dd = snap.exists ? snap.data() : {};
+      var s = sec(dd.lastSeen), pv = !!dd.phoneVerified;
+      seenCache[uid] = { at: Date.now(), s: s, pv: pv };
+      render(s, pv);
     }).catch(noop);
   }
   wrap('showDetail', function (r, id) {
@@ -1242,6 +1243,351 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var m = $('ux-cmp-modal'); if (m) m.remove(); } });
   setTimeout(renderCmpBar, 800);
 
+
+  // ══ 18. ШВИДКІ ВІДПОВІДІ В ЧАТІ ═════════════════════════════
+  // Перше повідомлення — найважче. Кнопки з типовими питаннями
+  // (покупцю) і відповідями (продавцю) над полем вводу.
+  var QR_BUYER = ['Добрий день! Ще актуально?', 'Можливий торг?', 'Який реальний стан і пробіг?', 'Можна подивитись сьогодні?', 'Відправите Новою поштою?'];
+  var QR_SELLER = ['Так, ще актуально', 'Торг можливий при огляді', 'Можна подивитись сьогодні', 'Відправлю Новою поштою з оплатою при отриманні'];
+  function chatRole(chat) {
+    var u = me(); if (!u || !chat) return 'buyer';
+    var l = chat.listingId ? findListing(chat.listingId) : null;
+    if (l && l.uid) return l.uid === u.uid ? 'seller' : 'buyer';
+    return chat.participants && chat.participants[0] === u.uid ? 'buyer' : 'seller';
+  }
+  function renderQuick(msgs, chat) {
+    var bar = document.querySelector('.chat-input-bar'); if (!bar) return;
+    var box = $('ux-quick');
+    if (!box) { box = document.createElement('div'); box.id = 'ux-quick'; bar.parentElement.insertBefore(box, bar); }
+    var u = me(); if (!u || !chat) { box.style.display = 'none'; return; }
+    var mine = msgs.filter(function (m) { return m && m.senderUid === u.uid; });
+    var last = msgs[msgs.length - 1];
+    var role = chatRole(chat);
+    var show = role === 'buyer' ? (mine.length < 2 && msgs.length < 8) : (last && last.senderUid !== u.uid && mine.length < 3);
+    var sent = {}; mine.forEach(function (m) { sent[m.text] = 1; });
+    var list = (role === 'buyer' ? QR_BUYER : QR_SELLER).filter(function (t) { return !sent[t]; });
+    if (!show || !list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.innerHTML = list.map(function (t) { return '<button type="button" data-q="' + esc(t) + '">' + esc(t) + '</button>'; }).join('');
+    box.style.display = '';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('#ux-quick [data-q]'); if (!b) return;
+    var i = $('chat-input'); if (!i) return;
+    i.value = b.getAttribute('data-q');
+    if (typeof sendMessage === 'function') sendMessage();
+  });
+
+  // ══ 19. ВІДГУК ПІСЛЯ УГОДИ ══════════════════════════════════
+  // Через 2 дні після початку переписки покупцю пропонуємо оцінити
+  // продавця прямо в чаті: зірки + кілька слів.
+  var revDone = {};
+  function reviewedAlready(me_, other) {
+    if (revDone[other] != null) return Promise.resolve(revDone[other]);
+    if (window._reviewedSellers && window._reviewedSellers.has && window._reviewedSellers.has(other)) return Promise.resolve(revDone[other] = true);
+    return db().collection('reviews').where('reviewerUid', '==', me_).where('sellerUid', '==', other).limit(1).get()
+      .then(function (s) { return (revDone[other] = !s.empty); }).catch(function () { return true; });
+  }
+  function renderReviewAsk(msgs, chat) {
+    var area = $('messages-area'), u = me();
+    if (!area || !chat || !u || !db() || chatRole(chat) !== 'buyer') return;
+    var other = (chat.participants || []).filter(function (p) { return p !== u.uid; })[0]; if (!other) return;
+    var first = msgs[0] && msgs[0].createdAt ? sec(msgs[0].createdAt) : 0;
+    var created = sec(chat.createdAt) || first;
+    if (!created || Date.now() / 1000 - created < 2 * 86400) return;
+    var mine = msgs.filter(function (m) { return m && m.senderUid === u.uid; }).length;
+    if (mine < 1 || msgs.length - mine < 1) return;
+    if (lsGet('ridego_rev_skip', {})[other]) return;
+    reviewedAlready(u.uid, other).then(function (done) {
+      var act = typeof _activeChatId !== 'undefined' ? _activeChatId : null;
+      if (done || act !== chat.id) return;
+      if ($('ux-rev-ask')) return;
+      var name = chat.otherName || chat[other + '_name'] || 'продавцем';
+      var box = document.createElement('div');
+      box.id = 'ux-rev-ask';
+      box.innerHTML = '<div class="ux-rev-t">Як пройшла угода з <b>' + esc(name) + '</b>?</div>' +
+        '<div class="ux-rev-stars">' + [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-star="' + n + '" aria-label="' + n + ' з 5">★</button>'; }).join('') + '</div>' +
+        '<div class="ux-rev-form" hidden><textarea maxlength="1000" rows="2" placeholder="Кілька слів про продавця (необов’язково)"></textarea><button type="button" class="ux-rev-send">Надіслати відгук</button></div>' +
+        '<button type="button" class="ux-rev-skip">Не зараз</button>';
+      var star = 0;
+      box.addEventListener('click', function (e) {
+        var s = e.target.closest('[data-star]');
+        if (s) {
+          star = +s.getAttribute('data-star');
+          box.querySelectorAll('[data-star]').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-star') <= star); });
+          box.querySelector('.ux-rev-form').hidden = false;
+          return;
+        }
+        if (e.target.closest('.ux-rev-skip')) {
+          var sk = lsGet('ridego_rev_skip', {}); sk[other] = Date.now(); lsSet('ridego_rev_skip', sk); box.remove(); return;
+        }
+        if (e.target.closest('.ux-rev-send') && star) {
+          var text = (box.querySelector('textarea').value || '').trim().slice(0, 1000);
+          var cu = typeof currentUser !== 'undefined' ? currentUser : {};
+          db().collection('reviews').add({
+            sellerUid: other, reviewerUid: u.uid,
+            reviewerName: cu.name || (u.email ? String(u.email).split('@')[0] : 'Користувач'),
+            rating: star, text: text, chatId: chat.id, listingId: chat.listingId || null,
+            createdAt: FV().serverTimestamp()
+          }).then(function () {
+            revDone[other] = true;
+            if (window._reviewedSellers && window._reviewedSellers.add) window._reviewedSellers.add(other);
+            box.innerHTML = '<div class="ux-rev-t">Дякуємо! Ваш відгук допоможе іншим покупцям 💚</div>';
+            setTimeout(function () { box.remove(); }, 3500);
+          }).catch(function () { toast('Не вдалося надіслати відгук'); });
+        }
+      });
+      area.insertBefore(box, area.firstChild && area.firstChild.nextSibling || null);
+    });
+  }
+  wrap('_renderMessages', function (r, msgs, chat) {
+    msgs = msgs || [];
+    renderQuick(msgs, chat);
+    renderReviewAsk(msgs, chat);
+  });
+
+  // ══ 20. СПОВІЩЕННЯ ПРО НОВІ ПОВІДОМЛЕННЯ ════════════════════
+  // 1) М'яко просимо дозвіл (після першого повідомлення, а не при вході).
+  // 2) Якщо дозвіл є — реєструємо push через Firebase Cloud Messaging,
+  //    щоб сповіщення приходили навіть із закритим сайтом.
+  function notifOk() { return 'Notification' in window; }
+  function askNotifBanner() {
+    if (!notifOk() || Notification.permission !== 'default' || !me()) return;
+    if (Date.now() - lsGet('ridego_notif_ask', 0) < 7 * 86400000) return;
+    var pane = $('messages-area'); if (!pane || $('ux-notif-ask')) return;
+    var b = document.createElement('div'); b.id = 'ux-notif-ask';
+    b.innerHTML = '<i class="fa-solid fa-bell"></i><span>Увімкніть сповіщення, щоб не пропустити відповідь — навіть коли сайт закритий.</span>' +
+      '<button type="button" class="on">Увімкнути</button><button type="button" class="x" aria-label="Закрити">✕</button>';
+    b.querySelector('.on').onclick = function () {
+      lsSet('ridego_notif_ask', Date.now());
+      Notification.requestPermission().then(function (p) {
+        b.remove();
+        if (p === 'granted') { toast('🔔 Сповіщення увімкнено'); setupPush(true); }
+      }).catch(function () { b.remove(); });
+    };
+    b.querySelector('.x').onclick = function () { lsSet('ridego_notif_ask', Date.now()); b.remove(); };
+    pane.parentElement.insertBefore(b, pane);
+  }
+  wrap('sendMessage', function () { setTimeout(askNotifBanner, 500); });
+
+  var pushBusy = false;
+  function loadScript(src) {
+    return new Promise(function (ok, fail) {
+      if (document.querySelector('script[src="' + src + '"]')) return ok();
+      var s = document.createElement('script'); s.src = src; s.async = true; s.onload = ok; s.onerror = fail; document.head.appendChild(s);
+    });
+  }
+  function setupPush(force) {
+    var u = me();
+    if (pushBusy || !u || !db() || !notifOk() || Notification.permission !== 'granted') return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    var saved = lsGet('ridego_fcm', {});
+    if (!force && saved.uid === u.uid && Date.now() - (saved.at || 0) < 3 * 86400000) return;
+    pushBusy = true;
+    fetch('/api/config').then(function (r) { return r.ok ? r.json() : {}; }).then(function (cfg) {
+      if (!cfg || !cfg.vapidKey) throw new Error('no vapid');
+      return loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js').then(function () {
+        return navigator.serviceWorker.ready;
+      }).then(function (reg) {
+        return firebase.messaging().getToken({ vapidKey: cfg.vapidKey, serviceWorkerRegistration: reg });
+      });
+    }).then(function (tok) {
+      if (!tok) return;
+      return db().collection('users').doc(u.uid).update({ fcmTokens: FV().arrayUnion(tok) }).then(function () {
+        lsSet('ridego_fcm', { uid: u.uid, at: Date.now() });
+      });
+    }).catch(function (e) { if (e && e.message !== 'no vapid') console.warn('[ux] push', e && e.message); })
+      .then(function () { pushBusy = false; });
+  }
+  // Відкрити чат з посилання в сповіщенні: /messages?chat=ID
+  function openChatFromUrl() {
+    var m = location.search.match(/[?&]chat=([A-Za-z0-9_-]{5,64})/);
+    if (!m) return;
+    setTimeout(function () {
+      if (typeof showPage === 'function') showPage('messages');
+      setTimeout(function () { if (typeof openChatById === 'function') openChatById(m[1]); }, 700);
+    }, 600);
+  }
+
+  // ══ 21. ПІДТВЕРДЖЕННЯ ТЕЛЕФОНУ ══════════════════════════════
+  // Раніше номер підтверджувався через signInWithPhoneNumber — це
+  // ВХІД під новим акаунтом, а не підтвердження поточного. Тепер номер
+  // прив'язується до вашого акаунта (linkWithPhoneNumber), а позначка
+  // з'являється і в публічному профілі — її бачать покупці.
+  var phoneConfirm = null, phoneVerifier = null;
+  function phoneNorm(v) {
+    var n = String(v || '').replace(/[^\d+]/g, '');
+    if (/^0\d{9}$/.test(n)) n = '+38' + n;
+    if (/^380\d{9}$/.test(n)) n = '+' + n;
+    return /^\+\d{10,15}$/.test(n) ? n : '';
+  }
+  function markVerified(phone) {
+    var u = me(); if (!u || !db()) return Promise.resolve();
+    return u.getIdToken(true).then(function () {
+      var data = { phoneVerified: true, phoneVerifiedAt: FV().serverTimestamp() };
+      return Promise.all([
+        db().collection('users').doc(u.uid).update(Object.assign({ phone: phone }, data)).catch(noop),
+        db().collection('publicProfiles').doc(u.uid).set(data, { merge: true }).catch(function (e) { console.warn('[ux] pv', e && e.message); })
+      ]);
+    }).then(function () {
+      var badge = $('phone-verified-badge'); if (badge) badge.style.display = 'inline';
+      var btn = $('phone-verify-btn'); if (btn) btn.style.display = 'none';
+    });
+  }
+  function phoneErr(e) {
+    var c = e && e.code || '';
+    return c === 'auth/invalid-phone-number' ? 'Невірний номер телефону'
+      : c === 'auth/too-many-requests' ? 'Забагато спроб. Спробуйте пізніше'
+      : c === 'auth/credential-already-in-use' || c === 'auth/account-exists-with-different-credential' ? 'Цей номер уже прив’язаний до іншого акаунта'
+      : c === 'auth/operation-not-allowed' ? 'Підтвердження телефону тимчасово недоступне'
+      : c === 'auth/invalid-verification-code' ? 'Невірний код з SMS'
+      : c === 'auth/code-expired' ? 'Код застарів — надішліть ще раз'
+      : (e && e.message) || 'Помилка';
+  }
+  window.startPhoneVerification = function () {
+    var u = me(); if (!u) { toast('⚠️ Увійдіть в акаунт'); return; }
+    var inp = $('set-phone'), phone = phoneNorm(inp && inp.value);
+    if (!phone) { toast('⚠️ Введіть номер у форматі +380671234567'); return; }
+    if (u.phoneNumber && u.phoneNumber === phone) { markVerified(phone).then(function () { toast('✅ Номер уже підтверджено'); }); return; }
+    var btn = $('phone-verify-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Надсилаємо...'; }
+    try {
+      if (!phoneVerifier) {
+        if (!$('recaptcha-container')) { var c = document.createElement('div'); c.id = 'recaptcha-container'; document.body.appendChild(c); }
+        phoneVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
+      }
+    } catch (e) { phoneVerifier = null; }
+    Promise.resolve().then(function () {
+      return u.phoneNumber
+        ? new firebase.auth.PhoneAuthProvider(window._auth).verifyPhoneNumber(phone, phoneVerifier).then(function (vid) { return { vid: vid, update: true }; })
+        : u.linkWithPhoneNumber(phone, phoneVerifier).then(function (cr) { return { cr: cr }; });
+    }).then(function (res) {
+      phoneConfirm = res;
+      var w = $('phone-sms-wrap'); if (w) w.style.display = '';
+      var code = $('phone-sms-code'); if (code) code.focus();
+      toast('📱 SMS надіслано на ' + phone);
+    }).catch(function (e) {
+      toast('⚠️ ' + phoneErr(e));
+      try { phoneVerifier && phoneVerifier.clear(); } catch (x) {}
+      phoneVerifier = null;
+    }).then(function () {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-halved" style="margin-right:5px"></i>' + (phoneConfirm ? 'Надіслати ще раз' : 'Верифікувати'); }
+    });
+  };
+  window.confirmPhoneCode = function () {
+    var code = (($('phone-sms-code') || {}).value || '').trim();
+    if (!phoneConfirm) return;
+    if (!/^\d{6}$/.test(code)) { toast('⚠️ Введіть 6-значний код'); return; }
+    var u = me(), phone = phoneNorm(($('set-phone') || {}).value);
+    Promise.resolve().then(function () {
+      return phoneConfirm.cr
+        ? phoneConfirm.cr.confirm(code)
+        : u.updatePhoneNumber(firebase.auth.PhoneAuthProvider.credential(phoneConfirm.vid, code));
+    }).then(function () { return markVerified(phone); }).then(function () {
+      phoneConfirm = null;
+      if (typeof cancelPhoneVerification === 'function') cancelPhoneVerification();
+      toast('✅ Телефон підтверджено! Покупці бачитимуть позначку біля ваших оголошень');
+    }).catch(function (e) { toast('⚠️ ' + phoneErr(e)); });
+  };
+  // Номер уже є в акаунті, а позначки в профілі нема — дописуємо.
+  function syncPhoneFlag() {
+    var u = me(); if (!u || !u.phoneNumber || !db()) return;
+    if (lsGet('ridego_pv_sync', '') === u.uid) return;
+    markVerified(u.phoneNumber).then(function () { lsSet('ridego_pv_sync', u.uid); });
+  }
+
+  // ══ 22. ШВИДКІ ФІЛЬТРИ В КАТАЛОЗІ ═══════════════════════════
+  // Ціна і стан в один дотик — без відкриття панелі фільтрів.
+  var QF_PRICE = [[0, 10000, 'До 10 тис'], [10000, 20000, '10–20 тис'], [20000, 40000, '20–40 тис'], [40000, 0, 'Від 40 тис']];
+  var qfUsed = false;
+  (function () {
+    var orig = window.getFilteredData;
+    if (typeof orig !== 'function') return;
+    window.getFilteredData = function () {
+      var d = orig.apply(this, arguments);
+      return qfUsed ? (d || []).filter(function (l) { return l.condition && l.condition !== 'Новий'; }) : d;
+    };
+  })();
+  function pv(id) { var e = $(id); return e ? (parseInt(e.value, 10) || 0) : 0; }
+  function renderQuickFilters() {
+    var grid = $('catalog-listings'); if (!grid) return;
+    var box = $('ux-qf');
+    if (!box) {
+      box = document.createElement('div'); box.id = 'ux-qf';
+      var lbl = $('catalog-top-section') || grid;
+      lbl.parentElement.insertBefore(box, lbl);
+      box.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-qf]'); if (!b) return;
+        var k = b.getAttribute('data-qf'), f = $('fp-price-from'), t = $('fp-price-to');
+        if (k.indexOf('p') === 0) {
+          var r = QF_PRICE[+k.slice(1)], on = pv('fp-price-from') === r[0] && pv('fp-price-to') === r[1];
+          if (f) f.value = on || !r[0] ? '' : r[0];
+          if (t) t.value = on || !r[1] ? '' : r[1];
+        } else if (k === 'new') {
+          qfUsed = false;
+          conditionFilter = (conditionFilter === 'Новий' ? '' : 'Новий');
+        } else if (k === 'used') {
+          qfUsed = !qfUsed; conditionFilter = '';
+        }
+        if (typeof runSearch === 'function') runSearch();
+      });
+    }
+    var from = pv('fp-price-from'), to = pv('fp-price-to');
+    var cf = typeof conditionFilter !== 'undefined' ? conditionFilter : '';
+    box.innerHTML = QF_PRICE.map(function (r, i) {
+      return '<button type="button" data-qf="p' + i + '" class="' + (from === r[0] && to === r[1] ? 'on' : '') + '">' + r[2] + '</button>';
+    }).join('') + '<span class="ux-qf-sep"></span>' +
+      '<button type="button" data-qf="new" class="' + (cf === 'Новий' ? 'on' : '') + '">Нові</button>' +
+      '<button type="button" data-qf="used" class="' + (qfUsed ? 'on' : '') + '">Вживані</button>';
+  }
+  wrap('runSearch', renderQuickFilters);
+  wrap('clearFilters', function () { if (qfUsed) { qfUsed = false; if (typeof runSearch === 'function') runSearch(); } });
+
+  // ══ 23. ЗВІДКИ ПРИХОДЯТЬ ЛЮДИ (для адмінки) ═════════════════
+  // Раз на сесію: +1 до лічильника джерела (google, telegram, …) за день.
+  (function trackSource() {
+    try {
+      if (sessionStorage.getItem('ridego_src')) return;
+      sessionStorage.setItem('ridego_src', '1');
+    } catch (e) { return; }
+    var r = (document.referrer || '').toLowerCase(), q = location.search.toLowerCase(), src = 'direct';
+    if (/utm_source=([a-z]+)/.test(q)) src = RegExp.$1;
+    else if (/google\./.test(r)) src = 'google';
+    else if (/t\.me|telegram/.test(r)) src = 'telegram';
+    else if (/instagram/.test(r)) src = 'instagram';
+    else if (/facebook|fb\.com/.test(r)) src = 'facebook';
+    else if (/tiktok/.test(r)) src = 'tiktok';
+    else if (/viber/.test(r)) src = 'viber';
+    else if (/bing\./.test(r)) src = 'bing';
+    else if (/olx\./.test(r)) src = 'olx';
+    else if (r && r.indexOf(location.hostname) < 0) src = 'other';
+    if (['google', 'telegram', 'instagram', 'facebook', 'tiktok', 'viber', 'bing', 'olx', 'direct', 'other'].indexOf(src) < 0) src = 'other';
+    if (r && r.indexOf(location.hostname) > -1) return;
+    setTimeout(function () { bumpCounter('src_' + src); }, 4000);
+  })();
+  function bumpCounter(prefix) {
+    var day = new Date().toISOString().slice(0, 10), id = prefix + '_' + day;
+    var go = function () {
+      if (!db()) return;
+      var ref = db().collection('analytics').doc(id);
+      db().runTransaction(function (tx) {
+        return tx.get(ref).then(function (s) {
+          if (s.exists) tx.update(ref, { count: (s.data().count || 0) + 1, date: day, updatedAt: FV().serverTimestamp() });
+          else tx.set(ref, { count: 1, date: day, updatedAt: FV().serverTimestamp() });
+        });
+      }).catch(noop);
+    };
+    if (window._firebaseReady) go(); else if (window._onFirebaseReady) window._onFirebaseReady(go);
+  }
+  // Новий діалог = перше повідомлення в чаті (для статистики в адмінці)
+  wrap('sendMessage', null, function () {
+    try {
+      var id = typeof _activeChatId !== 'undefined' ? _activeChatId : null;
+      var c = id && typeof _fbChats !== 'undefined' ? _fbChats.filter(function (x) { return x.id === id; })[0] : null;
+      var i = $('chat-input');
+      if (c && !c.lastMessage && i && i.value.trim()) bumpCounter('chats');
+    } catch (e) {}
+  });
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }
@@ -1253,5 +1599,7 @@
       renderEmailPrefs();
     }).catch(noop);
     openTabFromUrl();
+    openChatFromUrl();
+    setTimeout(function () { setupPush(false); syncPhoneFlag(); }, 3000);
   });
 })();

@@ -4271,3 +4271,54 @@ body.light .hero-chips-lbl { color: var(--text-muted); }
 .ux-cmp-diff { text-transform: none !important; letter-spacing: 0 !important; font-weight: 500 !important; color: var(--text) !important; margin: 0 !important; }
 .ux-cmp-card img, .ux-cmp-ph { aspect-ratio: auto; height: 130px; }
 @media (max-width: 700px) { .ux-cmp-card img, .ux-cmp-ph { height: 96px; } }
+
+/* ══ Старі SEO-сторінки як посадкові: під тему сайту ══ */
+#page-landing #ssr-prerender { background: transparent !important; color: var(--text) !important; max-width: 1000px; margin: 0 auto; padding: 20px 20px 48px !important; font-family: inherit !important; }
+#page-landing #ssr-prerender h1, #page-landing #ssr-prerender h2, #page-landing #ssr-prerender h3 { color: var(--text) !important; }
+#page-landing #ssr-prerender [style*="color:#111"], #page-landing #ssr-prerender [style*="color:#222"], #page-landing #ssr-prerender [style*="color:#333"], #page-landing #ssr-prerender [style*="color:#444"], #page-landing #ssr-prerender [style*="color:#166534"] { color: var(--text) !important; }
+#page-landing #ssr-prerender [style*="color:#555"], #page-landing #ssr-prerender [style*="color:#666"], #page-landing #ssr-prerender [style*="color:#888"], #page-landing #ssr-prerender [style*="color:#999"] { color: var(--text-muted) !important; }
+#page-landing #ssr-prerender [style*="background:#f0fdf4"] { background: var(--brand-dim) !important; }
+#page-landing #ssr-prerender [style*="background:#f9f9f9"], #page-landing #ssr-prerender [style*="background:#fafafa"], #page-landing #ssr-prerender [style*="background:#fff"] { background: var(--card-bg) !important; }
+#page-landing #ssr-prerender [style*="border:1px solid #eee"], #page-landing #ssr-prerender [style*="border-bottom:1px solid #f0f0f0"] { border-color: var(--border) !important; }
+#page-landing #ssr-prerender article { border-color: var(--border) !important; background: var(--card-bg); }
+#page-landing #ssr-prerender article a { color: var(--text) !important; }
+#page-landing #ssr-prerender .specs td { border-color: var(--border) !important; }
+#page-landing #ssr-prerender a[style*="background:#1db954"], #page-landing #ssr-prerender [style*="background:#1db954"] { background: var(--brand) !important; color: #fff !important; }
+
+/* ══ Швидкі відповіді в чаті ══ */
+#ux-quick { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px 2px; scrollbar-width: none; }
+#ux-quick::-webkit-scrollbar { display: none; }
+#ux-quick button { flex: 0 0 auto; padding: 8px 13px; border-radius: 50px; border: 1px solid var(--brand); background: var(--brand-dim); color: var(--brand); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
+#ux-quick button:hover { background: var(--brand); color: #fff; }
+
+/* ══ Відгук після угоди ══ */
+#ux-rev-ask { margin: 4px auto 14px; max-width: 420px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--card-bg); text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.06); }
+.ux-rev-t { font-size: 14px; margin-bottom: 6px; }
+.ux-rev-stars { display: flex; justify-content: center; gap: 4px; }
+.ux-rev-stars button { border: none; background: none; font-size: 30px; line-height: 1; color: var(--border); cursor: pointer; padding: 2px; transition: transform .1s, color .1s; }
+.ux-rev-stars button:hover { transform: scale(1.12); }
+.ux-rev-stars button.on { color: #ffa726; }
+.ux-rev-form { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ux-rev-form textarea { width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--dark3); color: var(--text); font-family: inherit; font-size: 14px; outline: none; }
+.ux-rev-send { padding: 10px; border-radius: 12px; border: none; background: var(--brand); color: #fff; font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer; }
+.ux-rev-skip { margin-top: 6px; border: none; background: none; color: var(--text-muted); font-size: 12.5px; font-family: inherit; cursor: pointer; }
+
+/* ══ Запит на сповіщення ══ */
+#ux-notif-ask { display: flex; align-items: center; gap: 10px; margin: 8px 12px 0; padding: 10px 12px; border-radius: 14px; background: var(--brand-dim); font-size: 13px; line-height: 1.4; }
+#ux-notif-ask > i { color: var(--brand); font-size: 16px; }
+#ux-notif-ask span { flex: 1; }
+#ux-notif-ask .on { padding: 8px 12px; border-radius: 10px; border: none; background: var(--brand); color: #fff; font-weight: 700; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+#ux-notif-ask .x { border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+
+/* ══ Швидкі фільтри каталогу ══ */
+#ux-qf { display: flex; align-items: center; gap: 6px; overflow-x: auto; margin: 4px 0 14px; padding: 2px 0; scrollbar-width: none; }
+#ux-qf::-webkit-scrollbar { display: none; }
+#ux-qf button { flex: 0 0 auto; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; }
+#ux-qf button:hover { border-color: var(--brand); }
+#ux-qf button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ux-qf-sep { flex: 0 0 1px; height: 22px; background: var(--border); margin: 0 4px; }
+@media (max-width: 700px) { #ux-qf { margin: 0 -16px 12px; padding: 2px 16px; } }
+
+/* ══ Підтверджений телефон біля продавця ══ */
+.ux-pv { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12.5px; font-weight: 700; color: #16a34a; }
+.ux-rev-form[hidden] { display: none !important; }

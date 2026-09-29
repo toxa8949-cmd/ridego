@@ -39,5 +39,6 @@ module.exports = (req, res) => {
     return res.status(500).json({ error: 'Server misconfigured' });
   }
 
-  res.status(200).json(cfg);
+  // Публічний VAPID-ключ для push-сповіщень (необов'язковий)
+  res.status(200).json(Object.assign({}, cfg, { vapidKey: process.env.FIREBASE_VAPID_KEY || '' }));
 };

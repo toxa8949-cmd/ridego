@@ -9,10 +9,18 @@ function escHtml(str) {
 // Не є повноцінним rate-limit (у Vercel кілька інстансів), але
 // відсікає найгрубіше зловживання. Головний захист — ID-токен нижче.
 const _rate = new Map();
-function rateLimited(uid) {
+const _mailed = new Map();
+function recentlyMailed(key) {
+  const now = Date.now(), t = _mailed.get(key);
+  if (_mailed.size > 5000) _mailed.clear();
+  if (t && now - t < 10 * 60 * 1000) return true;
+  _mailed.set(key, now);
+  return false;
+}
+function rateLimited(uid, max) {
   const now = Date.now();
   const WINDOW = 60 * 60 * 1000;   // 1 година
-  const MAX    = 20;               // не більше 20 листів на годину з акаунта
+  const MAX    = max || 20;        // не більше 20 листів на годину з акаунта
   const rec = _rate.get(uid);
   if (!rec || now - rec.start > WINDOW) {
     _rate.set(uid, { start: now, count: 1 });
@@ -117,6 +125,46 @@ async function fsPatch(token, path, values) {
     body: JSON.stringify({ fields })
   });
   if (!r.ok) throw new Error('fs patch ' + r.status);
+}
+
+
+// ── Push-сповіщення (Firebase Cloud Messaging) ─────────────────
+// Токени браузерів користувача лежать у users/{uid}.fcmTokens.
+// Шлемо лише якщо відправник справді учасник цього чату.
+async function sendChatPush(caller, toUid, d) {
+  const chatId = String((d && d.chatId) || '');
+  if (!/^[A-Za-z0-9_-]{5,64}$/.test(chatId) || !/^[A-Za-z0-9_-]{1,128}$/.test(toUid || '')) return;
+  const token = await getAdminToken();
+  if (!token) return;
+  const chat = await fsGet(token, 'chats/' + chatId).catch(() => null);
+  const parts = (chat && chat.participants) || [];
+  if (parts.indexOf(caller.uid) < 0 || parts.indexOf(toUid) < 0) return;
+  const user = await fsGet(token, 'users/' + toUid).catch(() => null);
+  const tokens = ((user && user.fcmTokens) || []).filter(t => typeof t === 'string').slice(-5);
+  if (!tokens.length) return;
+  const title = '💬 ' + String((d && d.senderName) || 'Нове повідомлення').slice(0, 60);
+  const body = String((d && d.message) || '').slice(0, 140);
+  const bad = [];
+  await Promise.all(tokens.map(async t => {
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT}/messages:send`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: { token: t, webpush: {
+        headers: { Urgency: 'high', TTL: '86400' },
+        data: { title, body, url: '/messages?chat=' + chatId, tag: 'msg-' + chatId }
+      } } })
+    }).catch(() => null);
+    if (r && (r.status === 404 || r.status === 400)) bad.push(t);
+    else if (r && !r.ok) console.warn('[push] fcm http', r.status);
+  }));
+  if (bad.length) {
+    const keep = tokens.filter(t => bad.indexOf(t) < 0);
+    await fetch(`${FS}/users/${toUid}?updateMask.fieldPaths=fcmTokens&currentDocument.exists=true`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { fcmTokens: { arrayValue: { values: keep.map(v => ({ stringValue: v })) } } } })
+    }).catch(() => {});
+  }
 }
 
 // Та сама логіка, що й у js/ux.js → matchSearch
@@ -304,8 +352,22 @@ async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Push про повідомлення — окремий, щедріший ліміт (120/год),
+  // шлеться паралельно з листом і не залежить від його долі.
+  const pushJob = type === 'new_message' && !rateLimited('push:' + caller.uid, 120)
+    ? sendChatPush(caller, toUid, data).catch(e => console.warn('[push]', e.message))
+    : Promise.resolve();
+
+  // Лист про повідомлення — не частіше ніж раз на 10 хв одному адресату
+  // від одного відправника: інакше кожне «ок» в чаті летіло б на пошту.
+  if (type === 'new_message' && recentlyMailed(caller.uid + '>' + toUid)) {
+    await pushJob;
+    return res.status(200).json({ success: true, skipped: 'recent' });
+  }
+
   // ── 3. Ліміт на акаунт ──────────────────────────────────────
   if (rateLimited(caller.uid)) {
+    await pushJob;
     return res.status(429).json({ error: 'Too many emails' });
   }
 
@@ -336,6 +398,7 @@ async function handler(req, res) {
   }
 
   if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    await pushJob;
     return res.status(400).json({ error: 'Recipient not resolved' });
   }
 
@@ -444,6 +507,7 @@ async function handler(req, res) {
     });
 
     const result = await response.json();
+    await pushJob;
 
     if (!response.ok) {
       console.error('Resend error:', result);

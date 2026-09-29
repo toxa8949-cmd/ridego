@@ -199,7 +199,11 @@ ${listing.desc ? `<div class="desc">${esc(listing.desc)}</div>` : ''}
     title: titleStr,
     desc: descStr,
     canonical: `${BASE}/listing/${id}`,
-    ogImage: listing.img || `${BASE}/og-image.png`,
+    // 1200×630 — формат, у якому Telegram, Viber і Facebook показують
+    // велику картку з фото, а не маленьку мініатюру збоку.
+    ogImage: /^https:\/\/res\.cloudinary\.com\//.test(listing.img || '')
+      ? listing.img.replace('/upload/', '/upload/c_fill,w_1200,h_630,g_center,q_80,f_jpg/')
+      : (listing.img || `${BASE}/og-image.png`),
     ogType: 'product',
     jsonLd: [productSchema, breadcrumbSchema],
     bodyHtml

@@ -9,12 +9,14 @@
   // тому старіші дні занижені.
   function loadTraffic() {
     var from = new Date(Date.now() - 95 * 86400000).toISOString().slice(0, 10);
-    var t = { days: {}, pwa: null, online: null };
+    var t = { days: {}, src: {}, pwa: null, online: null };
     var q1 = A.db.collection('analytics').where('date', '>=', from).get().then(function (s) {
       s.forEach(function (d) {
-        var x = d.data(), m = /^(visitors|views)_(\d{4}-\d{2}-\d{2})$/.exec(d.id);
+        var x = d.data(), m = /^(visitors|views|chats)_(\d{4}-\d{2}-\d{2})$/.exec(d.id);
+        var ms = /^src_([a-z]+)_(\d{4}-\d{2}-\d{2})$/.exec(d.id);
+        if (ms) { var sd = t.src[ms[2]] || (t.src[ms[2]] = {}); sd[ms[1]] = Number(x.count) || 0; return; }
         if (!m) return;
-        var day = t.days[m[2]] || (t.days[m[2]] = { visitors: 0, views: 0 });
+        var day = t.days[m[2]] || (t.days[m[2]] = { visitors: 0, views: 0, chats: 0 });
         day[m[1]] = Number(x.count) || 0;
       });
     }, function (e) { console.error('analytics', e); });
@@ -72,6 +74,16 @@
     return '<div class="chart">' + svg + '</div><div class="legend"><span><i style="background:var(--accent)"></i>Відвідувачі: ' + trafficSum('visitors', days) + '</span>' +
       '<span><i style="background:var(--text-3)"></i>Перегляди оголошень: ' + trafficSum('views', days) + '</span></div>' +
       '<p class="muted" style="font-size:12px;margin:8px 0 0">Унікальний відвідувач — один браузер за добу. Перегляд — одне оголошення з одного браузера за добу, без переглядів власника. До 23.09.2026 рахувались лише відвідувачі з акаунтом.</p>';
+  }
+
+  var SRC_NAMES = { google: 'Google', direct: 'Напряму / закладки', telegram: 'Telegram', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', viber: 'Viber', bing: 'Bing', olx: 'OLX', other: 'Інші сайти' };
+  function sourcesHtml(days) {
+    if (!traffic) return '<p class="muted">Завантаження…</p>';
+    var sum = {}, total = 0;
+    for (var i = 0; i < days; i++) { var d = traffic.src[dayStr(i)] || {}; Object.keys(d).forEach(function (k) { sum[k] = (sum[k] || 0) + d[k]; total += d[k]; }); }
+    if (!total) return '<p class="muted">Даних ще немає — лічильник джерел запрацював після оновлення сайту.</p>';
+    var pairs = Object.keys(sum).map(function (k) { return [SRC_NAMES[k] || k, sum[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+    return A.distHtml(pairs, total, 10) + '<p class="muted" style="font-size:12px;margin:8px 0 0">Відвідування (сесії) за ' + days + ' днів: ' + A.num(total) + '. Джерело — сайт, з якого людина прийшла.</p>';
   }
 
   function kpi(value, label, sub, up) {
@@ -148,6 +160,8 @@
         kpi(traffic ? A.num(trafficSum('views', 1)) : '—', 'Переглядів оголошень сьогодні',
           traffic ? A.num(trafficSum('views', 7)) + ' за 7 днів' : '') +
         kpi(traffic && traffic.online != null ? traffic.online : '—', 'Онлайн зараз', 'за останні 5 хв') +
+        kpi(traffic ? A.num(trafficSum('chats', 1)) : '—', 'Нових діалогів сьогодні',
+          traffic ? A.num(trafficSum('chats', 7)) + ' за 7 днів' : '') +
         kpi(traffic && traffic.pwa != null ? A.num(traffic.pwa) : '—', 'Встановили застосунок', 'усього');
 
       var att = [];
@@ -164,6 +178,7 @@
       });
       A.$('chart').innerHTML = chart(chartDays);
       A.$('traffic-chart').innerHTML = trafficChart(chartDays);
+      if (A.$('traffic-src')) A.$('traffic-src').innerHTML = sourcesHtml(chartDays);
 
       A.$('by-cat').innerHTML = A.distHtml(A.countBy(active, function (l) { return l.cat; }), active.length);
       A.$('by-city').innerHTML = A.distHtml(A.countBy(active, function (l) { return (l.city || '').split(',')[0].trim(); }), active.length, 7);

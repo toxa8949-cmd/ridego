@@ -104,7 +104,7 @@ async function getAdminToken() {
     const head = b64uEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
     const claims = b64uEncode(JSON.stringify({
       iss: sa.client_email,
-      scope: 'https://www.googleapis.com/auth/datastore',
+      scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging',
       aud: 'https://oauth2.googleapis.com/token',
       iat, exp: iat + 3600
     }));

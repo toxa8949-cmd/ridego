@@ -142,27 +142,40 @@ self.addEventListener('fetch', function(e) {
 
 self.addEventListener('push', function(e) {
   if (!e.data) return;
-  var data = e.data.json();
+  var raw = {};
+  try { raw = e.data.json(); } catch (x) { raw = { body: e.data.text() }; }
+  // FCM кладе наші поля в data; старий формат — у корінь.
+  var data = raw.data || raw.notification || raw;
   e.waitUntil(
-    self.registration.showNotification(data.title || 'RideGO', {
-      body: data.body || '',
-      icon: '/favicon.svg',
-      badge: '/favicon.svg',
-      tag: data.tag || 'ridego',
-      data: { url: data.url || '/' }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(cls) {
+      // Сайт відкритий і на екрані — там уже є власне сповіщення.
+      var visible = cls.some(function(c) { return c.visibilityState === 'visible' && c.focused; });
+      if (visible && String(data.tag || '').indexOf('msg-') === 0) return;
+      return self.registration.showNotification(data.title || 'RideGO', {
+        body: data.body || '',
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
+        tag: data.tag || 'ridego',
+        renotify: true,
+        data: { url: data.url || '/' }
+      });
     })
   );
 });
 
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
-  var url = e.notification.data && e.notification.data.url || '/';
+  var url = (e.notification.data && e.notification.data.url) || '/';
+  var full = new URL(url, self.location.origin).href;
   e.waitUntil(
-    clients.matchAll({ type: 'window' }).then(function(cls) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(cls) {
       for (var i = 0; i < cls.length; i++) {
-        if (cls[i].url === url && 'focus' in cls[i]) return cls[i].focus();
+        var c = cls[i];
+        if (c.url.indexOf(self.location.origin) === 0 && 'focus' in c) {
+          return c.focus().then(function(w) { return w && w.navigate ? w.navigate(full) : w; });
+        }
       }
-      if (clients.openWindow) return clients.openWindow(url);
+      if (clients.openWindow) return clients.openWindow(full);
     })
   );
 });

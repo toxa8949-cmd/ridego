@@ -990,7 +990,8 @@ function sendMessage() {
             data: {
               senderName: currentUser.name || currentUser.email || 'Користувач',
               message: text,
-              listingTitle: chat && chat.listingTitle ? chat.listingTitle : ''
+              listingTitle: chat && chat.listingTitle ? chat.listingTitle : '',
+              chatId: chat && chat.id ? chat.id : ''
             }
           })
         });

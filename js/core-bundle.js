@@ -809,15 +809,20 @@ function _parsePath(path) {
   var sellerMatch = p.match(/^\/seller\/(.+)$/);
   if (sellerMatch) return { page: 'seller', id: 'uid:' + sellerMatch[1] };
 
+  // Посадкові сторінки «продати / купити …» (api/_intent.js).
+  // Їхній текст лишається на екрані й після запуску SPA — сторінка 'landing'.
+  if (/^\/(prodaty|kupyty)-(elektrosamokat|elektrovelosyped|velosyped|samokat)$/.test(p)) return { page: 'landing' };
+  // Решта SEO-сторінок (бренди, моделі, міста, добірки) — теж посадкові,
+  // якщо сервер віддав для них текст. Без тексту — звичайний каталог.
+  var _hasSsr = !!document.querySelector('#ssr-prerender, #page-landing > #ssr-prerender');
+  if (_hasSsr && (/^\/brand\/[a-z0-9-]+$/.test(p) || /^\/(kukirin|dualtron|xiaomi|ninebot|kaabo|vsett|ausom)-[a-z0-9-]+$/.test(p)
+      || /^\/(elektrosamokat|elektrovelosyped|kupyty|prodaty|kukirin-vs|dualtron-vs)[a-z0-9-]*$/.test(p))) return { page: 'landing' };
+
   var catMatch = p.match(/^\/category\/(.+)$/);
   if (catMatch && CAT_SLUGS[catMatch[1]]) return { page: 'catalog', cat: CAT_SLUGS[catMatch[1]] };
 
   var brandMatch = p.match(/^\/brand\/(.+)$/);
   if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
-
-  // Посадкові сторінки «продати / купити …» (api/_intent.js).
-  // Їхній текст лишається на екрані й після запуску SPA — сторінка 'landing'.
-  if (/^\/(prodaty|kupyty)-(elektrosamokat|elektrovelosyped|velosyped|samokat)$/.test(p)) return { page: 'landing' };
 
   // SEO pages
   if (p === '/elektrosamokat-z-sydinniam') return { page: 'catalog' };
@@ -884,9 +889,9 @@ function _renderRoute(route, isBack) {
   if (page === 'landing') {
     // Посадкова сторінка: серверний текст і є вмістом сторінки.
     var _land = document.getElementById('page-landing');
-    if (_pre && _land) { _land.innerHTML = ''; _pre.id = 'landing-content'; _land.appendChild(_pre); }
-    else if (_land && !_land.querySelector('.seo-landing')) { location.reload(); return; }
-  } else if (_pre && _pre.parentNode) _pre.parentNode.removeChild(_pre);
+    if (_pre && _land && _pre.parentNode !== _land) { _land.innerHTML = ''; _land.appendChild(_pre); }
+    else if (_land && !_land.firstElementChild) { location.reload(); return; }
+  } else if (_pre && _pre.parentNode && _pre.parentNode.id !== 'page-landing') _pre.parentNode.removeChild(_pre);
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + page);
