@@ -3804,3 +3804,19 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
   #add-type-badge { font-size: 26px !important; }
   #add-step-2 > div:first-child, #add-step-3 > div:first-child, #add-step-4 > div:first-child { margin-bottom: 16px !important; }
 }
+
+/* ══ Головна на телефоні: щільніше, категорії в рядок, менше порожнечі ══ */
+@media (max-width: 600px) {
+  #page-home .section { padding: 22px 16px !important; }
+  #page-home .section + .section { padding-top: 6px !important; }
+  #page-home .section-header { margin-bottom: 14px !important; }
+  #page-home .section-title { font-size: 20px !important; }
+  #page-home .cats { display: flex !important; overflow-x: auto; gap: 8px !important; margin: 0 -16px !important; padding: 2px 16px 6px !important; scroll-padding-left: 16px; scroll-snap-type: x proximity; scrollbar-width: none; }
+  #page-home .cats::-webkit-scrollbar { display: none; }
+  #page-home .cats .cat-card { flex: 0 0 128px; scroll-snap-align: start; padding: 12px 6px 10px !important; }
+  #page-home .cats .cat-card h3 { font-size: 11.5px !important; overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #home-top-empty { padding: 14px !important; border: 1px dashed var(--border); border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left !important; font-size: 13px !important; white-space: nowrap; }
+  #home-top-empty[style*="display:none"], #home-top-empty[style*="display: none"] { display: none !important; }
+  #home-top-empty .btn-outline { margin-left: 0 !important; white-space: nowrap; padding: 7px 12px !important; font-size: 12.5px !important; overflow: visible !important; text-overflow: clip !important; max-width: none !important; }
+  .transport-btn .tb-name { font-size: 12px !important; overflow-wrap: anywhere; }
+}

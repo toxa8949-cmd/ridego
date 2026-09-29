@@ -1937,6 +1937,8 @@ function renderHomeServices() {
   });
   var top3 = sorted.slice(0,3);
   grid.innerHTML = top3.map(function(s) { return createHomeSvcCard(s); }).join("");
+  var sec = document.getElementById('home-services-section');
+  if (sec) sec.style.display = top3.length ? '' : 'none';
 }
 
 function createHomeSvcCard(s) {
