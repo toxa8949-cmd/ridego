@@ -499,21 +499,32 @@
 <!-- ============================================================ -->
 <div id="page-home" class="page active">
 
-  <div class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-grid"></div>
+  <div class="hero hero-v2">
     <div class="hero-content">
-      <div class="hero-badge"><i class="fa-solid fa-bolt"></i> №1 маркетплейс електротранспорту</div>
-      <h1>Рухайся в майбутнє<br><span>без заторів</span></h1>
-      <p>Купуй та продавай електросамокати, велосипеди та скутери. <span id="hero-count-text">Більше 70 пропозицій</span> по всій Україні.</p>
-      <div class="hero-btns">
-        <button class="btn-primary" onclick="showPage('catalog')"><i class="fa-solid fa-search" style="margin-right:8px"></i>Переглянути оголошення</button>
-        <button class="btn-outline" href="https://www.ridego.com.ua/add" onclick="event.preventDefault();showPage('add')"><i class="fa-solid fa-plus" style="margin-right:8px"></i>Подати оголошення</button>
+      <h1>Купуй і продавай <span>електротранспорт</span></h1>
+      <p class="hero-sub">Електросамокати, велосипеди та скутери від власників і магазинів. <span id="hero-count-text">Більше 70 пропозицій</span> по всій Україні.</p>
+      <form class="hero-search" role="search" onsubmit="event.preventDefault();var v=document.getElementById('headerSearchHero').value.trim();if(v)handleSearch(v,true);else showPage('catalog');">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="headerSearchHero" name="q" placeholder="Модель, бренд або місто" autocomplete="off" oninput="handleSearch(this.value)" aria-label="Пошук оголошень">
+        <button type="submit" class="btn-primary">Знайти</button>
+      </form>
+      <div class="hero-chips">
+        <span class="hero-chips-lbl">Часто шукають:</span>
+        <button type="button" onclick="doSearch('KuKirin')">KuKirin</button>
+        <button type="button" onclick="doSearch('Xiaomi')">Xiaomi</button>
+        <button type="button" onclick="doSearch('Ninebot')">Ninebot</button>
+        <button type="button" onclick="doSearch('Dualtron')">Dualtron</button>
+        <button type="button" onclick="doSearch('Київ')">Київ</button>
+        <button type="button" onclick="doSearch('Львів')">Львів</button>
+        <button type="button" onclick="doSearch('Одеса')">Одеса</button>
       </div>
-      <div class="hero-stats">
-        <div class="stat-item"><span class="stat-num" id="stat-listings">70</span><div class="stat-label">Оголошень</div></div>
-        <div class="stat-item"><span class="stat-num" id="stat-sellers">20</span><div class="stat-label">Продавців</div></div>
-        <div class="stat-item"><span class="stat-num" id="stat-cities">30</span><div class="stat-label">Міст України</div></div>
+      <div class="hero-foot">
+        <div class="hero-stats">
+          <div class="stat-item"><span class="stat-num" id="stat-listings">70</span><div class="stat-label">оголошень</div></div>
+          <div class="stat-item"><span class="stat-num" id="stat-sellers">20</span><div class="stat-label">продавців</div></div>
+          <div class="stat-item"><span class="stat-num" id="stat-cities">30</span><div class="stat-label">міст</div></div>
+        </div>
+        <a class="hero-sell" href="https://www.ridego.com.ua/add" onclick="event.preventDefault();showPage('add')">Є що продати? <b>Подати оголошення безкоштовно →</b></a>
       </div>
     </div>
   </div>

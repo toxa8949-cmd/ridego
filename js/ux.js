@@ -934,7 +934,7 @@
       clearTimeout(sugTimer);
       sugTimer = setTimeout(function () { sugRender(input); }, 120);
     };
-    ['headerSearch', 'headerSearchMobile'].forEach(function (id) {
+    ['headerSearch', 'headerSearchMobile', 'headerSearchHero'].forEach(function (id) {
       var el = $(id);
       if (!el) return;
       el.addEventListener('blur', function () { setTimeout(sugHide, 150); });
@@ -1023,6 +1023,7 @@
   wrap('galleryNav', galleryCounter);
   wrap('setGalleryIdx', galleryCounter);
   window.addEventListener('resize', placeGallery);
+
 
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {

@@ -174,7 +174,10 @@ function buildPage(slug, list) {
   const st = stats(list);
   const other = (sell ? 'kupyty-' : 'prodaty-') + pg.kind;
   const cnt = st.count ? `${st.count} ${plUk(st.count, ['оголошення', 'оголошення', 'оголошень'])}` : '';
-  const range = st.count >= 3 ? `від ${fmt(round100(st.p10))} до ${fmt(round100(st.p90))} грн` : '';
+  // Цін (середніх, діапазонів) навмисно не показуємо: поки оголошень
+  // небагато, такі цифри вводили б в оману.
+  const range = '';
+  st.med = st.medUsed = st.medNew = 0;
 
   const title = sell
     ? `Продати ${k.one} — безкоштовне оголошення | RideGO`
@@ -214,7 +217,7 @@ function buildPage(slug, list) {
     [`Як безпечно отримати оплату?`, `Найбезпечніше — зустріч особисто з оплатою готівкою або переказом на місці. Не переходьте за посиланнями «для отримання оплати» і не повідомляйте дані картки, крім її номера.`],
     [`Чи можна продати ${k.one} з доставкою?`, `Так. Домовтеся з покупцем про відправку Новою поштою з оплатою при отриманні — так захищені обидві сторони.`]
   ] : [
-    [`Скільки коштує ${k.one} в Україні?`, st.count >= 3 ? `Зараз на RideGO ${cnt}. Більшість пропозицій — ${range}${st.medNew && st.medUsed ? `; середня ціна нового близько ${fmt(round100(st.medNew))} грн, вживаного — ${fmt(round100(st.medUsed))} грн` : ''}.` : `Ціна залежить від моделі, стану і комплектації. Порівняйте актуальні оголошення на RideGO.`],
+    [`Скільки коштує ${k.one} в Україні?`, st.count >= 3 && range ? `Зараз на RideGO ${cnt}. Більшість пропозицій — ${range}${st.medNew && st.medUsed ? `; середня ціна нового близько ${fmt(round100(st.medNew))} грн, вживаного — ${fmt(round100(st.medUsed))} грн` : ''}.` : `Ціна залежить від моделі, стану і комплектації. Порівняйте актуальні оголошення на RideGO.`],
     [`Що краще: новий чи вживаний ${k.one}?`, `Вживаний ${k.one} у хорошому стані коштує помітно дешевше за новий. Новий дає гарантію і невідому історію не треба перевіряти. Якщо купуєте вживаний — обов’язково огляньте його наживо і перевірте пункти зі списку вище.`],
     [`Як не натрапити на шахраїв?`, `Не вносьте передоплату незнайомим продавцям, оглядайте товар наживо або купуйте з оплатою при отриманні. Спілкуйтеся в чаті RideGO — так залишається історія домовленостей.`],
     [`Чи можна торгуватися?`, `Так, це нормальна практика. Аргументуйте торг конкретними недоліками, які знайшли під час огляду.`],
@@ -235,18 +238,18 @@ function buildPage(slug, list) {
     <section class="seo-sec"><h2>Як продати ${k.one} швидше і дорожче</h2>
       <ul class="seo-list">${k.sellTips.map(t => `<li>${H(t)}</li>`).join('')}</ul>
     </section>
-    <section class="seo-sec"><h2>Скільки коштує вживаний ${k.one} зараз</h2>
+    <section class="seo-sec"><h2>Від чого залежить ціна вживаного ${k.gen}</h2>
       <p>${H(k.priceFactors)}</p>
       ${range ? `<p>За даними RideGO, більшість ${k.manyGen} зараз пропонують ${range}${st.medUsed ? `, а середня ціна вживаного — близько ${fmt(round100(st.medUsed))} грн` : ''}. Орієнтуйтеся на схожі оголошення нижче, щоб поставити конкурентну ціну.</p>` : ''}
       ${cities}
     </section>
-    ${listCards ? `<section class="seo-sec"><h2>Що зараз продають — орієнтир для вашої ціни</h2><div class="seo-grid">${listCards}</div><a class="seo-more" href="/category/${k.catSlug}">Усі ${k.many} →</a></section>` : ''}
+    ${listCards ? `<section class="seo-sec"><h2>Що зараз продають</h2><div class="seo-grid">${listCards}</div><a class="seo-more" href="/category/${k.catSlug}">Усі ${k.many} →</a></section>` : ''}
   ` : `
     ${listCards ? `<section class="seo-sec"><h2>Свіжі оголошення</h2><div class="seo-grid">${listCards}</div><a class="seo-more" href="/category/${k.catSlug}">Дивитися всі ${cnt || k.many} →</a></section>` : ''}
     <section class="seo-sec"><h2>Як вибрати вживаний ${k.one}: що перевірити</h2>
       <div class="seo-checks">${k.buyChecks.map(([t, d]) => `<div><b>${H(t)}</b><p>${H(d)}</p></div>`).join('')}</div>
     </section>
-    <section class="seo-sec"><h2>Ціни на ${k.many}</h2>
+    <section class="seo-sec"><h2>Від чого залежить ціна</h2>
       <p>${H(k.priceFactors)}</p>
       ${range ? `<p>Зараз на RideGO ${cnt}; більшість пропозицій — ${range}${st.medNew ? `, новий ${k.one} — у середньому ${fmt(round100(st.medNew))} грн` : ''}${st.medUsed ? `, вживаний — ${fmt(round100(st.medUsed))} грн` : ''}.</p>` : ''}
       ${cities}
