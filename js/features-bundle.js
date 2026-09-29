@@ -1310,7 +1310,7 @@ function _buildSvcDetailHeader(s){
     : '<div class="service-detail-cover sd-cover"><span>' + (s.icon || '🔧') + '</span></div>';
   var editBtn = isOwner ? '<button class="sd-cover-edit" onclick="triggerSvcPhotoUpload(\'' + s.id + '\')"><i class="fa-solid fa-camera"></i> Змінити фото</button>' : '';
 
-  var badge = s.badge ? '<span class="sd-badge ' + _sdE(s.badge) + '"><i class="fa-solid fa-circle-check"></i>' + _sdE(s.badgeLabel || 'Перевірений') + '</span>' : '';
+  var badge = s.badge ? '<span class="sd-dot">·</span><span class="sd-badge"><i class="fa-solid fa-circle-check"></i>' + _sdE(s.badgeLabel || 'Перевірений') + '</span>' : '';
   var rating = (s.rating > 0 && s.reviews > 0)
     ? '<button class="sd-rating" onclick="_sdGoReviews()"><span class="sd-rating-stars">★</span><b id="sd-rating-num">' + (+s.rating).toFixed(1) + '</b><span id="sd-rating-cnt">· ' + s.reviews + ' ' + _sdRevWord(s.reviews) + '</span></button>'
     : '<button class="sd-rating sd-rating-empty" onclick="_sdGoReviews()"><span class="sd-rating-stars">★</span><b id="sd-rating-num"></b><span id="sd-rating-cnt">Ще немає відгуків</span></button>';
@@ -1329,7 +1329,7 @@ function _buildSvcDetailHeader(s){
   if (tg) acts += '<a class="sd-btn sd-btn-icon" href="https://t.me/' + tg + '" target="_blank" rel="noopener" title="Telegram"><i class="fa-brands fa-telegram"></i></a>';
   if (isOwner) acts += '<button class="sd-btn" onclick="showPage(\'profile\');setTimeout(function(){var t=[].find.call(document.querySelectorAll(\'.ptab\'),function(b){return /myservice/.test(b.getAttribute(\'onclick\')||\'\')});if(t)t.click();},200)"><i class="fa-solid fa-pen"></i>Редагувати</button>';
 
-  var cats = (s.cats || []).map(function(c){ return '<span class="sd-chip">' + _sdE(c) + '</span>'; }).join('');
+  var cats = (s.cats || []).length ? _sdE((s.cats || []).map(function(c, i){ return i ? String(c).toLowerCase() : c; }).join(', ')) : '';
 
   // Панель дзвінка на телефоні
   var bar = (tel || (s.uid && !isOwner)) ? '<div class="sd-bar">' +
@@ -1338,12 +1338,12 @@ function _buildSvcDetailHeader(s){
 
   return '<div class="sd-cover-wrap">' + cover + editBtn + '</div>' +
     '<div class="sd-info">' +
-      '<div class="sd-kicker"><i class="fa-solid fa-screwdriver-wrench"></i>Сервісний центр</div>' +
+      '<div class="sd-kicker">Сервісний центр</div>' +
       '<h1 class="service-detail-name sd-name">' + _sdE(s.name) + '</h1>' +
       '<div class="sd-sub">' + rating + badge + '</div>' +
       (facts ? '<div class="sd-facts">' + facts + '</div>' : '') +
       (acts ? '<div class="sd-actions">' + acts + '</div>' : '') +
-      (cats ? '<div class="sd-cats"><span class="sd-cats-lbl">Ремонтуємо:</span>' + cats + '</div>' : '') +
+      (cats ? '<div class="sd-cats"><span class="sd-cats-lbl">Ремонтуємо</span>' + cats + '</div>' : '') +
     '</div>' + bar;
 }
 
