@@ -3836,7 +3836,7 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
 #page-seller .seller-two-col { grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; margin-bottom: 20px; align-items: start; }
 #page-seller .seller-desc:empty, #page-seller .seller-trust-badges:empty { display: none; }
 /* Статистика — одна смуга з роздільниками */
-#page-seller .seller-stats-row { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 0 !important; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+#page-seller .seller-stats-row { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 0 !important; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
 #page-seller .seller-stat-card { border: none !important; border-radius: 0 !important; background: transparent !important; padding: 16px 8px !important; box-shadow: none !important; transform: none !important; }
 #page-seller .seller-stat-card + .seller-stat-card { border-left: 1px solid var(--border) !important; }
 #page-seller .seller-stat-val { font-size: 24px !important; letter-spacing: -.5px !important; }
@@ -3865,4 +3865,39 @@ body.ux-fp-sheet #ux-fp-sheet-head { display: flex; }
 #page-seller .seller-two-col:not(:has(.seller-side-card:not([style*="none"]))) .seller-side-col { display: none; }
 @media (max-width: 768px) {
   #page-seller .seller-two-col { grid-template-columns: minmax(0, 1fr) !important; gap: 12px; }
+}
+
+/* ══ Сторінка продавця v3: преміальна обкладинка й аватар ══ */
+#seller-cover-bg {
+  background:
+    radial-gradient(620px 260px at 12% -10%, rgba(0,200,83,.38), transparent 70%),
+    radial-gradient(520px 300px at 88% 120%, rgba(0,168,70,.26), transparent 70%),
+    radial-gradient(380px 200px at 55% 40%, rgba(64,220,140,.10), transparent 70%),
+    linear-gradient(180deg, #0c1611 0%, #101d16 100%) !important;
+}
+body.light #seller-cover-bg {
+  background:
+    radial-gradient(620px 260px at 12% -10%, rgba(0,200,83,.22), transparent 70%),
+    radial-gradient(520px 300px at 88% 120%, rgba(0,168,70,.18), transparent 70%),
+    radial-gradient(380px 200px at 55% 40%, rgba(120,220,160,.16), transparent 70%),
+    linear-gradient(180deg, #eaf6ee 0%, #f3faf5 100%) !important;
+}
+#seller-cover-bg .seller-cover-pattern {
+  opacity: 1; background-image: radial-gradient(rgba(255,255,255,.10) 1px, transparent 1.2px); background-size: 18px 18px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 95%); mask-image: linear-gradient(180deg, #000 0%, transparent 95%);
+}
+body.light #seller-cover-bg .seller-cover-pattern { background-image: radial-gradient(rgba(0,110,45,.12) 1px, transparent 1.2px); }
+#seller-cover-bg .seller-cover-glow, #seller-cover-bg .seller-page-cover-inner { display: none; }
+#page-seller .seller-avatar-big {
+  background: linear-gradient(140deg, #19d36a 0%, #00a94a 55%, #008a3c 100%) !important;
+  color: #fff !important; border: none !important; border-radius: 30px;
+  font-size: 46px; letter-spacing: -1px; text-shadow: 0 2px 8px rgba(0,0,0,.18);
+  box-shadow: 0 0 0 6px var(--card-bg), 0 14px 34px rgba(0,120,50,.28) !important;
+}
+#page-seller .seller-avatar-big.shop { background: linear-gradient(140deg, #1c2b22 0%, #0f1a14 100%) !important; color: #3ee07e !important; }
+#page-seller .seller-stats-row { box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+#page-seller .seller-stat-val { font-weight: 800; }
+@media (max-width: 768px) {
+  #page-seller .seller-avatar-big { border-radius: 24px; font-size: 36px; }
+  #seller-cover-bg { height: 120px !important; }
 }
