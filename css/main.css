@@ -4363,3 +4363,31 @@ body.ux-usd-on .ux-usd { display: inline; }
 /* Стара кнопка «порівняти» на картці — активний стан */
 .compare-btn-card.ux-on { opacity: 1 !important; color: var(--brand) !important; }
 #ux-remind-pref { margin-top: 14px; }
+
+/* ══ Горизонтальні добірки (ще від продавця, ви дивились, знижена ціна) ══ */
+.ux-hsec { margin: 40px 0 8px; }
+#page-home .ux-hsec { max-width: 1280px; margin: 0 auto; padding: 8px 24px 28px; }
+.ux-hsec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.ux-hsec-head h2 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -.3px; }
+.ux-hsec-head h2 i { color: var(--brand); font-size: 18px; margin-right: 4px; }
+.ux-hsec-more { color: var(--brand); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.ux-hrow { display: grid; grid-auto-flow: column; grid-auto-columns: 230px; gap: 14px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.ux-hrow > .listing-card { scroll-snap-align: start; min-width: 0; }
+@media (max-width: 700px) {
+  #page-home .ux-hsec { padding: 6px 16px 18px; }
+  .ux-hsec { margin-top: 28px; }
+  .ux-hsec-head h2 { font-size: 19px; }
+  .ux-hrow { grid-auto-columns: 158px; gap: 10px; margin: 0 -16px; padding: 4px 16px 10px; scrollbar-width: none; }
+  .ux-hrow::-webkit-scrollbar { display: none; }
+}
+.mc-stats span i { margin-right: 3px; }
+.ux-hrow { scroll-padding-left: 2px; }
+@media (max-width: 700px) {
+  .ux-hrow { scroll-padding-left: 16px; }
+  .ux-hrow .listing-body { padding: 10px 10px 12px !important; }
+  .ux-hrow .listing-title { font-size: 13px !important; margin-bottom: 4px !important; line-height: 1.3; }
+  .ux-hrow .listing-price { font-size: 15.5px !important; }
+  .ux-hrow .card-pills-row, .ux-hrow .listing-specs, .ux-hrow .card-seller-btn { display: none !important; }
+  .ux-hrow .listing-img-wrap, .ux-hrow .listing-img-placeholder { height: 118px !important; }
+  .ux-hrow .listing-img { height: 118px !important; }
+}

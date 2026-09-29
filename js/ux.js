@@ -1759,6 +1759,104 @@
   wrap('submitListing', null, function () { return contentCheck(true); });
   wrap('saveEditListing', null, function () { return contentCheck(false); });
 
+
+  // ══ 26. СТАТИСТИКА ДЛЯ ПРОДАВЦЯ: ДЗВІНКИ, ЧАТИ, ОБРАНЕ ════════
+  // На оголошенні рахуємо, скільки разів відкрили номер, почали чат
+  // і додали в обране. Продавець бачить це в «Моїх оголошеннях».
+  function bumpListing(id, field, delta) {
+    var l = findListing(id), u = me();
+    if (!id || !db() || !l || (u && l.uid === u.uid)) return;
+    var upd = {}; upd[field] = FV().increment(delta || 1);
+    db().collection('listings').doc(id).update(upd).then(function () {
+      l[field] = Math.max(0, (+l[field] || 0) + (delta || 1));
+    }).catch(noop);
+  }
+  wrap('revealPhone', null, function () {
+    var id = window.currentDetailId || (typeof currentDetailId !== 'undefined' ? currentDetailId : null);
+    var k = 'ridego_pv_' + id, day = new Date().toISOString().slice(0, 10);
+    if (id && lsGet(k, '') !== day) { lsSet(k, day); bumpListing(id, 'phoneViews', 1); }
+  });
+  // Перше повідомлення в чаті про оголошення = новий діалог
+  wrap('sendMessage', null, function () {
+    try {
+      var cid = typeof _activeChatId !== 'undefined' ? _activeChatId : null;
+      var c = cid && typeof _fbChats !== 'undefined' ? _fbChats.filter(function (x) { return x.id === cid; })[0] : null;
+      var i = $('chat-input');
+      if (c && c.listingId && !c.lastMessage && i && i.value.trim()) bumpListing(c.listingId, 'chatsCount', 1);
+    } catch (e) {}
+  });
+  (function () {
+    var orig = window.toggleFavById;
+    if (typeof orig !== 'function') return;
+    window.toggleFavById = function (id) {
+      var was = typeof favorites !== 'undefined' && favorites.indexOf(id) > -1;
+      var r = orig.apply(this, arguments);
+      if (me()) bumpListing(id, 'favCount', was ? -1 : 1);
+      return r;
+    };
+  })();
+  (function () {
+    var orig = window.createMyCard;
+    if (typeof orig !== 'function') return;
+    window.createMyCard = function (l) {
+      var h = orig.apply(this, arguments);
+      if (!l) return h;
+      var extra = '';
+      if (+l.phoneViews) extra += '<span title="Відкрили номер телефону"><i class="fa-solid fa-phone"></i> ' + (+l.phoneViews) + '</span>';
+      if (+l.chatsCount) extra += '<span title="Написали в чат"><i class="fa-regular fa-comment"></i> ' + (+l.chatsCount) + '</span>';
+      if (+l.favCount) extra += '<span title="Додали в обране"><i class="fa-regular fa-heart"></i> ' + (+l.favCount) + '</span>';
+      return extra ? h.replace('<div class="mc-stats">', '<div class="mc-stats">' + extra) : h;
+    };
+  })();
+
+  // ══ 27. ІНШІ ОГОЛОШЕННЯ ПРОДАВЦЯ НА СТОРІНЦІ ОГОЛОШЕННЯ ══════
+  function hrow(id, title, items, more) {
+    return '<section class="ux-hsec" id="' + id + '"><div class="ux-hsec-head"><h2>' + title + '</h2>' + (more || '') + '</div>' +
+      '<div class="ux-hrow">' + items.map(function (l) { return typeof createCard === 'function' ? createCard(l, 'detail') : ''; }).join('') + '</div></section>';
+  }
+  wrap('showDetail', function (r, id) {
+    var old = $('ux-seller-more'); if (old) old.remove();
+    var l = findListing(id); if (!l || !l.uid) return;
+    var sim = $('similar-listings'); if (!sim) return;
+    var simIds = {}; sim.querySelectorAll('.listing-card').forEach(function (c) { simIds[cardId(c)] = 1; });
+    var mine = listings().filter(function (x) {
+      return x && x.uid === l.uid && x.id !== l.id && x.status !== 'sold' && x.status !== 'deleted' && x.status !== 'inactive';
+    }).sort(function (a, b) { return (typeof _listTs === 'function' ? _listTs(b) - _listTs(a) : 0); }).slice(0, 10);
+    if (mine.length < 1) return;
+    var name = l.sellerName || l.seller || 'продавця';
+    var sec = sim.closest('.section') || sim.parentElement;
+    var wrapEl = document.createElement('div');
+    wrapEl.innerHTML = hrow('ux-seller-more', 'Ще від ' + esc(name), mine,
+      '<a class="ux-hsec-more" onclick="showSellerByUid(\'' + esc(l.uid) + '\')">Усі оголошення →</a>');
+    sec.parentElement.insertBefore(wrapEl.firstChild, sec);
+  });
+
+  // ══ 28. ГОЛОВНА: «ВИ ДИВИЛИСЬ» І «ЗНИЖЕНА ЦІНА» ══════════════
+  function activeL(x) { return x && x.status !== 'sold' && x.status !== 'deleted' && x.status !== 'inactive'; }
+  function renderHomeRows() {
+    var anchor = $('home-listings'); if (!anchor) return;
+    var newSec = anchor.closest('.section'); if (!newSec) return;
+    // Нещодавно переглянуті — перед «Нові оголошення»
+    var hist = lsGet('ridego_view_history', []).map(findListing).filter(activeL).slice(0, 12);
+    var h = $('ux-home-history');
+    if (hist.length >= 2) {
+      var t = document.createElement('div');
+      t.innerHTML = hrow('ux-home-history', 'Ви нещодавно дивились', hist, '<a class="ux-hsec-more" onclick="_uxClearHistory()">Очистити</a>');
+      if (h) h.replaceWith(t.firstChild); else newSec.parentElement.insertBefore(t.firstChild, newSec);
+    } else if (h) h.remove();
+    // Знижена ціна — після «Нові оголошення»
+    var drops = listings().filter(function (x) { return activeL(x) && typeof _oldPrice === 'function' && _oldPrice(x) > +x.price; })
+      .sort(function (a, b) { return (b.priceDroppedAt && b.priceDroppedAt.seconds || 0) - (a.priceDroppedAt && a.priceDroppedAt.seconds || 0); }).slice(0, 12);
+    var d = $('ux-home-drops');
+    if (drops.length >= 2) {
+      var t2 = document.createElement('div');
+      t2.innerHTML = hrow('ux-home-drops', '<i class="fa-solid fa-arrow-trend-down"></i> Знизили ціну', drops);
+      if (d) d.replaceWith(t2.firstChild); else newSec.parentElement.insertBefore(t2.firstChild, newSec.nextSibling);
+    } else if (d) d.remove();
+  }
+  window._uxClearHistory = function () { lsSet('ridego_view_history', []); var h = $('ux-home-history'); if (h) h.remove(); toast('Історію переглядів очищено'); };
+  wrap('renderHomeListings', function () { setTimeout(renderHomeRows, 30); });
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }
