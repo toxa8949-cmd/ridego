@@ -815,8 +815,11 @@ function _parsePath(path) {
   var brandMatch = p.match(/^\/brand\/(.+)$/);
   if (brandMatch) return { page: 'catalog', brand: brandMatch[1] };
 
+  // Посадкові сторінки «продати / купити …» (api/_intent.js).
+  // Їхній текст лишається на екрані й після запуску SPA — сторінка 'landing'.
+  if (/^\/(prodaty|kupyty)-(elektrosamokat|elektrovelosyped|velosyped|samokat)$/.test(p)) return { page: 'landing' };
+
   // SEO pages
-  if (p === '/prodaty-elektrosamokat') return { page: 'catalog' };
   if (p === '/elektrosamokat-z-sydinniam') return { page: 'catalog' };
   if (p === '/elektrosamokat-dlya-mista') return { page: 'catalog' };
   if (p === '/elektrosamokat-dlia-bezdorizhzhia') return { page: 'catalog' };
@@ -833,10 +836,8 @@ function _parsePath(path) {
   // Ці сторінки є в sitemap.xml і в rewrites vercel.json, і для Googlebot
   // їх рендерить api/category.js. Але в роутері їх не було — тож живі
   // користувачі бачили на них сторінку «нічого не знайдено».
-  if (p === '/kupyty-elektrovelo')     return { page: 'catalog', cat: 'Електровелосипеди' };
   if (p === '/kupyty-elektroskuter')   return { page: 'catalog', cat: 'Електроскутери' };
   if (p === '/kupyty-elektromotocykl') return { page: 'catalog', cat: 'Електромотоцикли' };
-  if (p === '/prodaty-elektrovelo')    return { page: 'catalog', cat: 'Електровелосипеди' };
   if (p === '/prodaty-elektroskuter')  return { page: 'catalog', cat: 'Електроскутери' };
   if (p === '/elektrosamokat-vzhyvanyy') return { page: 'catalog', cat: 'Електросамокати' };
   if (p === '/elektrovelosyped-kyiv')  return { page: 'catalog', cat: 'Електровелосипеди' };
@@ -880,7 +881,12 @@ function _renderRoute(route, isBack) {
   // на екрані не потрібні. Якщо JS не завантажився — блок лишається
   // видимим, і людина бачить текст замість порожнього каркаса.
   var _pre = document.getElementById('ssr-prerender');
-  if (_pre && _pre.parentNode) _pre.parentNode.removeChild(_pre);
+  if (page === 'landing') {
+    // Посадкова сторінка: серверний текст і є вмістом сторінки.
+    var _land = document.getElementById('page-landing');
+    if (_pre && _land) { _land.innerHTML = ''; _pre.id = 'landing-content'; _land.appendChild(_pre); }
+    else if (_land && !_land.querySelector('.seo-landing')) { location.reload(); return; }
+  } else if (_pre && _pre.parentNode) _pre.parentNode.removeChild(_pre);
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + page);

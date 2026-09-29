@@ -1,4 +1,5 @@
 const { renderShell, adaptLegacyDocument } = require('./_shell');
+const intentPage = require('./_intent');
 const BASE = 'https://www.ridego.com.ua';
 const PROJECT = 'ridego-6f981';
 const BOTS = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|applebot|mj12bot|ahrefsbot|semrushbot|petalbot|bytespider|google-inspectiontool|google-structured-data-testing|storebot|developers\.google/i;
@@ -141,8 +142,16 @@ async function getActiveListings() {
         cat: f.cat?.stringValue||'',
         condition: f.condition?.stringValue||'',
         img: f.img?.stringValue||'',
-        brand: f.brand?.stringValue||''
+        brand: f.brand?.stringValue||'',
+        createdAt: f.createdAt?.timestampValue || ''
       };
+    });
+    // Сортуємо новіші першими. У запиті orderBy немає навмисно: разом
+    // із фільтром по status він вимагав би складеного індексу, а без
+    // сортування взагалі оголошення виходили в довільному порядку —
+    // на бренд-сторінках угорі могли опинитись найстаріші.
+    _activeCache.sort(function(a, b) {
+      return String(b.createdAt).localeCompare(String(a.createdAt));
     });
     _activeCacheAt = Date.now();
     return _activeCache;
@@ -481,6 +490,7 @@ module.exports = async (req, res) => {
   const brandSlug=getParam(req,'brand').replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase();
   const modelSlug=getParam(req,'model').replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase();
   const pageSlug=getParam(req,'page').replace(/[^a-zA-Z0-9_-]/g,'').toLowerCase();
+  if (pageSlug && intentPage.PAGES[pageSlug]) return intentPage(req, res);
 
   const isBrand=!!brandSlug; const isModel=!!modelSlug; const isPage=!!pageSlug;
   const brand=isBrand?BRANDS[brandSlug]:null;
