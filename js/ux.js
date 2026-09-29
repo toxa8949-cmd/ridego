@@ -1025,6 +1025,71 @@
   window.addEventListener('resize', placeGallery);
 
 
+
+  // ══ 16. ТЕКСТОВИЙ ПОШУК У КАТАЛОЗІ ══════════════════════════
+  // Раніше doSearch малював результати поверх каталогу, а за мить
+  // каталог перемальовувався і показував усі оголошення. Тепер запит —
+  // це звичайний фільтр каталогу: працює разом з категорією, сортуванням
+  // і фільтрами, і його видно чипом «Пошук: …  ✕».
+  var catQuery = '', fromSearch = false;
+  function qNorm(v) { return String(v || '').toLowerCase().replace(/ё/g, 'е'); }
+  function matchQuery(l, words) {
+    var hay = qNorm([l.title, l.brand, l.model, l.cat, l.city, l.fullLoc, l.seller, l.sellerName, l.desc].join(' '));
+    return words.every(function (w) { return hay.indexOf(w) > -1; });
+  }
+  (function () {
+    var orig = window.getFilteredData;
+    if (typeof orig !== 'function') return;
+    window.getFilteredData = function () {
+      var data = orig.apply(this, arguments);
+      if (!catQuery) return data;
+      var words = qNorm(catQuery).split(/\s+/).filter(Boolean);
+      return (data || []).filter(function (l) { return matchQuery(l, words); });
+    };
+  })();
+  function renderQueryUi() {
+    var h1 = document.querySelector('#page-catalog .catalog-hero h1');
+    if (h1) {
+      if (!h1._uxOrig) h1._uxOrig = h1.innerHTML;
+      if (catQuery) h1.innerHTML = 'Пошук: <span>' + esc(catQuery) + '</span>';
+      else h1.innerHTML = h1._uxOrig;
+    }
+    var lbl = $('results-cat-label');
+    var chip = $('ux-query-chip');
+    if (catQuery) {
+      if (!chip && lbl) {
+        chip = document.createElement('button');
+        chip.id = 'ux-query-chip'; chip.type = 'button';
+        chip.onclick = function () { window._uxClearQuery(); };
+        lbl.parentElement.insertBefore(chip, lbl.nextSibling);
+      }
+      if (chip) chip.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>«' + esc(catQuery) + '»<b>✕</b>';
+    } else if (chip) chip.remove();
+  }
+  window._uxClearQuery = function () {
+    catQuery = '';
+    ['headerSearch', 'headerSearchMobile', 'headerSearchHero'].forEach(function (id) { var e = $(id); if (e) e.value = ''; });
+    renderQueryUi();
+    if (typeof runSearch === 'function') runSearch();
+  };
+  window.doSearch = function (query) {
+    query = String(query || '').trim();
+    if (!query) return;
+    catQuery = query;
+    if (typeof sugHide === 'function') sugHide();
+    fromSearch = true;
+    var onCatalog = $('page-catalog') && $('page-catalog').classList.contains('active');
+    if (!onCatalog) showPage('catalog');
+    fromSearch = false;
+    setTimeout(function () { renderQueryUi(); if (typeof runSearch === 'function') runSearch(); }, onCatalog ? 0 : 200);
+  };
+  // Перехід у каталог з меню чи категорії без пошуку — скидаємо запит
+  wrap('showPage', function (r, page) {
+    if (page === 'catalog' && !fromSearch && catQuery) { catQuery = ''; renderQueryUi(); }
+  });
+  wrap('runSearch', function () { renderQueryUi(); });
+  wrap('clearFilters', function () { if (catQuery) window._uxClearQuery(); });
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }

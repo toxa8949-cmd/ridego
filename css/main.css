@@ -4219,3 +4219,5 @@ body.light .hero-sell { color: var(--text-muted); }
 }
 .hero-chips-lbl { align-self: center; font-size: 13px; color: rgba(255,255,255,.55); margin-right: 2px; flex-shrink: 0; }
 body.light .hero-chips-lbl { color: var(--text-muted); }
+#ux-query-chip { display: inline-flex; align-items: center; gap: 7px; margin: 6px 0 0 0; padding: 6px 8px 6px 12px; border-radius: 50px; border: 1px solid var(--brand); background: var(--brand-dim); color: var(--brand); font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; }
+#ux-query-chip b { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 11px; }
