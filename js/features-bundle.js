@@ -1236,10 +1236,12 @@ function _buildSvcDetailHeader(s){
   var badge=s.badge?"<div class=\"service-card-cover-badge "+s.badge+"\" style=\"font-size:12px;padding:5px 14px\">"+(s.badgeLabel||"")+"</div>":"";
   var cats=(s.cats||[]).map(function(c){return "<span class=\"service-cat-tag\">"+c+"</span>";}).join("");
   var cityLine=s.city?"<span><i class=\"fa-solid fa-location-dot\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.city)+(s.address?", "+window.escHtml(s.address):"")+"</span>":"";
-  var hoursLine=s.hours?"<span><i class=\"fa-solid fa-clock\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.hours+"</span>":"";
-  var phoneLine=s.phone?"<span><i class=\"fa-solid fa-phone\" style=\"color:var(--brand);margin-right:6px\"></i>"+s.phone+"</span>":"";
-  var btnPhone=s.phone?"<button class=\"btn-primary\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\u260e\ufe0f '+s.phone)\"><i class=\"fa-solid fa-phone\" style=\"margin-right:6px\"></i>\u0417\u0430\u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443\u0432\u0430\u0442\u0438</button>":"";
-  var btnTg=s.telegram?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showToast('\ud83d\udcf1 '+s.telegram)\"><i class=\"fa-brands fa-telegram\" style=\"margin-right:6px;color:#2ca5e0\"></i>Telegram</button>":"";
+  var hoursLine=s.hours?"<span><i class=\"fa-solid fa-clock\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.hours)+"</span>":"";
+  var phoneLine=s.phone?"<a href=\"tel:"+String(s.phone).replace(/[^+\d]/g,'')+"\" style=\"color:inherit;text-decoration:none\"><i class=\"fa-solid fa-phone\" style=\"color:var(--brand);margin-right:6px\"></i>"+window.escHtml(s.phone)+"</a>":"";
+  var _tel=String(s.phone||'').replace(/[^+\d]/g,'');
+  var btnPhone=s.phone?"<a class=\"btn-primary\" href=\"tel:"+_tel+"\" style=\"padding:11px 20px;font-size:14px;display:inline-flex;align-items:center;text-decoration:none\"><i class=\"fa-solid fa-phone\" style=\"margin-right:6px\"></i>\u0417\u0430\u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0443\u0432\u0430\u0442\u0438</a>":"";
+  var _tg=String(s.telegram||'').replace(/^https?:\/\/t\.me\//,'').replace(/^@/,'').replace(/[^\w]/g,'');
+  var btnTg=_tg?"<a class=\"btn-outline\" href=\"https://t.me/"+_tg+"\" target=\"_blank\" rel=\"noopener\" style=\"padding:11px 20px;font-size:14px;display:inline-flex;align-items:center;text-decoration:none\"><i class=\"fa-brands fa-telegram\" style=\"margin-right:6px;color:#2ca5e0\"></i>Telegram</a>":"";
   var btnShop=s.sellerId?"<button class=\"btn-outline\" style=\"padding:11px 20px;font-size:14px\" onclick=\"showSeller('"+s.sellerId+"')\"><i class=\"fa-solid fa-store\" style=\"margin-right:6px\"></i>Магазин</button>":"";
 
   var btnMsg = s.uid

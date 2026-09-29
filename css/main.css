@@ -3901,3 +3901,31 @@ body.light #seller-cover-bg .seller-cover-pattern { background-image: radial-gra
   #page-seller .seller-avatar-big { border-radius: 24px; font-size: 36px; }
   #seller-cover-bg { height: 120px !important; }
 }
+
+/* ══ Сервіси: преміальна обкладинка, коли немає фото ══ */
+.service-detail-cover:not(:has(img)), .service-card-cover:not(:has(img)) {
+  background:
+    radial-gradient(420px 200px at 10% -10%, rgba(0,200,83,.38), transparent 70%),
+    radial-gradient(380px 220px at 95% 120%, rgba(0,168,70,.26), transparent 70%),
+    linear-gradient(180deg, #0c1611 0%, #101d16 100%) !important;
+  position: relative;
+}
+body.light .service-detail-cover:not(:has(img)), body.light .service-card-cover:not(:has(img)) {
+  background:
+    radial-gradient(420px 200px at 10% -10%, rgba(0,200,83,.22), transparent 70%),
+    radial-gradient(380px 220px at 95% 120%, rgba(0,168,70,.18), transparent 70%),
+    linear-gradient(180deg, #eaf6ee 0%, #f3faf5 100%) !important;
+}
+.service-detail-cover:not(:has(img))::before, .service-card-cover:not(:has(img))::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,.10) 1px, transparent 1.2px); background-size: 18px 18px;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 95%); mask-image: linear-gradient(180deg, #000, transparent 95%);
+}
+body.light .service-detail-cover:not(:has(img))::before, body.light .service-card-cover:not(:has(img))::before { background-image: radial-gradient(rgba(0,110,45,.12) 1px, transparent 1.2px); }
+.service-detail-cover:not(:has(img)) > span, .service-card-cover:not(:has(img)) .service-card-cover-icon {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 84px; height: 84px; border-radius: 24px; font-size: 40px;
+  background: rgba(255,255,255,.75); box-shadow: 0 10px 30px rgba(0,80,30,.18);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.service-card-cover:not(:has(img)) .service-card-cover-icon { width: 64px; height: 64px; border-radius: 18px; font-size: 30px; }
