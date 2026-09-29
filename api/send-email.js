@@ -327,7 +327,66 @@ async function notifyPriceDrop(caller, listingId, key) {
   return [200, { sent }];
 }
 
+
+// ── Щоденний cron: нагадування про «застиглі» оголошення ───────
+// Оголошення активне 30+ днів без підняття → власнику лист із порадою
+// підняти або знизити ціну. Не частіше ніж раз на 30 днів на оголошення,
+// не більше 40 власників за запуск. Вимкнути: users.emailReminders = false.
+async function remindStale(key) {
+  const token = await getAdminToken();
+  if (!token) return { error: 'no admin token' };
+  const now = Math.floor(Date.now() / 1000), D = 86400;
+  const active = await fsQuery(token, 'listings', 'status', 'EQUAL', 'active', 1000);
+  const stale = active.filter(l => {
+    const t = (l.bumpedAt && l.bumpedAt.seconds) || (l.createdAt && l.createdAt.seconds) || 0;
+    const r = (l.remindedAt && l.remindedAt.seconds) || 0;
+    return l.uid && t && now - t > 30 * D && now - r > 30 * D;
+  });
+  const byUid = {};
+  stale.forEach(l => { (byUid[l.uid] = byUid[l.uid] || []).push(l); });
+  const uids = Object.keys(byUid).slice(0, 40);
+  if (!uids.length) return { sent: 0, stale: 0 };
+  const users = await fsGetMany(token, uids.map(u => 'users/' + u));
+  const emails = [], marked = [];
+  users.forEach(u => {
+    if (!u || !EMAIL_RE.test(u.email || '') || u.emailReminders === false || u.status === 'blocked') return;
+    const ls = byUid[u.id].slice(0, 3);
+    const days = Math.floor((now - ((ls[0].bumpedAt && ls[0].bumpedAt.seconds) || ls[0].createdAt.seconds)) / D);
+    const body = `<p style="margin:0 0 18px;color:#444;line-height:1.6;font-size:15px">${ls.length > 1 ? 'Ваші оголошення вже' : 'Ваше оголошення вже'} понад ${days} днів на RideGO. Щоб покупці знову їх помітили, спробуйте одне з цього:</p>
+      <ul style="margin:0 0 22px;padding-left:20px;color:#444;line-height:1.8;font-size:15px">
+        <li><b>Підніміть</b> оголошення — воно знову стане першим у каталозі (безкоштовно раз на 7 днів).</li>
+        <li><b>Перегляньте ціну</b> — покупці бачать позначку, коли ціну знижено.</li>
+        <li><b>Додайте фото</b> при денному світлі та деталі стану.</li>
+        <li>Якщо вже продали — позначте «Продано».</li>
+      </ul>
+      ${ls.map(l => listingCard(l)).join('')}
+      <a href="${SITE}/profile?tab=my" style="display:inline-block;background:#1db954;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:15px">Мої оголошення →</a>`;
+    emails.push({
+      to: [u.email],
+      subject: ls.length > 1 ? 'Ваші оголошення на RideGO чекають покупців' : 'Оголошення «' + String(ls[0].title || '').slice(0, 50) + '» чекає покупця',
+      html: wrapEmail('Час оновити оголошення', body, 'Нагадування приходить не частіше ніж раз на місяць. Вимкнути можна в профілі → Налаштування.')
+    });
+    ls.forEach(l => marked.push(l.id));
+  });
+  const sent = emails.length ? await sendBatch(key, emails) : 0;
+  if (sent) {
+    const at = new Date();
+    await Promise.all(marked.map(id => fsPatch(token, 'listings/' + id, { remindedAt: at }).catch(() => {})));
+  }
+  return { sent, stale: stale.length };
+}
+
 async function handler(req, res) {
+  // Щоденний запуск від Vercel Cron (vercel.json → crons)
+  if (req.method === 'GET' && /[?&]cron=stale\b/.test(req.url || '')) {
+    const secret = process.env.CRON_SECRET;
+    const okAuth = secret ? (req.headers.authorization === 'Bearer ' + secret)
+                          : /vercel-cron/i.test(req.headers['user-agent'] || '');
+    if (!okAuth) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.RESEND_API_KEY) return res.status(500).json({ error: 'no resend key' });
+    try { return res.status(200).json(await remindStale(process.env.RESEND_API_KEY)); }
+    catch (e) { console.error('[cron stale]', e.message); return res.status(500).json({ error: e.message }); }
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

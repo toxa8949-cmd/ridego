@@ -174,6 +174,15 @@
     var on = !userPrefs || userPrefs.emailPriceDrop !== false;
     box.innerHTML = '<label class="ux-switch"><input type="checkbox" ' + (on ? 'checked' : '') +
       ' onchange="_uxSetPref(\'emailPriceDrop\', this.checked)"> <span>Лист на пошту, коли продавець знижує ціну на оголошення з обраного</span></label>';
+    // Нагадування про старі оголошення — у налаштуваннях, під телефоном
+    var ph = $('set-phone'), grp = ph && ph.closest('.form-group');
+    if (grp) {
+      var r = $('ux-remind-pref');
+      if (!r) { r = document.createElement('div'); r.id = 'ux-remind-pref'; grp.parentElement.insertBefore(r, grp.nextSibling); }
+      var rOn = !userPrefs || userPrefs.emailReminders !== false;
+      r.innerHTML = '<label class="ux-switch"><input type="checkbox" ' + (rOn ? 'checked' : '') +
+        ' onchange="_uxSetPref(\'emailReminders\', this.checked)"> <span>Нагадувати на пошту, якщо оголошення давно без руху (раз на місяць)</span></label>';
+    }
   }
   window._uxSetPref = function (key, val) {
     var u = me(); if (!u || !db()) return;
@@ -357,9 +366,10 @@
 
   // Посилання з листа: /profile?tab=favs
   function openTabFromUrl() {
-    var m = location.search.match(/[?&]tab=(favs|history)/);
+    var m = location.search.match(/[?&]tab=(favs|history|my)/);
     if (!m || typeof switchPTab !== 'function') return;
-    var btn = document.querySelector('.ptab[data-tab="' + m[1] + '"]');
+    if (m[1] === 'my' && typeof showPage === 'function') showPage('profile');
+    var btn = m[1] === 'my' ? document.querySelector('.ptab') : document.querySelector('.ptab[data-tab="' + m[1] + '"]');
     setTimeout(function () { switchPTab(m[1], btn); }, 300);
   }
 
@@ -1589,6 +1599,166 @@
     } catch (e) {}
   });
 
+
+  // ══ 24. КАРТКИ: ШВИДКИЙ ПЕРЕГЛЯД, ПОРІВНЯННЯ, ЦІНА В $ ══════
+  // Один «декоратор» для всіх карток на сайті (головна, каталог,
+  // продавець, схожі): додає кнопку швидкого перегляду, ціну в доларах
+  // і стан кнопки «порівняти».
+  function usdRate() {
+    if (window._usdRate) return window._usdRate;
+    if (!window._usdRateFetched) {
+      window._usdRateFetched = true;
+      fetch('https://api.exchangerate-api.com/v4/latest/USD').then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.rates && d.rates.UAH) { window._usdRate = d.rates.UAH; decorateCards(true); }
+      }).catch(noop);
+    }
+    return 41;
+  }
+  function cardId(card) {
+    var m = String(card.getAttribute('onclick') || '').match(/showDetail\('([^']+)'/);
+    if (m) return m[1];
+    var a = card.getAttribute('href') || ''; m = a.match(/\/listing\/([^/?#]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function decorateCards(force) {
+    var rate = usdRate(), cmp = cmpIds();
+    document.querySelectorAll('.listing-card').forEach(function (card) {
+      var id = card._uxId || (card._uxId = cardId(card)); if (!id) return;
+      if (!card._uxQv) {
+        card._uxQv = 1;
+        var ph = card.querySelector('.listing-img-wrap, .listing-img-placeholder');
+        var host = ph && ph.parentElement;
+        if (host) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'ux-qv-btn'; b.setAttribute('aria-label', 'Швидкий перегляд');
+          b.innerHTML = '<i class="fa-regular fa-eye"></i><span>Швидкий перегляд</span>';
+          b.onclick = function (e) { e.stopPropagation(); e.preventDefault(); window._uxQuickView(id); };
+          host.appendChild(b);
+        }
+      }
+      if (!card._uxUsd || force) {
+        var l = findListing(id), price = l && +l.price;
+        card.querySelectorAll('.listing-body .listing-price').forEach(function (pe) {
+          var old = pe.parentElement.querySelector('.ux-usd'); if (old) old.remove();
+          if (!price) return;
+          var s = document.createElement('span'); s.className = 'ux-usd';
+          s.textContent = '$' + fmtN(Math.round(price / rate));
+          pe.insertAdjacentElement('afterend', s);
+        });
+        card._uxUsd = 1;
+      }
+      var cb = card.querySelector('.compare-btn-card');
+      if (cb) cb.classList.toggle('ux-on', cmp.indexOf(id) > -1);
+    });
+  }
+  var decoT;
+  if (window.MutationObserver) new MutationObserver(function () { clearTimeout(decoT); decoT = setTimeout(decorateCards, 60); })
+    .observe(document.body, { childList: true, subtree: true });
+  setTimeout(decorateCards, 1200);
+
+  // Стара кнопка «порівняти» на картці → нове порівняння
+  window.toggleCompare = function (id) { window._uxCmpToggle(id); decorateCards(); };
+  window._updateCompareBar = noop;
+  window.openCompareModal = function () { window._uxCmpOpen(); };
+  var _cmpSetOrig = cmpSet;
+  cmpSet = function (a) { _cmpSetOrig(a); decorateCards(); };
+
+  // Перемикач «₴ / $» у каталозі
+  var USD_KEY = 'ridego_usd';
+  function applyUsd() { document.body.classList.toggle('ux-usd-on', !!lsGet(USD_KEY, false)); }
+  applyUsd();
+  function renderUsdToggle() {
+    var sort = document.querySelector('#page-catalog .sort-btns, #page-catalog .catalog-sort, #page-catalog [class*="sort"]');
+    var host = $('ux-qf'); if (!host || $('ux-usd-toggle')) return;
+    var t = document.createElement('button');
+    t.type = 'button'; t.id = 'ux-usd-toggle';
+    t.onclick = function () { lsSet(USD_KEY, !lsGet(USD_KEY, false)); applyUsd(); t.classList.toggle('on', !!lsGet(USD_KEY, false)); usdRate(); };
+    t.innerHTML = '<span>₴</span><span>$</span>';
+    t.title = 'Показувати ціну в доларах';
+    t.classList.toggle('on', !!lsGet(USD_KEY, false));
+    host.appendChild(t);
+  }
+  wrap('runSearch', function () { setTimeout(renderUsdToggle, 0); });
+
+  // Швидкий перегляд
+  window._uxQuickView = function (id) {
+    var l = findListing(id); if (!l) { if (typeof showDetail === 'function') showDetail(id); return; }
+    var imgs = (l.imgs && l.imgs.length ? l.imgs : (l.img ? [l.img] : [])).map(function (u) { return typeof _cdnDetail === 'function' ? _cdnDetail(u) : u; });
+    var i = 0, rate = usdRate();
+    var m = $('ux-qv'); if (m) m.remove();
+    m = document.createElement('div'); m.id = 'ux-qv';
+    var specs = [];
+    function sp(k, v) { if (v && v !== '—') specs.push('<div><span>' + esc(k) + '</span><b>' + esc(v) + '</b></div>'); }
+    sp('Стан', l.condition); sp('Рік', l.year);
+    sp('АКБ', l.battery || (l.battAh ? l.battAh + ' Ah' : ''));
+    sp('Швидкість', l.speed || (l.speedVal ? l.speedVal + ' км/год' : ''));
+    sp('Запас ходу', l.range || (l.rangeVal ? l.rangeVal + ' км' : ''));
+    sp('Потужність', l.motorW ? l.motorW + ' Вт' : '');
+    sp('Пробіг', l.mileage ? fmtN(l.mileage) + ' км' : '');
+    var fav = typeof favorites !== 'undefined' && favorites.indexOf(id) > -1;
+    m.innerHTML = '<div class="ux-qv-box" role="dialog" aria-label="Швидкий перегляд">' +
+      '<button class="ux-qv-x" aria-label="Закрити">✕</button>' +
+      '<div class="ux-qv-gal">' + (imgs.length ? '<img alt="' + esc(l.title) + '">' : '<span class="ux-qv-ph">' + esc(l.icon || '📦') + '</span>') +
+        (imgs.length > 1 ? '<button class="ux-qv-nav p" aria-label="Попереднє фото">‹</button><button class="ux-qv-nav n" aria-label="Наступне фото">›</button><span class="ux-qv-cnt"></span>' : '') + '</div>' +
+      '<div class="ux-qv-info">' +
+        '<div class="ux-qv-meta">' + esc([l.cat, l.city].filter(Boolean).join(' · ')) + '</div>' +
+        '<h3>' + esc(l.title) + '</h3>' +
+        '<div class="ux-qv-price">' + (l.price ? fmtN(l.price) + ' грн' : 'Ціна договірна') + (l.price ? '<small>≈ $' + fmtN(Math.round(l.price / rate)) + '</small>' : '') + '</div>' +
+        (specs.length ? '<div class="ux-qv-specs">' + specs.join('') + '</div>' : '') +
+        (l.desc ? '<p class="ux-qv-desc">' + esc(String(l.desc).slice(0, 260)) + (String(l.desc).length > 260 ? '…' : '') + '</p>' : '') +
+        '<div class="ux-qv-acts">' +
+          '<button class="ux-qv-main" data-a="open">Відкрити оголошення</button>' +
+          (l.uid && !(me() && me().uid === l.uid) ? '<button data-a="chat"><i class="fa-regular fa-comment"></i>Написати</button>' : '') +
+          '<button data-a="fav" class="' + (fav ? 'on' : '') + '" aria-label="В обране"><i class="fa-' + (fav ? 'solid' : 'regular') + ' fa-heart"></i></button>' +
+          '<button data-a="cmp" class="' + (cmpHas(id) ? 'on' : '') + '" aria-label="Порівняти"><i class="fa-solid fa-scale-balanced"></i></button>' +
+        '</div>' +
+      '</div></div>';
+    document.body.appendChild(m);
+    function show() {
+      var im = m.querySelector('.ux-qv-gal img'); if (!im) return;
+      im.src = imgs[i]; var c = m.querySelector('.ux-qv-cnt'); if (c) c.textContent = (i + 1) + ' / ' + imgs.length;
+    }
+    show();
+    m.addEventListener('click', function (e) {
+      if (e.target === m || e.target.closest('.ux-qv-x')) { m.remove(); return; }
+      var nav = e.target.closest('.ux-qv-nav');
+      if (nav) { i = (i + (nav.classList.contains('n') ? 1 : -1) + imgs.length) % imgs.length; show(); return; }
+      var a = e.target.closest('[data-a]'); if (!a) return;
+      var act = a.getAttribute('data-a');
+      if (act === 'open') { m.remove(); showDetail(id); }
+      else if (act === 'chat') { m.remove(); if (typeof _startChat === 'function') _startChat(l.uid, l.id, l.title); }
+      else if (act === 'fav') { if (typeof toggleFavById === 'function') toggleFavById(id); else if (typeof toggleFav === 'function') toggleFav(id); var on = typeof favorites !== 'undefined' && favorites.indexOf(id) > -1; a.classList.toggle('on', on); a.innerHTML = '<i class="fa-' + (on ? 'solid' : 'regular') + ' fa-heart"></i>'; }
+      else if (act === 'cmp') { window._uxCmpToggle(id); a.classList.toggle('on', cmpHas(id)); }
+    });
+    document.addEventListener('keydown', function k(e) {
+      if (!document.body.contains(m)) { document.removeEventListener('keydown', k); return; }
+      if (e.key === 'Escape') m.remove();
+      if (imgs.length > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { i = (i + (e.key === 'ArrowRight' ? 1 : -1) + imgs.length) % imgs.length; show(); }
+    });
+  };
+
+  // ══ 25. ЗАХИСТ ВІД СПАМУ ПРИ ПУБЛІКАЦІЇ ═════════════════════
+  // Посилання й телефони в тексті, дублікати власних оголошень.
+  var LINK_RE = /(https?:\/\/|www\.|t\.me\/|telegram\.me|wa\.me|viber:|bit\.ly|[a-z0-9-]+\.(com|net|org|ua|ru|shop|site|online|store|top|xyz)\b)/i;
+  var PHONE_RE = /(\+?3?8?[\s-]?\(?0\d{2}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})/;
+  function normT(t) { return String(t || '').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi, ' ').trim(); }
+  function contentCheck(isNew) {
+    var t = (($('new-title') || {}).value || ''), d = (($('new-desc') || {}).value || '');
+    if (LINK_RE.test(t) || LINK_RE.test(d)) { toast('⚠️ Посилання в оголошенні заборонені — покупці напишуть вам у чат RideGO'); return false; }
+    if (PHONE_RE.test(t)) { toast('⚠️ Номер телефону вкажіть у полі «Телефон», а не в назві'); return false; }
+    if (t.length >= 12 && t === t.toUpperCase() && /[A-ZА-ЯІЇЄҐ]{6,}/.test(t)) {
+      var el = $('new-title'); if (el) el.value = t.charAt(0) + t.slice(1).toLowerCase();
+    }
+    if (isNew) {
+      var u = me(), nt = normT(t);
+      var dup = u && nt && listings().some(function (l) { return l && l.uid === u.uid && l.status === 'active' && normT(l.title) === nt; });
+      if (dup) { toast('⚠️ У вас уже є активне оголошення з такою назвою — відредагуйте або підніміть його'); return false; }
+    }
+    return true;
+  }
+  wrap('submitListing', null, function () { return contentCheck(true); });
+  wrap('saveEditListing', null, function () { return contentCheck(false); });
+
   // ══ Вхід / вихід ════════════════════════════════════════════
   onAuth(function (user) {
     if (!user || !db()) { searches = null; userPrefs = null; renderSearches(); renderEmailPrefs(); return; }
@@ -1596,7 +1766,7 @@
     loadSearches(user.uid);
     touchLastSeen();
     db().collection('users').doc(user.uid).get().then(function (s) {
-      userPrefs = s.exists ? { emailPriceDrop: s.data().emailPriceDrop } : {};
+      userPrefs = s.exists ? { emailPriceDrop: s.data().emailPriceDrop, emailReminders: s.data().emailReminders } : {};
       renderEmailPrefs();
     }).catch(noop);
     openTabFromUrl();
